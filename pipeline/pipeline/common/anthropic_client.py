@@ -39,6 +39,7 @@ import os
 import time
 import logging
 import backoff
+from pathlib import Path
 from typing import Optional, List, Dict, Any
 
 from pipeline.common.gemini_client import GeminiResponse  # reuse same dataclass
@@ -121,10 +122,11 @@ class AnthropicClient:
             timeout=self._DEFAULT_HTTP_TIMEOUT_SECONDS,
             max_retries=0,  # disable SDK built-in retries; @backoff owns all retry logic
         )
-        # Maximum output tokens — 64K is supported natively via streaming (messages.stream)
-        # without any beta headers. The output-128k beta is NOT needed; it only affected
-        # the non-streaming messages.create() path which we no longer use.
-        self._max_output_tokens = 64000
+        # Maximum output tokens:
+        #   Opus 4.6   — 128K natively (no beta header required as of Opus 4.6 release).
+        #   Sonnet 4.6 — 64K natively.
+        # The model-specific cap is enforced at call time in generate() via is_opus check.
+        self._max_output_tokens = 64000   # default for Sonnet; Opus overrides to 128K below
 
         # Rate limiting — mirrors GeminiClient.set_rate_limit()
         self._last_request_time: float = 0.0
@@ -422,28 +424,43 @@ class AnthropicClient:
             kwargs["system"] = system_value
 
         # Extended thinking (opt-in via config)
-        # When enabled=true, Anthropic enforces budget_tokens as a hard server-side cap.
-        # This prevents implicit <thinking> bleed into text output (which still costs
-        # output tokens even when stripped from the saved log).
-        # Thinking mode compatibility:
-        #   "adaptive"  → Opus 4.6 ONLY  (Sonnet 4.6 rejects this type)
-        #   "enabled"   → Sonnet 4.6 AND Opus 4.6 (hard budget cap)
-        # Guard: skip thinking entirely if the model is Sonnet and type is adaptive,
-        # but allow "enabled" thinking to flow through on both models unchanged.
+        #
+        # Opus 4.6 API (current):
+        #   - thinking: {type: "adaptive"}  — recommended, self-manages depth
+        #   - effort controlled via output_config: {effort: "max"} (Opus-only)
+        #   - budget_tokens DEPRECATED on Opus 4.6; still functional but will be removed
+        #   - 128K output tokens native (no beta header needed)
+        #
+        # Sonnet 4.6 API (current):
+        #   - thinking: {type: "adaptive"} OR {type: "enabled", budget_tokens: N}
+        #   - effort: "max" NOT supported (returns 400); defaults to "high"
+        #   - 64K output tokens native
+        #
         is_opus = target_model.startswith("claude-opus-4-6")
+
+        # Raise the per-call output cap to 128K for Opus (native, no beta header).
+        if is_opus:
+            kwargs["max_tokens"] = min(max_output_tokens, 128_000)
+
         thinking_type = thinking_cfg.get("thinking_type", "adaptive")
         thinking_allowed = is_opus or thinking_type == "enabled"
         if thinking_allowed and thinking_cfg.get("enabled", False) and not force_new_session:
             budget = thinking_cfg.get("thinking_budget", 1024)
-            if thinking_type == "adaptive":
-                # Opus only — adaptive thinking self-manages its budget;
-                # budget_tokens is NOT accepted by the API for this type.
+            if is_opus:
+                # Opus 4.6: adaptive thinking + effort="max" via output_config.
+                # budget_tokens is deprecated on Opus — do NOT pass it.
                 kwargs["thinking"] = {"type": "adaptive"}
-                logger.info("[THINKING] Adaptive thinking enabled (self-managed budget)")
+                kwargs["output_config"] = {"effort": "max"}
+                logger.info("[THINKING] Opus 4.6: adaptive thinking + effort=max (128K output)")
             else:
-                # "enabled" — hard server-enforced budget cap; works on Sonnet + Opus.
-                kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget}
-                logger.info(f"[THINKING] Hard budget cap: {budget} tokens (server-enforced)")
+                # Sonnet 4.6: adaptive or enabled (budget_tokens), effort stays at default "high".
+                if thinking_type == "adaptive":
+                    kwargs["thinking"] = {"type": "adaptive"}
+                    logger.info("[THINKING] Sonnet 4.6: adaptive thinking enabled")
+                else:
+                    # "enabled" with explicit budget cap — for Sonnet interleaved mode.
+                    kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget}
+                    logger.info(f"[THINKING] Sonnet 4.6: hard budget cap {budget} tokens")
             kwargs["temperature"] = 1.0   # required when thinking is active (any model)
 
         # Fast mode: use beta endpoint + speed="fast" for up to 2.5x OTPS on Opus 4.6.
@@ -655,6 +672,217 @@ class AnthropicClient:
             cached_tokens=cached_tokens,
             thinking_content=thinking_content,
         )
+
+    # ──────────────────────────────────────────────────────
+    # Batch API — 50% cost reduction for non-realtime runs
+    # ──────────────────────────────────────────────────────
+
+    def batch_generate(
+        self,
+        requests: List[Dict[str, Any]],
+        poll_interval_seconds: int = 60,
+        batch_state_path: Optional[Path] = None,
+    ) -> Dict[str, "GeminiResponse"]:
+        """
+        Submit a list of chapter translation requests as one Anthropic Message Batch.
+
+        Offers 50% cost reduction vs streaming at the cost of ~1-hour latency.
+        Only valid for the Anthropic provider; Gemini has no equivalent batch API.
+
+        Args:
+            requests: List of dicts, each with keys:
+                - custom_id (str)          — unique chapter identifier
+                - prompt    (str)          — fully-built user prompt
+                - system_instruction (str|None) — None when cached system is active
+                - model_name (str|None)    — model override
+                - max_output_tokens (int)  — defaults to self._max_output_tokens
+                - temperature (float)      — defaults to 0.7 (overridden to 1.0 by thinking)
+                - cached_content (str|None) — truthy: use cached system blocks
+            poll_interval_seconds: How often to poll for batch completion (default 60s).
+            batch_state_path: Optional Path to a .json file for storing the batch ID
+                              so a crashed run can be resumed on restart.
+
+        Returns:
+            Dict mapping custom_id → GeminiResponse. Errored/expired requests
+            return GeminiResponse(content="", finish_reason="batch_error").
+        """
+        import json as _json
+        import time as _time
+        import re as _re
+
+        if not requests:
+            logger.warning("[BATCH] batch_generate() called with empty request list")
+            return {}
+
+        thinking_cfg = self._load_thinking_config()
+
+        # ── Check for a resumable batch ID ─────────────────────────────
+        batch_id: Optional[str] = None
+        if batch_state_path and batch_state_path.exists():
+            try:
+                state = _json.loads(batch_state_path.read_text())
+                batch_id = state.get("batch_id")
+                if batch_id:
+                    logger.info(f"[BATCH] Resuming existing batch: {batch_id}")
+            except Exception as _e:
+                logger.warning(f"[BATCH] Could not read batch state file: {_e}")
+
+        # ── Build request objects ───────────────────────────────────────
+        if batch_id is None:
+            anthropic_requests = []
+            for req in requests:
+                custom_id    = req["custom_id"]
+                prompt       = req["prompt"]
+                sys_instr    = req.get("system_instruction")
+                cached_token = req.get("cached_content")
+                target_model = req.get("model_name") or self.model
+                max_tok      = min(
+                    req.get("max_output_tokens") or self._max_output_tokens,
+                    128_000 if target_model.startswith("claude-opus-4-6") else 64_000
+                )
+                temp = req.get("temperature", 0.7)
+
+                # System value — cached blocks when active, plain string otherwise
+                use_cached = (
+                    self.enable_caching
+                    and bool(cached_token)
+                    and self._cached_system_blocks is not None
+                )
+                if use_cached:
+                    system_value = self._cached_system_blocks
+                elif sys_instr:
+                    system_value = sys_instr
+                else:
+                    system_value = None
+
+                params: Dict[str, Any] = dict(
+                    model=target_model,
+                    max_tokens=max_tok,
+                    temperature=temp,
+                    messages=[{"role": "user", "content": prompt}],
+                )
+                if system_value is not None:
+                    params["system"] = system_value
+
+                # Thinking + effort for Opus 4.6 (mirrors generate())
+                is_opus = target_model.startswith("claude-opus-4-6")
+                thinking_type = thinking_cfg.get("thinking_type", "adaptive")
+                thinking_allowed = is_opus or thinking_type == "enabled"
+                if thinking_allowed and thinking_cfg.get("enabled", False):
+                    budget = thinking_cfg.get("thinking_budget", 1024)
+                    if is_opus:
+                        params["thinking"] = {"type": "adaptive"}
+                        params["output_config"] = {"effort": "max"}
+                    else:
+                        if thinking_type == "adaptive":
+                            params["thinking"] = {"type": "adaptive"}
+                        else:
+                            params["thinking"] = {"type": "enabled", "budget_tokens": budget}
+                    params["temperature"] = 1.0
+
+                anthropic_requests.append(
+                    self._anthropic_mod.types.message_create_params.Request(
+                        custom_id=custom_id,
+                        params=params,
+                    )
+                )
+
+            logger.info(f"[BATCH] Submitting {len(anthropic_requests)} chapter requests to Anthropic Batch API...")
+            batch = self._client.messages.batches.create(requests=anthropic_requests)
+            batch_id = batch.id
+            logger.info(f"[BATCH] Batch created: {batch_id}")
+
+            # Persist batch ID for crash-resume
+            if batch_state_path:
+                try:
+                    batch_state_path.write_text(_json.dumps({"batch_id": batch_id}))
+                except Exception as _e:
+                    logger.warning(f"[BATCH] Could not write batch state: {_e}")
+
+        # ── Poll until complete ─────────────────────────────────────────
+        while True:
+            status_obj = self._client.messages.batches.retrieve(batch_id)
+            processing_status = status_obj.processing_status
+            counts = status_obj.request_counts
+            completed = getattr(counts, "succeeded", 0) + getattr(counts, "errored", 0) + getattr(counts, "expired", 0)
+            total = getattr(counts, "processing", 0) + completed
+            logger.info(
+                f"[BATCH] Status={processing_status} | "
+                f"succeeded={getattr(counts, 'succeeded', '?')}, "
+                f"errored={getattr(counts, 'errored', '?')}, "
+                f"processing={getattr(counts, 'processing', '?')}"
+            )
+            if processing_status == "ended":
+                break
+            _time.sleep(poll_interval_seconds)
+
+        # ── Collect results ─────────────────────────────────────────────
+        results: Dict[str, GeminiResponse] = {}
+        for result in self._client.messages.batches.results(batch_id):
+            cid = result.custom_id
+            result_type = result.result.type
+
+            if result_type == "succeeded":
+                msg = result.result.message
+                # Extract text and thinking blocks
+                text_parts_b: List[str] = []
+                thinking_parts_b: List[str] = []
+                for block in msg.content:
+                    btype = getattr(block, "type", None)
+                    if btype == "text":
+                        text_parts_b.append(getattr(block, "text", ""))
+                    elif btype == "thinking":
+                        thinking_parts_b.append(getattr(block, "thinking", ""))
+
+                raw_text = "".join(text_parts_b).strip()
+
+                # Strip inline <thinking> tags (same logic as generate())
+                inline_thinking = _re.findall(r"<thinking>(.*?)</thinking>", raw_text, flags=_re.DOTALL)
+                if inline_thinking:
+                    clean_text = _re.sub(r"\s*<thinking>.*?</thinking>\s*", "\n", raw_text, flags=_re.DOTALL).strip()
+                    thinking_parts_b.extend(inline_thinking)
+                else:
+                    clean_text = raw_text
+
+                raw_thinking = "".join(thinking_parts_b).strip() or None
+
+                usage = msg.usage
+                results[cid] = GeminiResponse(
+                    content=clean_text,
+                    input_tokens=getattr(usage, "input_tokens", 0),
+                    output_tokens=getattr(usage, "output_tokens", 0),
+                    finish_reason=msg.stop_reason or "end_turn",
+                    model=msg.model,
+                    cached_tokens=getattr(usage, "cache_read_input_tokens", 0) or 0,
+                    thinking_content=raw_thinking,
+                )
+            else:
+                # errored or expired
+                error_detail = getattr(result.result, "error", None)
+                logger.error(f"[BATCH] Chapter {cid} {result_type}: {error_detail}")
+                results[cid] = GeminiResponse(
+                    content="",
+                    input_tokens=0,
+                    output_tokens=0,
+                    finish_reason="batch_error",
+                    model=self.model,
+                    cached_tokens=0,
+                    thinking_content=None,
+                )
+
+        logger.info(
+            f"[BATCH] Complete: {sum(1 for r in results.values() if r.content)} succeeded, "
+            f"{sum(1 for r in results.values() if not r.content)} failed"
+        )
+
+        # Clean up state file on success
+        if batch_state_path and batch_state_path.exists():
+            try:
+                batch_state_path.unlink()
+            except Exception:
+                pass
+
+        return results
 
     # ──────────────────────────────────────────────────────
     # Internal helpers

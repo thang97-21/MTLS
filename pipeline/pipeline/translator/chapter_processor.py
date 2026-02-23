@@ -883,12 +883,356 @@ This document contains the internal reasoning process that {reasoning_model_labe
 
         return text.strip()
 
+    # ──────────────────────────────────────────────────────────────────
+    # Batch API helpers: split translate_chapter into prompt-build + finalize
+    # ──────────────────────────────────────────────────────────────────
+
+    def extract_prompt(
+        self,
+        source_path: Path,
+        chapter_id: str,
+        en_title: Optional[str] = None,
+        jp_title: Optional[str] = None,
+        cached_content: Optional[str] = None,
+        scene_plan: Optional[Dict[str, Any]] = None,
+        model_name: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Build the full translation prompt WITHOUT calling the API.
+
+        Front-half of translate_chapter: runs all preprocessing
+        (gap analysis, dialect detection, grammar patterns, multimodal)
+        and builds the user prompt + system instruction.
+
+        Returns None for missing source files or massive (chunked) chapters
+        — callers should fall back to streaming for those.
+
+        Returns dict with keys:
+          custom_id, prompt, system_instruction, effective_cache,
+          model_name, max_output_tokens, temperature, metadata.
+        """
+        try:
+            if not source_path.exists():
+                logger.error(f"[BATCH-EXTRACT] Source not found: {source_path}")
+                return None
+
+            with open(source_path, 'r', encoding='utf-8') as _f:
+                source_text = _f.read()
+
+            # Massive chapters require chunked streaming — not batchable
+            source_bytes = len(source_text.encode("utf-8"))
+            is_massive = (
+                len(source_text) >= self.chunk_threshold_chars
+                or source_bytes >= self.chunk_threshold_bytes
+            )
+            if self.smart_chunking_enabled and is_massive:
+                logger.info(
+                    f"[BATCH-EXTRACT] {chapter_id} is massive ({len(source_text)} chars) "
+                    f"— will fallback to streaming"
+                )
+                return None
+
+            effective_cache = cached_content
+
+            # Strip JP heading before processing
+            source_content_only = source_text
+            jp_title_match = re.match(r'^#\s*(.*?)\n+', source_text)
+            if jp_title_match:
+                source_content_only = source_text[jp_title_match.end():].strip()
+
+            context_str = self.context_manager.get_context_prompt(chapter_id)
+
+            # ── GAP ANALYSIS ───────────────────────────────────────────
+            gap_flags = None
+            if self.enable_gap_analysis and self.gap_analyzer:
+                try:
+                    gap_report = self.gap_analyzer.analyze_chapter_pre_translation(
+                        chapter_id=chapter_id,
+                        jp_lines=source_text.split('\n'),
+                        en_lines=None,
+                    )
+                    if gap_report:
+                        total_gaps = sum(
+                            len(getattr(gap_report, f, []))
+                            for f in ('gap_a_flags', 'gap_b_flags', 'gap_c_flags')
+                        )
+                        if total_gaps > 0:
+                            gap_flags = {
+                                'gap_a': gap_report.gap_a_flags,
+                                'gap_b': gap_report.gap_b_flags,
+                                'gap_c': gap_report.gap_c_flags,
+                            }
+                except Exception as _e:
+                    logger.warning(f"[BATCH-EXTRACT] Gap analysis failed: {_e}")
+
+            # ── DIALECT DETECTION ──────────────────────────────────────
+            dialect_guidance = None
+            if DIALECT_DETECTION_AVAILABLE and detect_chapter_dialects:
+                try:
+                    has_dialects, dialect_text = detect_chapter_dialects(source_content_only, chapter_id)
+                    if has_dialects:
+                        dialect_guidance = dialect_text
+                except Exception as _e:
+                    logger.warning(f"[BATCH-EXTRACT] Dialect detection failed: {_e}")
+
+            # ── SINO-VN + VN GRAMMAR PATTERNS ─────────────────────────
+            sino_vn_guidance = None
+            vn_pattern_guidance = None
+            if self.target_language in ['vi', 'vn']:
+                try:
+                    from modules.kanji_extractor import extract_unique_compounds
+                    from modules.sino_vietnamese_store import SinoVietnameseStore
+                    kanji_terms = extract_unique_compounds(
+                        source_content_only, min_length=2, max_length=4, top_n=30
+                    )
+                    if kanji_terms:
+                        sentences = re.split(r'[。！？\n]', source_content_only)
+                        ctx_hint = '。'.join([s.strip() for s in sentences[:5] if s.strip()][:3])
+                        sino_vn_guidance = SinoVietnameseStore().get_bulk_guidance(
+                            terms=kanji_terms, genre=self.book_genre,
+                            max_per_term=2, min_confidence=0.68,
+                            context=ctx_hint, use_external_dict=True,
+                        )
+                except Exception as _e:
+                    logger.warning(f"[BATCH-EXTRACT] Sino-VN lookup failed: {_e}")
+
+                if self.target_language == 'vn':
+                    try:
+                        from modules.grammar_pattern_detector import detect_grammar_patterns
+                        from modules.vietnamese_pattern_store import VietnamesePatternStore
+                        detected = detect_grammar_patterns(source_content_only, top_n=15, include_line_numbers=True)
+                        if detected:
+                            sentences = re.split(r'[。！？\n]', source_content_only)
+                            ctx_hint = '。'.join([s.strip() for s in sentences[:5] if s.strip()][:3])
+                            vn_pattern_guidance = VietnamesePatternStore().get_bulk_guidance(
+                                patterns=detected, context=ctx_hint,
+                                max_per_pattern=2, min_confidence=0.70,
+                            )
+                    except Exception as _e:
+                        logger.warning(f"[BATCH-EXTRACT] VN grammar patterns failed: {_e}")
+
+            # ── EN GRAMMAR PATTERNS ────────────────────────────────────
+            en_pattern_guidance = None
+            if self.target_language == 'en':
+                try:
+                    from modules.grammar_pattern_detector import detect_grammar_patterns
+                    from modules.english_pattern_store import EnglishPatternStore
+                    detected = detect_grammar_patterns(source_content_only, top_n=15, include_line_numbers=True)
+                    if detected:
+                        sentences = re.split(r'[。！？\n]', source_content_only)
+                        ctx_hint = '。'.join([s.strip() for s in sentences[:5] if s.strip()][:3])
+                        en_pattern_guidance = EnglishPatternStore().get_bulk_guidance(
+                            patterns=detected, context=ctx_hint,
+                            max_per_pattern=2, min_confidence=0.75,
+                        )
+                except Exception as _e:
+                    logger.warning(f"[BATCH-EXTRACT] EN grammar patterns failed: {_e}")
+
+            # ── MULTIMODAL VISUAL CONTEXT ──────────────────────────────
+            visual_guidance = None
+            illustration_ids = []
+            if self.enable_multimodal and self.visual_cache:
+                try:
+                    from modules.multimodal.segment_classifier import extract_all_illustration_ids
+                    from modules.multimodal.prompt_injector import build_chapter_visual_guidance
+                    illustration_ids = extract_all_illustration_ids(source_content_only)
+                    if illustration_ids:
+                        cache_manifest = self.visual_cache.get_manifest() or {}
+                        visual_guidance = build_chapter_visual_guidance(
+                            illustration_ids, self.visual_cache, manifest=cache_manifest
+                        )
+                except Exception as _e:
+                    logger.warning(f"[BATCH-EXTRACT] Visual context failed: {_e}")
+
+            # ── SYSTEM INSTRUCTION / CACHE ─────────────────────────────
+            has_anthropic_cache = (
+                self.client.enable_caching
+                and hasattr(self.client, "_cached_system_blocks")
+                and self.client._cached_system_blocks is not None
+            )
+            has_gemini_cache = (
+                self.client.enable_caching
+                and hasattr(self.client, "_is_cache_valid")
+                and self.client._is_cache_valid(model_name)
+            )
+            if has_anthropic_cache and not effective_cache:
+                from pipeline.common.anthropic_client import _ANTHROPIC_CACHE_SENTINEL
+                effective_cache = _ANTHROPIC_CACHE_SENTINEL
+            if effective_cache or has_gemini_cache or has_anthropic_cache:
+                system_instruction = None
+            else:
+                system_instruction = self.prompt_loader.build_system_instruction(genre=self.book_genre)
+
+            # ── VOLUME CONTEXT ─────────────────────────────────────────
+            volume_context_text = None
+            if self.volume_context_integration:
+                try:
+                    en_dir = source_path.parent.parent / self.target_language.upper()
+                    volume_context_text, _ = self.volume_context_integration.get_volume_context(
+                        chapter_id=chapter_id,
+                        source_dir=source_path.parent,
+                        en_dir=en_dir,
+                    )
+                except Exception as _e:
+                    logger.warning(f"[BATCH-EXTRACT] Volume context failed: {_e}")
+
+            # ── BUILD USER PROMPT ──────────────────────────────────────
+            user_prompt = self._build_user_prompt(
+                chapter_id,
+                source_content_only,
+                context_str,
+                en_title,
+                jp_title=jp_title,
+                sino_vn_guidance=sino_vn_guidance,
+                gap_flags=gap_flags,
+                dialect_guidance=dialect_guidance,
+                en_pattern_guidance=en_pattern_guidance,
+                vn_pattern_guidance=vn_pattern_guidance,
+                visual_guidance=visual_guidance,
+                scene_plan=scene_plan,
+                volume_context=volume_context_text,
+            )
+            logger.debug(f"[BATCH-EXTRACT] Prompt built for {chapter_id} ({len(user_prompt)} chars)")
+
+            return {
+                "custom_id":          chapter_id,
+                "prompt":             user_prompt,
+                "system_instruction": system_instruction,
+                "effective_cache":    effective_cache,
+                "model_name":         model_name,
+                "max_output_tokens":  self.gen_params.get("max_output_tokens", 65536),
+                "temperature":        self.gen_params.get("temperature", 0.7),
+                "metadata": {
+                    "source_text":      source_text,
+                    "en_title":         en_title,
+                    "visual_guidance":  visual_guidance,
+                    "illustration_ids": illustration_ids,
+                },
+            }
+
+        except Exception as _e:
+            logger.exception(f"[BATCH-EXTRACT] Failed for {chapter_id}: {_e}")
+            return None
+
+    def finalize_from_batch_result(
+        self,
+        response,
+        metadata: Dict[str, Any],
+        chapter_id: str,
+        output_path: Path,
+        en_title: Optional[str] = None,
+    ) -> TranslationResult:
+        """
+        Write translated file and run post-processing for one batch result.
+
+        Back-half of translate_chapter: takes the GeminiResponse returned by
+        batch_generate() plus the metadata dict from extract_prompt(), then handles
+        file writing, quality audit, thinking log, CJK cleaning, and Stage 3 refinement.
+        """
+        try:
+            source_text      = metadata.get("source_text", "")
+            en_title         = en_title or metadata.get("en_title")
+            visual_guidance  = metadata.get("visual_guidance")
+            illustration_ids = metadata.get("illustration_ids", [])
+
+            if not response.content:
+                finish_reason = response.finish_reason or "UNKNOWN"
+                logger.error(
+                    f"[BATCH-FINALIZE] Empty response for {chapter_id} "
+                    f"(finish_reason={finish_reason})"
+                )
+                return TranslationResult(
+                    False, output_path,
+                    input_tokens=response.input_tokens,
+                    output_tokens=response.output_tokens,
+                    error=f"Batch returned empty response (finish_reason={finish_reason})",
+                )
+
+            # Save thinking log
+            if response.thinking_content:
+                self._save_thinking_process(
+                    chapter_id,
+                    response.thinking_content,
+                    output_path,
+                    visual_guidance=visual_guidance,
+                    illustration_ids=illustration_ids,
+                )
+
+            # Multimodal analysis-leak check
+            translated_body = response.content
+            if self.enable_multimodal and visual_guidance:
+                try:
+                    from modules.multimodal.analysis_detector import detect_analysis_leak
+                    leak_detected, leak_issues = detect_analysis_leak(translated_body)
+                    if leak_detected:
+                        for issue in leak_issues:
+                            logger.warning(f"[BATCH-FINALIZE][MULTIMODAL] Leak: {issue}")
+                except Exception:
+                    pass
+
+            # Post-process + write
+            cleaned_body  = self._clean_output(translated_body)
+            final_content = self._compose_chapter_markdown(cleaned_body, en_title)
+            final_content, scene_break_count = SceneBreakFormatter.format_scene_breaks(final_content)
+            if scene_break_count > 0:
+                logger.info(f"[BATCH-FINALIZE] Formatted {scene_break_count} scene break(s) in {chapter_id}")
+
+            audit = QualityMetrics.quick_audit(final_content, source_text)
+
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(output_path, 'w', encoding='utf-8') as _f:
+                _f.write(final_content)
+            logger.info(f"[BATCH-FINALIZE] Wrote {output_path.name} ({len(final_content)} chars)")
+
+            # CJK cleaning (VN only)
+            if self._vn_cjk_cleaner:
+                clean_result = self._vn_cjk_cleaner.clean_file(output_path)
+                cjk_count = clean_result.get('substitutions', 0)
+                if cjk_count > 0:
+                    logger.info(f"[BATCH-FINALIZE] CJK: {cjk_count} substitutions applied")
+
+            # Stage 3 refinement
+            stage3_metrics = {}
+            if self.enable_stage3 and self._stage3_agent:
+                try:
+                    stage3_report = self._stage3_agent.process_chapter(output_path)
+                    if stage3_report:
+                        stage3_metrics = {
+                            'hard_cap_violations': stage3_report.hard_cap_violations,
+                            'hard_cap_fixed':      stage3_report.hard_cap_auto_split,
+                            'tense_violations':    stage3_report.tense_violations,
+                            'ai_isms_fixed':       stage3_report.ai_ism_fixes_applied,
+                        }
+                        if stage3_report.hard_cap_auto_split > 0:
+                            logger.info(
+                                f"[BATCH-FINALIZE] Stage3: "
+                                f"{stage3_report.hard_cap_auto_split}/{stage3_report.hard_cap_violations} "
+                                f"sentences auto-split"
+                            )
+                except Exception as _e:
+                    logger.warning(f"[BATCH-FINALIZE] Stage 3 failed: {_e}")
+
+            return TranslationResult(
+                success=True,
+                output_path=output_path,
+                input_tokens=response.input_tokens,
+                output_tokens=response.output_tokens,
+                audit_result=audit,
+                warnings=list(audit.warnings or []),
+                stage3_metrics=stage3_metrics or None,
+            )
+
+        except Exception as _e:
+            logger.exception(f"[BATCH-FINALIZE] Failed to finalize {chapter_id}")
+            return TranslationResult(False, output_path, error=str(_e))
+
     def translate_chapter(
         self,
         source_path: Path,
         output_path: Path,
         chapter_id: str,
         en_title: Optional[str] = None,
+        jp_title: Optional[str] = None,
         model_name: Optional[str] = None,
         cached_content: Optional[str] = None,
         volume_cache: Optional[str] = None,
@@ -897,12 +1241,15 @@ This document contains the internal reasoning process that {reasoning_model_labe
     ) -> TranslationResult:
         """
         Translate a single chapter file.
-        
+
         Args:
             source_path: Path to source Japanese chapter
             output_path: Path to save translated chapter
-            chapter_id: Chapter identifier
-            en_title: Translated chapter title
+            chapter_id: Chapter identifier (pipeline-internal, e.g. "chapter_02")
+            en_title: Translated chapter title (e.g. "Chapter 1")
+            jp_title: Original Japanese title from EPUB TOC (e.g. "第一章"). Injected into
+                      the TARGET CHAPTER block so the model has unambiguous chapter identity
+                      without wasting thinking budget on filename/heading reconciliation.
             model_name: Model override
             cached_content: Cached content name for continuity (from previous chapter schema)
             volume_cache: Optional alias for cached_content (volume-level cache)
@@ -942,6 +1289,7 @@ This document contains the internal reasoning process that {reasoning_model_labe
                     chapter_id=chapter_id,
                     source_text=source_text,
                     en_title=en_title,
+                    jp_title=jp_title,
                     model_name=model_name,
                     cached_content=effective_cache,
                     scene_plan=scene_plan,
@@ -1268,6 +1616,7 @@ This document contains the internal reasoning process that {reasoning_model_labe
                 source_content_only,
                 context_str,
                 en_title,
+                jp_title=jp_title,
                 sino_vn_guidance=sino_vn_guidance,
                 gap_flags=gap_flags,
                 dialect_guidance=dialect_guidance,  # v1.0 - Dialect detection
@@ -1293,7 +1642,7 @@ This document contains the internal reasoning process that {reasoning_model_labe
                 cached_content=effective_cache  # Inject cached schema for continuity
             )
             logger.debug(
-                f"[VERBOSE] Gemini response received. "
+                f"[VERBOSE] LLM response received. "
                 f"finish_reason={response.finish_reason}, "
                 f"tokens={response.input_tokens} in/{response.output_tokens} out, "
                 f"cached_tokens={response.cached_tokens}"
@@ -1491,7 +1840,7 @@ This document contains the internal reasoning process that {reasoning_model_labe
 
             # 10. Post-Processing: Self-Healing Anti-AI-ism Agent (DISABLED - damages prose quality)
             # DISABLED (2026-02-10): 1a60 audit found only 1 AI-ism in entire volume (0.015/1k).
-            # Gemini's native output is excellent. Post-processing over-correction damages natural prose.
+            # LLM's native output is excellent. Post-processing over-correction damages natural prose.
             # Evidence: Grammar validator introduced 35 errors trying to "fix" correct grammar.
             # Philosophy: Trust the model. Minimal intervention = better quality.
             # ai_ism_healed_count = 0  # Unused - agent permanently disabled
@@ -1557,8 +1906,9 @@ This document contains the internal reasoning process that {reasoning_model_labe
         chapter_id: str,
         source_text: str,
         en_title: Optional[str],
-        model_name: Optional[str],
-        cached_content: Optional[str],
+        jp_title: Optional[str] = None,
+        model_name: Optional[str] = None,
+        cached_content: Optional[str] = None,
         scene_plan: Optional[Dict[str, Any]] = None,
     ) -> TranslationResult:
         """Translate massive chapters via resumable chunk JSON flow."""
@@ -2383,6 +2733,7 @@ This document contains the internal reasoning process that {reasoning_model_labe
         source_text: str,
         context_str: str,
         chapter_title: Optional[str] = None,
+        jp_title: Optional[str] = None,  # Original JP chapter title from EPUB TOC
         sino_vn_guidance: Optional[Dict] = None,
         gap_flags: Optional[Dict] = None,
         dialect_guidance: Optional[str] = None,  # v1.0 - Dialect detection
@@ -2399,7 +2750,8 @@ This document contains the internal reasoning process that {reasoning_model_labe
             chapter_title=chapter_title or chapter_id,
             chapter_id=chapter_id,
             previous_context=context_str if context_str else None,
-            name_registry=self.character_names if self.character_names else None
+            name_registry=self.character_names if self.character_names else None,
+            jp_title=jp_title,
         )
         
         # Inject Sino-Vietnamese guidance if available (Vietnamese translations only)

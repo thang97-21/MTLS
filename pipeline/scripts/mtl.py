@@ -30,6 +30,7 @@ Usage:
   mtl.py phase2 [volume_id] --enable-multimodal  # Phase 2 with visual context
   mtl.py phase2 [volume_id] --full-ln-cache off  # Run without full-LN cache prep
   mtl.py phase2 [volume_id] --phase1-55-mode skip|overwrite|auto|ask
+  mtl.py phase2 [volume_id] --batch     # Anthropic Batch API (50% cost, ~1h latency)
   mtl.py multimodal [volume_id]          # Run Phase 1.6 + Phase 2 with multimodal (visual translation)
   mtl.py phase4 [volume_id]              # Run Phase 4 (interactive if no ID)
   mtl.py status <volume_id>              # Check pipeline status
@@ -217,12 +218,32 @@ class PipelineController:
                 cache_ttl_str = f"{_ttl_label} ephemeral" if cache_enabled else "OFF"
                 active_model = anthropic_cfg.get("model", "claude-sonnet-4-6")
                 active_fallback = anthropic_cfg.get("fallback_model", "claude-haiku-4-5-20251001")
+
+                # ── Opus 4.6 feature flags ──────────────────────────────
+                is_opus = active_model.startswith("claude-opus-4-6")
+                thinking_cfg = anthropic_cfg.get("thinking_mode", {})
+                thinking_enabled = bool(thinking_cfg.get("enabled", False))
+                thinking_type = thinking_cfg.get("thinking_type", "adaptive")
+                # For Opus: adaptive thinking is active when enabled
+                # For Sonnet: adaptive is rejected, falls back to "enabled"/budget
+                thinking_active = thinking_enabled and (is_opus or thinking_type == "enabled")
+                thinking_mode_label = (
+                    f"{thinking_type}" if thinking_active
+                    else "OFF"
+                )
+                effort_label = "max" if is_opus else "N/A"
+                max_out_label = "128K" if is_opus else "64K"
             else:
                 caching_cfg = gemini_cfg.get("caching", {})
                 cache_enabled = bool(caching_cfg.get("enabled", True))
                 cache_ttl_str = f"{int(caching_cfg.get('ttl_minutes', 120))}m"
                 active_model = get_model_name()
                 active_fallback = get_fallback_model_name()
+                is_opus = False
+                thinking_active = False
+                thinking_mode_label = "N/A"
+                effort_label = "N/A"
+                max_out_label = "N/A"
 
             cache_ttl = cache_ttl_str  # used in the cache line below
 
@@ -270,6 +291,16 @@ class PipelineController:
                     f"| {'Vision=' + vision_model if multimodal_active else 'Hint=--enable-multimodal'}"
                 ),
             ]
+            # Append Anthropic-specific Opus 4.6 features line when provider is Anthropic
+            if provider == "anthropic":
+                batch_hint = "ON (--batch)" if is_opus else "HINT=--batch"
+                lines.append(
+                    f"Claude Features: {'RUN' if thinking_active else 'TODO'} "
+                    f"| Thinking={thinking_mode_label}"
+                    f" | Effort={effort_label}"
+                    f" | MaxOut={max_out_label}"
+                    f" | Batch={batch_hint}"
+                )
             return lines
         except Exception as e:
             if self.verbose:

@@ -119,7 +119,7 @@ class TranslatorAgent:
 
         self.manifest = self._load_manifest()
         self.translation_config = get_translation_config()
-        self._genre = self.manifest.get("genre", "")
+        self._genre = self._resolve_genre()
 
         massive_cfg = self.translation_config.get("massive_chapter", {})
         self.volume_cache_enabled = massive_cfg.get("enable_volume_cache", True)
@@ -822,6 +822,101 @@ class TranslatorAgent:
         with open(self.manifest_path, 'r', encoding='utf-8') as f:
             return json.load(f)
 
+    def _resolve_genre(self) -> str:
+        """
+        Resolve novel genre for the Tier 2 module gate.
+
+        Cascade (first non-empty string wins):
+          1. metadata_en.json  top-level "genre"
+          2. metadata_en.json  content_info.genre / genres
+          3. manifest.json     top-level "genre"
+          4. manifest.json     translation_guidance.genre / genres
+          5. manifest.json     metadata_en.content_info.genre / genres
+          6. manifest.json     world_setting.type  (top-level or under metadata_en)
+          7. metadata_en.json  world_setting.type
+
+        world_setting.type is the most reliably populated field in practice (set by the
+        Librarian schema agent). Its value is used verbatim so the Tier 2 gate's keyword
+        check ("fantasy", "isekai", "steampunk", "academy", etc.) can fire on it.
+
+        Falls back to "" — the Tier 2 gate defaults to fail-open (keep FANTASY module)
+        when genre is completely unknown.
+        """
+        work_dir = self.manifest_path.parent
+
+        def _extract(obj: Any, *keys: str) -> str:
+            """Walk dict keys, return first non-empty string or space-joined list."""
+            for key in keys:
+                val = obj.get(key) if isinstance(obj, dict) else None
+                if not val:
+                    continue
+                if isinstance(val, str) and val.strip():
+                    return val.strip()
+                if isinstance(val, list) and val:
+                    return " ".join(str(v) for v in val if v)
+            return ""
+
+        def _world_setting_type(obj: Any) -> str:
+            """Extract world_setting.type from a manifest/metadata dict."""
+            ws = obj.get("world_setting") if isinstance(obj, dict) else None
+            if isinstance(ws, dict):
+                t = ws.get("type", "")
+                if isinstance(t, str) and t.strip():
+                    return t.strip()
+            return ""
+
+        try:
+            meta: dict = {}
+            meta_path = work_dir / "metadata_en.json"
+            if meta_path.exists():
+                with open(meta_path, encoding="utf-8") as fh:
+                    meta = json.load(fh)
+
+            # ── Cascade 1-2: metadata_en.json explicit genre ──
+            genre = _extract(meta, "genre")
+            if genre:
+                logger.debug(f"[GENRE] metadata_en.json genre: {genre!r}")
+                return genre
+            genre = _extract(meta.get("content_info", {}), "genre", "genres")
+            if genre:
+                logger.debug(f"[GENRE] metadata_en.json content_info.genre: {genre!r}")
+                return genre
+
+            # ── Cascade 3-5: manifest.json explicit genre ──
+            genre = _extract(self.manifest, "genre")
+            if genre:
+                logger.debug(f"[GENRE] manifest.json genre: {genre!r}")
+                return genre
+            genre = _extract(self.manifest.get("translation_guidance", {}), "genre", "genres")
+            if genre:
+                logger.debug(f"[GENRE] manifest.json translation_guidance.genre: {genre!r}")
+                return genre
+            meta_en = self.manifest.get("metadata_en", {})
+            genre = _extract(meta_en.get("content_info", self.manifest.get("content_info", {})), "genre", "genres")
+            if genre:
+                logger.debug(f"[GENRE] manifest.json metadata_en.content_info.genre: {genre!r}")
+                return genre
+
+            # ── Cascade 6: manifest.json world_setting.type ──
+            # Check top-level first, then under metadata_en (where Librarian puts it)
+            ws_type = _world_setting_type(self.manifest) or _world_setting_type(meta_en)
+            if ws_type:
+                logger.debug(f"[GENRE] manifest.json world_setting.type: {ws_type!r}")
+                return ws_type
+
+            # ── Cascade 7: metadata_en.json world_setting.type ──
+            ws_type = _world_setting_type(meta)
+            if ws_type:
+                logger.debug(f"[GENRE] metadata_en.json world_setting.type: {ws_type!r}")
+                return ws_type
+
+            logger.debug("[GENRE] No genre/world_setting found — Tier 2 gate will use fail-open default")
+            return ""
+
+        except Exception as exc:
+            logger.warning(f"[GENRE] Failed to resolve genre: {exc}")
+            return ""
+
     def _save_manifest(self):
         with open(self.manifest_path, 'w', encoding='utf-8') as f:
             json.dump(self.manifest, f, indent=2, ensure_ascii=False)
@@ -1282,6 +1377,10 @@ class TranslatorAgent:
             # Get translated title from manifest (language-specific or fallback to EN)
             title_key = f"title_{self.target_language}"
             translated_title = resolved_titles.get(chapter_id)
+            # JP title: the original EPUB TOC label (e.g. "第一章"). Sent to the model
+            # alongside the EN title so it has unambiguous chapter identity without
+            # spending thinking budget reconciling pipeline ID vs. JP source heading.
+            jp_chapter_title = chapter.get("title") or chapter.get("title_jp")
 
             logger.info(f"Translating [{i+1}/{total}] {chapter_id} to {self.language_name}...")
 
@@ -1336,6 +1435,7 @@ class TranslatorAgent:
                 output_path,
                 chapter_id,
                 en_title=translated_title,  # en_title param kept for backward compatibility
+                jp_title=jp_chapter_title,
                 model_name=chapter_model,
                 cached_content=effective_cache_name,
                 volume_cache=effective_cache_name if self.volume_cache_name else None,
@@ -1361,6 +1461,7 @@ class TranslatorAgent:
                     output_path,
                     chapter_id,
                     en_title=translated_title,
+                    jp_title=jp_chapter_title,
                     model_name=fallback_model,
                     cached_content=None,
                     volume_cache=None,
@@ -1574,6 +1675,302 @@ class TranslatorAgent:
             logger.info("Clearing context cache...")
             self.client.clear_cache()
     
+    def translate_volume_batch(self, clean_start: bool = False, chapters: List[str] = None):
+        """
+        Translate an entire volume using Anthropic's Batch API (50% cost reduction).
+
+        Three-phase orchestration:
+          Phase 1 — Collect prompts: call processor.extract_prompt() for each chapter.
+                    Massive (chunked) chapters return None -> streamed immediately.
+          Phase 2 — Submit batch: call client.batch_generate() for all collected prompts.
+                    Blocks (polling every 60s) until Anthropic returns all results.
+          Phase 3 — Finalize: call processor.finalize_from_batch_result() per chapter,
+                    run chapter_summarizer, and update manifest / translation_log.
+
+        Only valid when provider == "anthropic". Raises ValueError otherwise.
+        """
+        from pipeline.translator.config import get_translator_provider
+        if get_translator_provider() != "anthropic":
+            raise ValueError(
+                "--batch mode requires provider=anthropic. "
+                "Set translator_provider: anthropic in config.yaml."
+            )
+        if not hasattr(self.client, "batch_generate"):
+            raise ValueError("AnthropicClient.batch_generate() not found. Update anthropic_client.py.")
+
+        logger.info(f"[BATCH] Starting batch translation for volume in {self.work_dir}")
+
+        # Load chapters (same logic as translate_volume)
+        manifest_chapters = self.manifest.get("chapters", [])
+        if not manifest_chapters:
+            manifest_chapters = self.manifest.get("structure", {}).get("chapters", [])
+        if not manifest_chapters:
+            logger.error("[BATCH] No chapters found in manifest")
+            return
+
+        target_chapters = manifest_chapters
+        if chapters:
+            target_chapters = [c for c in manifest_chapters if c["id"] in chapters]
+
+        total = len(target_chapters)
+        logger.info(f"[BATCH] Targeting {total} chapters")
+        resolved_titles = self._resolve_prompt_titles(target_chapters)
+
+        # Pipeline state
+        if "translator" not in self.manifest["pipeline_state"]:
+            self.manifest["pipeline_state"]["translator"] = {}
+        self.manifest["pipeline_state"]["translator"]["status"] = "in_progress"
+        self.manifest["pipeline_state"]["translator"]["target_language"] = self.target_language
+        self.manifest["pipeline_state"]["translator"]["started_at"] = datetime.now().isoformat()
+        self._save_manifest()
+
+        # Pre-warm inline system instruction cache
+        if self.client.enable_caching:
+            self._prewarm_cache()
+            logger.info("[BATCH][CACHE] System instruction pre-warmed.")
+
+        output_dir = self.work_dir / self.target_language.upper()
+        output_dir.mkdir(exist_ok=True)
+
+        # ── Phase 1: Collect prompts ───────────────────────────────────
+        logger.info("[BATCH] Phase 1: Collecting prompts for all chapters...")
+        batch_requests: List[dict] = []
+        chapter_metadata: dict = {}
+
+        for i, chapter in enumerate(target_chapters):
+            chapter_id = chapter["id"]
+            jp_file = chapter.get("jp_file") or chapter.get("source_file")
+            if not jp_file:
+                logger.error(f"[BATCH] Chapter {chapter_id} missing source filename — skipping")
+                continue
+
+            translated_filename = (
+                chapter.get(f"{self.target_language}_file")
+                or chapter.get("translated_file")
+                or jp_file.replace('.md', f'_{self.target_language.upper()}.md')
+            )
+            output_path = output_dir / translated_filename
+
+            # Skip already-completed chapters unless forced
+            if not clean_start and chapter.get("translation_status") == "completed" and output_path.exists():
+                logger.info(f"[BATCH] Skipping completed chapter {chapter_id}")
+                chapter_metadata[chapter_id] = {"output_path": output_path, "chapter": chapter, "skipped": True}
+                continue
+
+            source_path = self.work_dir / "JP" / jp_file
+            translated_title = resolved_titles.get(chapter_id)
+            jp_chapter_title = chapter.get("title") or chapter.get("title_jp")
+            chapter_model = chapter.get("model")
+            scene_plan = self._load_scene_plan_context(chapter)
+
+            prompt_dict = self.processor.extract_prompt(
+                source_path=source_path,
+                chapter_id=chapter_id,
+                en_title=translated_title,
+                jp_title=jp_chapter_title,
+                cached_content=None,
+                scene_plan=scene_plan,
+                model_name=chapter_model,
+            )
+
+            if prompt_dict is None:
+                # Massive chapter — stream immediately as Phase 1 fallback
+                logger.info(f"[BATCH] {chapter_id} is massive — streaming now (Phase 1 fallback)...")
+                result = self.processor.translate_chapter(
+                    source_path, output_path, chapter_id,
+                    en_title=translated_title,
+                    jp_title=jp_chapter_title,
+                    model_name=chapter_model,
+                    cached_content=None,
+                    scene_plan=scene_plan,
+                )
+                chapter_metadata[chapter_id] = {
+                    "output_path": output_path,
+                    "chapter": chapter,
+                    "result": result,
+                    "skipped": False,
+                    "streamed": True,
+                }
+                if result.success:
+                    chapter["translation_status"] = "completed"
+                    chapter[f"{self.target_language}_file"] = output_path.name
+                    logger.info(f"[BATCH] Streamed {chapter_id} successfully.")
+                else:
+                    chapter["translation_status"] = "failed"
+                    logger.error(f"[BATCH] Streaming fallback failed for {chapter_id}: {result.error}")
+                self._save_manifest()
+                continue
+
+            batch_requests.append({
+                "custom_id":          chapter_id,
+                "prompt":             prompt_dict["prompt"],
+                "system_instruction": prompt_dict["system_instruction"],
+                "cached_content":     prompt_dict["effective_cache"],
+                "model_name":         prompt_dict.get("model_name"),
+                "max_output_tokens":  prompt_dict.get("max_output_tokens", 65536),
+                "temperature":        prompt_dict.get("temperature", 0.7),
+            })
+            chapter_metadata[chapter_id] = {
+                "output_path": output_path,
+                "chapter":     chapter,
+                "prompt_dict": prompt_dict,
+                "en_title":    translated_title,
+                "skipped":     False,
+                "streamed":    False,
+            }
+
+        streamed_count = sum(1 for m in chapter_metadata.values() if m.get("streamed"))
+        logger.info(
+            f"[BATCH] Phase 1 complete: {len(batch_requests)} queued, "
+            f"{streamed_count} streamed immediately."
+        )
+
+        # ── Phase 2: Submit batch ──────────────────────────────────────
+        batch_results: dict = {}
+        if batch_requests:
+            logger.info(f"[BATCH] Phase 2: Submitting {len(batch_requests)} requests...")
+            batch_state_path = self.work_dir / ".batch_state.json"
+            batch_results = self.client.batch_generate(
+                requests=batch_requests,
+                poll_interval_seconds=60,
+                batch_state_path=batch_state_path,
+            )
+            logger.info(f"[BATCH] Phase 2 complete: {len(batch_results)} results received.")
+
+        # ── Phase 3: Finalize ──────────────────────────────────────────
+        logger.info("[BATCH] Phase 3: Finalizing chapters...")
+        success_count = sum(
+            1 for m in chapter_metadata.values()
+            if m.get("skipped") or (m.get("streamed") and m.get("result") and m["result"].success)
+        )
+
+        for i, chapter in enumerate(target_chapters):
+            chapter_id = chapter["id"]
+            meta = chapter_metadata.get(chapter_id)
+            if meta is None or meta.get("skipped") or meta.get("streamed"):
+                continue
+
+            output_path = meta["output_path"]
+            prompt_dict = meta["prompt_dict"]
+            en_title    = meta.get("en_title")
+            response    = batch_results.get(chapter_id)
+
+            if response is None:
+                logger.error(f"[BATCH] No result for {chapter_id}")
+                chapter["translation_status"] = "failed"
+                self._save_manifest()
+                continue
+
+            result = self.processor.finalize_from_batch_result(
+                response=response,
+                metadata=prompt_dict["metadata"],
+                chapter_id=chapter_id,
+                output_path=output_path,
+                en_title=en_title,
+            )
+
+            # Update log
+            log_entry = {
+                "chapter_id":    chapter_id,
+                "input_tokens":  result.input_tokens,
+                "output_tokens": result.output_tokens,
+                "success":       result.success,
+                "error":         result.error,
+                "quality":       result.audit_result.to_dict() if result.audit_result else None,
+            }
+            self.translation_log["chapters"] = [
+                c for c in self.translation_log["chapters"] if c["chapter_id"] != chapter_id
+            ]
+            self.translation_log["chapters"].append(log_entry)
+            self._save_log()
+
+            if result.success:
+                chapter["translation_status"] = "completed"
+                chapter[f"{self.target_language}_file"] = output_path.name
+                success_count += 1
+
+                # Chapter summarizer
+                translation_text = ""
+                try:
+                    with open(output_path, 'r', encoding='utf-8') as _f:
+                        translation_text = _f.read()
+                except Exception as _e:
+                    logger.error(f"[BATCH] Could not read output for summarizer: {_e}")
+
+                chapter_num = self._resolve_chapter_number(
+                    chapter_id=chapter_id,
+                    source_filename=chapter.get("jp_file") or chapter.get("source_file"),
+                    fallback=i + 1,
+                )
+                context_title = (
+                    en_title
+                    or chapter.get(f"title_{self.target_language}")
+                    or chapter.get("title_en")
+                    or chapter.get("title")
+                    or self._canonical_title_from_chapter_id(chapter_id)
+                    or chapter_id
+                )
+
+                if self.chapter_summarizer and translation_text.strip() and chapter_num is not None:
+                    summary_result = self.chapter_summarizer.summarize_chapter(
+                        chapter_id=chapter_id,
+                        chapter_num=chapter_num,
+                        chapter_title=context_title,
+                        translation_text=translation_text,
+                    )
+                    if summary_result.success:
+                        chapter["summary_file"] = (
+                            summary_result.summary_path.name if summary_result.summary_path else None
+                        )
+                        summary_data = summary_result.summary_data
+                        self.context_manager.add_chapter_context(
+                            chapter_id=chapter_id,
+                            summary=self._build_context_summary_text(
+                                summary_data.get("plot_points", []),
+                                chapter_title=str(summary_data.get("title") or context_title),
+                            ),
+                            metadata={
+                                "chapter_num":    summary_data.get("chapter_num"),
+                                "chapter_title":  summary_data.get("title"),
+                                "emotional_tone": summary_data.get("emotional_tone"),
+                                "running_jokes":  summary_data.get("running_jokes", []),
+                            },
+                            characters=summary_data.get("new_characters", []),
+                            plot_points=summary_data.get("plot_points", []),
+                        )
+                    else:
+                        self.context_manager.add_chapter_context(
+                            chapter_id=chapter_id,
+                            summary=context_title or "Translated chapter",
+                            metadata={"chapter_num": chapter_num, "summary_error": summary_result.error},
+                            plot_points=[], characters=[],
+                        )
+                else:
+                    self.context_manager.add_chapter_context(
+                        chapter_id=chapter_id,
+                        summary=context_title or "Translated chapter",
+                        metadata={"chapter_num": chapter_num, "summary_skipped": True},
+                        plot_points=[], characters=[],
+                    )
+            else:
+                chapter["translation_status"] = "failed"
+                logger.error(f"[BATCH] Failed {chapter_id}: {result.error}")
+
+            self._save_manifest()
+
+        # Final status
+        if success_count == total:
+            self.manifest["pipeline_state"]["translator"]["status"] = "completed"
+            logger.info(f"[BATCH] Volume translation COMPLETED ({success_count}/{total})")
+        else:
+            self.manifest["pipeline_state"]["translator"]["status"] = "partial"
+            logger.warning(f"[BATCH] Volume translation PARTIAL ({success_count}/{total})")
+
+        self._save_manifest()
+
+        if self.client.enable_caching:
+            self.client.clear_cache()
+
     def generate_report(self) -> TranslationReport:
         """Generate a summary report of the translation."""
         log_chapters = self.translation_log.get("chapters", [])
@@ -1615,7 +2012,8 @@ def run_translator(
     force: bool = False,
     work_base: Optional[Path] = None,
     enable_continuity: bool = False,
-    enable_multimodal: bool = False
+    enable_multimodal: bool = False,
+    batch_mode: bool = False,
 ) -> TranslationReport:
     """
     Main entry point for Translator agent.
@@ -1627,6 +2025,8 @@ def run_translator(
         work_base: Base working directory (defaults to WORK/).
         enable_continuity: Enable schema extraction and continuity features (ALPHA - unstable).
         enable_multimodal: Enable multimodal visual context injection.
+        batch_mode: Submit all chapters as one Anthropic batch (50% cost, ~1h latency).
+                    Requires provider=anthropic in config.yaml.
 
     Returns:
         TranslationReport with results.
@@ -1640,7 +2040,10 @@ def run_translator(
         raise FileNotFoundError(f"Volume directory not found: {volume_dir}")
 
     agent = TranslatorAgent(volume_dir, enable_continuity=enable_continuity, enable_multimodal=enable_multimodal)
-    agent.translate_volume(clean_start=force, chapters=chapters)
+    if batch_mode:
+        agent.translate_volume_batch(clean_start=force, chapters=chapters)
+    else:
+        agent.translate_volume(clean_start=force, chapters=chapters)
     return agent.generate_report()
 
 
@@ -1655,6 +2058,9 @@ def main():
                        help="Enable semantic gap analysis (Week 2-3 integration) for improved translation quality")
     parser.add_argument("--enable-multimodal", action="store_true",
                        help="Enable multimodal visual context injection (requires Phase 1.6)")
+    parser.add_argument("--batch", action="store_true",
+                       help="Submit all chapters as one Anthropic batch (50%% cost, ~1h latency). "
+                            "Requires provider=anthropic in config.yaml.")
 
     args = parser.parse_args()
     
@@ -1675,7 +2081,10 @@ def main():
         agent = TranslatorAgent(volume_dir, enable_continuity=args.enable_continuity,
                                enable_gap_analysis=args.enable_gap_analysis,
                                enable_multimodal=args.enable_multimodal)
-        agent.translate_volume(clean_start=args.force, chapters=args.chapters)
+        if args.batch:
+            agent.translate_volume_batch(clean_start=args.force, chapters=args.chapters)
+        else:
+            agent.translate_volume(clean_start=args.force, chapters=args.chapters)
     except Exception as e:
         logger.exception("Translator Agent crashed")
         sys.exit(1)

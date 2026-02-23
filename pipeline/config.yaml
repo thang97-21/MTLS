@@ -52,15 +52,16 @@ project:
 translator_provider: anthropic  # "google" | "anthropic" — routes translator LLM only; sub-agents always use Gemini
 
 anthropic:
-  model: claude-sonnet-4-6
+  model: claude-opus-4-6
   fallback_model: claude-sonnet-4-6
   http_timeout_seconds: 600
   generation:
     temperature: 1.0
-    max_output_tokens: 64000  # 64K supported natively via streaming (no beta headers needed)
+    max_output_tokens: 128000  # 64K supported natively via streaming (no beta headers needed)
   thinking_mode:
     enabled: true         # hard budget cap: server-enforced ceiling on thinking tokens
-    thinking_budget: 4096 # 4096 tok ≈ ~3000 words — full chapter analysis without scratchpad bleed
+    thinking_type: enabled  # "enabled" = hard server-side cap (works on Sonnet + Opus); "adaptive" = Opus only
+    thinking_budget: 8192 # 4096 tok ≈ ~3000 words — full chapter analysis without scratchpad bleed
   caching:
     enabled: true         # uses Anthropic ephemeral cache_control on system prompt
     ttl_minutes: 5        # 5m = free refresh (default); 1h = 2x write cost. Inter-chapter cadence ~30-120s so 5m is sufficient.

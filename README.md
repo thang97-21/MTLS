@@ -4,7 +4,7 @@
 
 Version 5.2 | Production Ready | February 2026
 
-> Multi-Language Support: English & Vietnamese | Claude 4.6 Translator + Adaptive Thinking | Multimodal Vision + Vector Search | Hierarchical Identity Lock + Dynamic Thinking | Smart Chunking + Provider-Aware Cache | Glossary Lock + Truncation Guardrails
+> Multi-Language Support: English & Vietnamese | Claude Opus 4.6 (Effort=max, 128K Output) | Async Batch Mode (50% Cost) | Multimodal Vision + Vector Search | Hierarchical Identity Lock + Dynamic Thinking | Smart Chunking + Provider-Aware Cache | Glossary Lock + Truncation Guardrails
 
 ---
 
@@ -242,7 +242,7 @@ V5.2 (February 2026) introduces a **Three-Pillar Translation Architecture** that
 | **Vector Search** | Gemini Embedding 001 (3072D) + ChromaDB | Semantic grammar matching — 70+ JP regex → 204 EN natural phrasing patterns |
 | **Multimodal Vision** | Gemini 3 Vision family (dynamic low/medium/high routing + hierarchical identity lock) | Illustration analysis → Art Director's Notes for visually-informed prose calibration |
 
-**Key innovations**: Hash-based visual cache invalidation, hierarchical visual identity lock (scene-local primary + full-LN fallback), dynamic per-illustration thinking routing, Claude 4.6 thinking with hard budget caps, Anthropic inline cache-only instruction blocks, deeper culture-bleed-aware scene planning to prevent over-localization, batch embedding optimization (1 API call for N patterns), auto-rebuild logic for empty ChromaDB, schema auto-update via Gemini 2.5 Flash, and sliding-window context for Sino-Vietnamese disambiguation.
+**Key innovations**: Hash-based visual cache invalidation, hierarchical visual identity lock (scene-local primary + full-LN fallback), dynamic per-illustration thinking routing, Opus 4.6 adaptive thinking with `effort=max` (budget-token replacement path), default 128K Opus output ceiling, Anthropic inline cache-only instruction blocks, async Anthropic batch translation (50% cost; non-immediate output), deeper culture-bleed-aware scene planning to prevent over-localization, batch embedding optimization (1 API call for N patterns), auto-rebuild logic for empty ChromaDB, schema auto-update via Gemini 2.5 Flash, and sliding-window context for Sino-Vietnamese disambiguation.
 
 ### Core Capabilities
 
@@ -259,8 +259,10 @@ V5.2 (February 2026) introduces a **Three-Pillar Translation Architecture** that
 - **Gemini Embedding semantic matching**: `gemini-embedding-001` (3072D) maps Japanese structures to natural target phrasing using confidence-gated ChromaDB retrieval.
 - **Multimodal Art Director layer**: Gemini 3 Vision pre-analyzes illustrations (Phase 1.6) into `visual_cache.json`, enforces hierarchical identity lock, and injects non-spoiler style directives during Phase 2.
 - **Context-aware style calibration**: Emotional deltas, composition, and narrative directives influence lexical choices without introducing off-canon events.
-- **Claude Sonnet/Opus 4.6 translator path**: Stage 2 runs with Opus 4.6 as primary translator and Sonnet 4.6 as fallback for quality + resilience (adaptive thinking on Opus; hard-capped thinking mode on Sonnet fallback).
-- **Adaptive/hard-capped thinking discipline**: Anthropic thinking mode is budget-capped (`thinking_budget`) to preserve output headroom and avoid scratchpad token waste.
+- **Claude Sonnet/Opus 4.6 translator path**: Stage 2 runs with Opus 4.6 as primary translator and Sonnet 4.6 as fallback for quality + resilience.
+- **Opus-exclusive thinking profile**: Opus requests use adaptive thinking plus `output_config: {effort: "max"}` by default, replacing `budget_tokens` as the quality-control lever.
+- **Default 128K Opus output**: Translator path defaults to `max_output_tokens: 128000` for Opus (vs Sonnet 64K and Gemini 65535).
+- **Batch mode for cost optimization**: Anthropic Message Batches API is integrated for volume translation when immediate output is not required.
 - **Cache-only instruction optimization**: Anthropic provider uses inline ephemeral `cache_control` system blocks (5m/1h TTL) for strong cost-to-performance on repeated chapter calls.
 
 #### 3) Language and Localization Systems
@@ -1743,7 +1745,7 @@ Additional Phase 1 artifacts:
 
 ### Phase 2: Translator (Stage 2)
 
-**Purpose**: Translate JP chapters to EN/VN using provider-routed Stage 2 translation (Claude Opus 4.6 primary, Claude Sonnet 4.6 fallback; Gemini available for Google provider mode) with RAG, Vector Search, Multimodal Context, and Stage 2 scene-rhythm guidance
+**Purpose**: Translate JP chapters to EN/VN using provider-routed Stage 2 translation (Claude Opus 4.6 primary, Claude Sonnet 4.6 fallback; Gemini available for Google provider mode) with RAG, Vector Search, Multimodal Context, and Stage 2 scene-rhythm guidance.
 
 **Translation Flow**:
 ```
@@ -1792,8 +1794,8 @@ Additional Phase 1 artifacts:
                          ▼
               ┌─────────────────────┐
               │  Claude Opus 4.6    │
-              │  adaptive thinking  │
-              │  + inline cache     │
+              │  adaptive + effort=max │
+              │  + inline cache (128K) │
               └──────────┬──────────┘
                          ▼
               ┌─────────────────────┐
@@ -1812,7 +1814,9 @@ Additional Phase 1 artifacts:
 - **Vector Search**: Grammar pattern detection → semantic embedding → confidence-based injection
 - **Multimodal**: Art Director's Notes injected for chapters with `[ILLUSTRATION:]` markers
 - **Smart Chunking (massive chapters)**: byte/char-threshold split + resumable chunk translation
-- **Anthropic translator optimization**: hard thinking budget cap + inline cache-only system instruction blocks for better cost-to-performance
+- **Opus effort profile (default)**: adaptive thinking + `effort=max` for maximum scratchpad depth and literary quality
+- **Default output ceiling upgrade**: Opus runs at up to 128K output tokens by default (Sonnet path remains 64K; Gemini path 65535)
+- **Anthropic Batch mode**: `phase2 --batch` submits chapter requests asynchronously for 50% cost reduction, trading off immediate output
 - **Provider-aware cache behavior**: Gemini can use full-volume cache; Anthropic uses system-only inline cache and chapter summaries for continuity
 - **Chapter Summarization Agent**: writes `.context/CHAPTER_XX_SUMMARY.json` and updates `.context/chapter_summaries.json` after each translated chapter
 - **Volume context aggregation**: Chapter summaries + character/glossary context are aggregated into `CHAPTER_XX_VOLUME_CONTEXT.json` for downstream chapter prompting
@@ -1825,6 +1829,11 @@ Additional Phase 1 artifacts:
 - Batch embedding optimization (single API call for all detected patterns per chapter)
 - Safety block handling with fallback strategies
 - Context caching is provider-aware (Gemini external cache; Anthropic inline cache blocks)
+
+**Detailed Claude references**:
+- `docs/CLAUDE_OPUS_4.6.md` (Opus/Sonnet 4.6 capabilities, adaptive thinking, 128K output)
+- `docs/EFFORT_CLAUDE.md` (`effort` parameter behavior and `max` capability tier)
+- `docs/BATCH_PROCESSING_CLAUDE.md` (async batch workflow, pricing, latency trade-offs)
 
 ### Phase 3: Critics
 
@@ -2110,7 +2119,7 @@ python mtl.py phase1.5 [volume_id]
 python mtl.py phase1.55 [volume_id] [--cache-only]
 python mtl.py phase1.6 [volume_id]
 python mtl.py phase1.7 [volume_id] [--chapters chapter_01 chapter_02]
-python mtl.py phase2 [volume_id] [--chapters 1 2 3] [--force] [--enable-multimodal]
+python mtl.py phase2 [volume_id] [--chapters 1 2 3] [--force] [--enable-multimodal] [--batch]
 python mtl.py phase3 [volume_id]
 python mtl.py phase4 [volume_id] [--output "Custom Title.epub"]
 
@@ -2165,7 +2174,7 @@ python mtl.py config --toggle-multimodal
 | `phase1.55` | Rich Metadata Cache: Build full-LN cache and apply safe metadata patch refinement |
 | `phase1.6` | Art Director: Analyze illustrations and build `visual_cache.json` |
 | `phase1.7` | Scene Planner: Generate beat/rhythm scaffold (`PLANS/chapter_*_scene_plan.json`) |
-| `phase2` | Translator (Stage 2): Translate chapters with Gemini, auto-running `phase1.7` in standalone mode if plans are missing |
+| `phase2` | Translator (Stage 2): Provider-routed chapter translation (`--batch` available for Anthropic async cost-optimized runs), auto-running `phase1.7` in standalone mode if plans are missing |
 | `phase3` | Display critics workflow instructions for audit/review |
 | `phase4` | Builder: Package translated content to EPUB |
 | `multimodal` | Run `phase1.6` + `phase2 --enable-multimodal` (with `phase1.7` auto-run when plans are missing) |
@@ -2199,6 +2208,7 @@ python mtl.py config --toggle-multimodal
 | `--force` | Force re-translation of completed chapters |
 | `--language` | Target language (en/vn) |
 | `--model` | Translator model override (provider-specific) |
+| `--batch` | Anthropic only: submit chapter requests asynchronously (50% cost, delayed output) |
 | `--show` | Display current configuration |
 | `--toggle-smart-chunking` | Toggle Smart Chunking for massive chapters |
 | `--toggle-multimodal` | Toggle default multimodal visual context mode |
@@ -2254,10 +2264,11 @@ anthropic:
   fallback_model: claude-sonnet-4-6
   generation:
     temperature: 1.0
-    max_output_tokens: 64000
+    max_output_tokens: 128000  # Opus default ceiling (Sonnet path capped to 64K at runtime)
   thinking_mode:
     enabled: true
-    thinking_budget: 4096  # hard cap to protect output budget
+    thinking_type: enabled
+    thinking_budget: 8192  # Sonnet/manual path; Opus path uses adaptive + effort=max (budget_tokens replacement)
   caching:
     enabled: true
     ttl_minutes: 5         # inline cache-only system blocks (ephemeral)
@@ -2307,10 +2318,10 @@ directories:
 
 | Model | Use Case | Performance |
 |-------|----------|-------------|
-| claude-opus-4-6 | Primary EN translation | Highest quality + adaptive thinking |
-| claude-sonnet-4-6 | Translator fallback | Lower cost, high quality, hard-capped thinking mode |
+| claude-opus-4-6 | Primary EN translation | Highest quality, adaptive + `effort=max`, up to 128K output |
+| claude-sonnet-4-6 | Translator fallback | Lower cost, high quality, 64K output ceiling |
 | gemini-3.1-pro-preview | Google translator mode / sub-agents | Broad capability |
-| gemini-2.5-pro | Google fallback | Stable fallback |
+| gemini-2.5-pro | Google fallback | Stable fallback (65535 output cap) |
 
 ---
 
@@ -3368,7 +3379,9 @@ See LICENSE.txt for licensing information.
 ### Version 5.2 (February 2026)
 - **Three-Pillar Translation Architecture**: Unified RAG + Vector Search + Multimodal Vision workflow
 - **Claude Sonnet/Opus 4.6 Translator Path**: Stage 2 now supports Claude Opus 4.6 with Sonnet 4.6 fallback for high-quality English translation output
-- **Anthropic Cost-to-Performance Optimization**: Hard thinking budget cap + inline cache-only system instruction blocks for lower repeated-chapter cost
+- **Opus Effort Mode Upgrade**: Opus now defaults to adaptive thinking with `effort=max`, replacing `budget_tokens` as the primary depth-control path
+- **Output Ceiling Upgrade**: Opus translator default raised to 128K output tokens (Sonnet path 64K, Gemini path 65535)
+- **Anthropic Batch Translation Mode**: Async `phase2 --batch` path added for 50% cost optimization when immediate output is not required
 - **Deeper Scene Planner**: Stage 1 now emits `culture_bleed_*` risk annotations to reduce over-localization and preserve source phrasing intent
 - **Gemini Embedding Vector Search**: Semantic grammar matching pipeline with confidence-gated injection and auto-rebuild
 - **Phase 1.6 Multimodal Processor**: Hierarchical Identity Lock + Dynamic Thinking Routing for Art Director analysis, with hash-based visual cache invalidation

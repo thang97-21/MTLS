@@ -881,17 +881,38 @@ class PromptLoader:
         # Merge all modules for injection
         all_modules = {**tier1_modules, **reference_modules}
 
-        # Tier 2 gate: skip FANTASY module for non-fantasy genres (saves ~7.7K tokens)
-        # FANTASY_TRANSLATION_MODULE_EN.md is irrelevant for romcom/contemporary/slice-of-life
-        _fantasy_genres = {"fantasy", "isekai", "action", "adventure", "dark_fantasy"}
-        _current_genre = (genre or "").lower()
-        if not any(fg in _current_genre for fg in _fantasy_genres):
+        # Tier 2 gate: skip FANTASY module ONLY for confirmed non-fantasy genres (saves ~7.7K tokens)
+        # Default = KEEP module when genre is unknown/empty (fail-open — better to include than miss).
+        # SKIP only for confirmed modern-setting genres that have zero fantasy elements.
+        #
+        # The `genre` string may be a free-text genre tag OR a world_setting.type value such as
+        # "fantasy_european_nobility_academy", "steampunk_fantasy", "modern_japan", etc.
+        # Both paths use the same keyword-substring match so no special pre-processing needed.
+        #
+        # Non-fantasy keywords (all must be absent from fantasy branch):
+        _non_fantasy_kws = {"romcom", "contemporary", "slice_of_life", "school_life", "modern_japan", "modern_urban"}
+        # Fantasy / non-modern-world keywords (any match → keep module):
+        _fantasy_kws = {
+            "fantasy", "isekai", "action", "adventure", "dark_fantasy",
+            "noble_academy", "sword", "magic", "steampunk", "academy",
+            "noble", "european", "medieval", "vrmmo", "virtual_reality",
+        }
+        _current_genre = (genre or "").lower().replace("-", "_")
+        _genre_known = bool(_current_genre)
+        _is_fantasy = any(fkw in _current_genre for fkw in _fantasy_kws)
+        _is_non_fantasy = _genre_known and not _is_fantasy and any(nfkw in _current_genre for nfkw in _non_fantasy_kws)
+
+        if _is_non_fantasy:
             fantasy_key = next(
                 (k for k in all_modules if "FANTASY_TRANSLATION_MODULE" in k), None
             )
             if fantasy_key:
                 del all_modules[fantasy_key]
-                logger.info(f"Skipped {fantasy_key} (genre='{genre}' is non-fantasy — Tier 2 gate)")
+                logger.info(f"Skipped {fantasy_key} (genre='{genre}' confirmed non-fantasy — Tier 2 gate)")
+        elif _is_fantasy:
+            logger.info(f"FANTASY module active (genre='{genre}')")
+        else:
+            logger.info(f"FANTASY module retained (genre unknown — fail-open default)")
 
         final_prompt = master_prompt
         injected_count = 0
@@ -2852,17 +2873,23 @@ class PromptLoader:
         chapter_title: str,
         chapter_id: Optional[str] = None,
         previous_context: Optional[str] = None,
-        name_registry: Optional[Dict[str, str]] = None
+        name_registry: Optional[Dict[str, str]] = None,
+        jp_title: Optional[str] = None,
     ) -> str:
         """
         Build the complete translation prompt for a chapter.
 
         Args:
             source_text: Japanese source text to translate.
-            chapter_title: Title of the chapter.
-            chapter_id: Stable chapter identifier (e.g., chapter_01).
+            chapter_title: Translated chapter title (EN or target language).
+            chapter_id: Stable pipeline identifier (e.g., chapter_02). Does NOT reflect
+                        the book's internal chapter numbering — use jp_title/chapter_title for that.
             previous_context: Context from previous chapters.
             name_registry: Character name mappings (JP -> Target Language).
+            jp_title: Original Japanese chapter title from the EPUB TOC (e.g., "第一章").
+                      Injected alongside chapter_title so the model has zero ambiguity about
+                      which chapter it is translating. Prevents thinking-budget waste on
+                      chapter_id vs. JP heading reconciliation.
 
         Returns:
             Complete prompt for translation.
@@ -2889,9 +2916,15 @@ class PromptLoader:
             parts.append("")
 
         # Source text
-        if chapter_id:
+        if chapter_id or jp_title or chapter_title:
             parts.append("<!-- TARGET CHAPTER -->")
-            parts.append(f"ID: {chapter_id}")
+            if chapter_id:
+                parts.append(f"Pipeline ID: {chapter_id}  (internal only — do NOT use as heading)")
+            if jp_title:
+                parts.append(f"JP title: {jp_title}")
+            if chapter_title:
+                parts.append(f"EN title: {chapter_title}")
+            parts.append("Use EN title (above) as the output heading. Ignore any chapter number embedded in the source filename or pipeline ID.")
             parts.append("")
         parts.append("<!-- SOURCE TEXT TO TRANSLATE -->")
         parts.append(f"# {chapter_title}")

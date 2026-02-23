@@ -358,39 +358,102 @@ These replace/augment modern archetypes when `WORLD_SETTING = FANTASY`:
 <a name="honorifics-titles"></a>
 ## 5. Honorifics & Titles
 
-### Japanese → Fantasy English Title Conversion
+### THE ABSOLUTE RULE: NO JAPANESE HONORIFIC SUFFIXES IN OUTPUT
 
-| Japanese | Fantasy English | When to Use |
-|----------|----------------|-------------|
-| お嬢様 (ojou-sama) | Lady [Name] | Noble woman, princess |
-| 様 (sama) | Lord/Lady [Name] | High nobility |
-| 殿 (dono) | Sir [Name] | Knights, warriors |
-| 陛下 (heika) | Your Majesty | Royalty (king/queen) |
-| 閣下 (kakka) | Your Grace | Dukes, high nobles |
-| 先生 (sensei) | Master/Instructor [Name] | Teachers, mentors |
-| 伯爵 (hakushaku) | Count [Name] | Counts (e.g., Count Tigrevurmud) |
+> **This is a hard ban, not a guideline.** Any Japanese suffix leaking into English prose — "-sama", "-san", "-kun", "-chan", "-sensei", "-dono", etc. — is a critical error that shatters fantasy immersion.
+
+**BANNED in all fantasy English output:**
+- ❌ "-sama" → "Leon-sama" → use role-appropriate English address
+- ❌ "-san" → "Leon-san" → use first name or role title
+- ❌ "-kun" / "-chan" → use first name or relationship term
+- ❌ "-dono" → "Leon-dono" → use "Sir [Name]"
+- ❌ "-sensei" → "Leon-sensei" → use "Master" or "Instructor [Name]"
+- ❌ "ojou-sama" left untranslated → always render as "my lady" or "Lady [Name]"
+
+**Every Japanese honorific has a required English equivalent. Use it. No exceptions.**
+
+---
+
+### Noble Attendant Hierarchy — Complete Mapping
+
+This table covers all address forms for fantasy noble-academy / attendant-romance settings:
+
+| Japanese Term | Context | ✅ Fantasy English | ❌ Never |
+|--------------|---------|-------------------|---------|
+| 様 (sama) | Addressing royalty or very high nobility | "Your Highness" / "Your Grace" / "Lord/Lady [Name]" | "-sama" |
+| 王女様 (oujo-sama) | Third Princess being addressed | "Your Highness" / "Princess [Name]" | "Princess-sama" |
+| 第三王女殿下 | Formal title of Third Princess | "Her Royal Highness, the Third Princess" | romanized suffix |
+| お嬢様 (ojou-sama) | Noble daughter / young lady | "my lady" (attending) / "Lady [Name]" (others) | "ojou-sama" |
+| 殿 (dono) | Knights, male nobles (formal/older) | "Sir [Name]" / "Lord [Name]" | "-dono" |
+| 伯爵閣下 | Count (with formal address) | "Lord Count [Name]" / "Your Lordship" | "Count-kakka" |
+| 公爵閣下 | Duke (with formal address) | "Your Grace, Duke [Name]" | "Duke-kakka" |
+| 先生 (sensei) | Teacher / mentor | "Master [Name]" / "Instructor [Name]" | "-sensei" |
+| 世話役 (sewaiyaku) | Attendant/caretaker role title | "attendant" / "caretaker" (third-person); omit in address | — |
+| くん (kun) | Male peer, slight familiarity | First name only | "-kun" |
+| ちゃん (chan) | Close affection, younger/female | First name / nickname / "dear" | "-chan" |
+| さん (san) | Polite peer address | First name or "Mr./Ms. [Name]" (only if character is markedly formal) | "-san" |
+
+---
+
+### Attendant → Noble Address Protocol
+
+For attendant-protagonist settings (e.g., Leon addressing Tetra, or previous charges Aira/Floria):
+
+**Servant to Royalty (RTAS 1.0–2.5):**
+```
+✅ "Your Highness" — direct formal address
+✅ "Princess Tetra" — name + title (semi-formal)
+✅ "my lady" — intimate attendant usage (after trust builds)
+❌ "Tetra-sama" / "Hime-sama" — never
+```
+
+**Noble Daughter / Former Charge (RTAS 2.0–3.5):**
+```
+✅ "Lady Aira" / "Lady Floria" — standard attendant address
+✅ "my lady" — after bond is established
+✅ "Aira" / "Floria" — only at RTAS > 4.0 (intimate)
+❌ "Aira-san" / "Floria-sama" — never
+```
+
+**Noble Head of House (Count/Duke):**
+```
+✅ "My lord" / "Lord [Name]" — standard attendant address to male nobility
+✅ "Your Lordship" — very formal occasions
+✅ "sir" — brief, respectful shorthand
+❌ "-sama" / "-dono" — never
+```
+
+**Between Noble Peers (Academy setting):**
+```
+✅ "Lady [Name]" / "Lord [Name]" — default noble-to-noble
+✅ First name — if established close friendship (RTAS > 3.0)
+❌ Any JP suffix — never
+```
+
+---
 
 ### Title Usage Rules
 
 **Rule 1: CONSISTENT TITLE FORMAT**
 - Format: Title + First Name (Western style)
-- ✅ "Lady Elen" · "Count Tigrevurmud" · "Sir Rurick"
-- ❌ "Elen-sama" (breaks immersion in Western fantasy)
+- ✅ "Lady Elen" · "Count Tigrevurmud" · "Sir Rurick" · "Princess Tetra"
+- ❌ "Elen-sama" · "Tetra-sama" · "Hime-sama" (breaks fantasy immersion)
 
 **Rule 2: TITLE DROPPING AT HIGH RTAS**
 - RTAS < 3.0: Always use title → "Lady Elen, I've finished."
-- RTAS 3.0-4.0: Optional title → "Elen, I've finished."
+- RTAS 3.0–4.0: Optional title → "Elen, I've finished."
 - RTAS > 4.5: First name only → "Elen, I love you."
 
-**Rule 3: SERVANTS CAN USE INFORMAL TITLES IN PRIVATE**
-- PUBLIC: "Lady Elen"
-- PRIVATE (after bonding): "My lady" or even "Elen" (if RTAS > 3.5)
+**Rule 3: ATTENDANTS USE ROLE-APPROPRIATE INTIMACY**
+- Formal duty: "Your Highness, I've prepared your tea."
+- After trust: "my lady" (warm, personal but still respectful)
+- High RTAS (4.0+): First name only when alone and bonds are clear
 
 **Rule 4: TRUNCATED HONORIFIC TRANSCREATION** *(Overrides 1:1 sentence structure fidelity)*
 
 Japanese often truncates honorific suffixes mid-syllable to convey surprise or interruption (e.g., エレオノーラさ…？ cuts off "-sama"). Keeping the raw Japanese suffix fragment ("Eleonora-sa…?") breaks English fantasy immersion. This rule **temporarily overrides 1:1 sentence structure fidelity** to produce a natural English equivalent while preserving 100% semantic intent.
 
-**Mechanism:** Substitute the character's **established English form of address**, truncated at a natural syllable break, using an **em-dash (—)** to signal the cut-off. The trailing "…" is unnecessary since the em-dash already implies interruption.
+**Mechanism:** Substitute the character's **established English form of address**, truncated at a natural syllable break, using an **em-dash (—)** to signal the cut-off.
 
 | JP Pattern | Character's EN Address | Transcreation | Narrator Follow-up |
 |---|---|---|---|
