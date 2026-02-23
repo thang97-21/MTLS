@@ -40,7 +40,7 @@ import time
 import logging
 import backoff
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 
 from pipeline.common.gemini_client import GeminiResponse  # reuse same dataclass
 
@@ -71,6 +71,25 @@ class AnthropicClient:
     _MIN_CACHE_TOKENS = 1024
     # Fast mode beta header (research preview)
     _FAST_MODE_BETA = "fast-mode-2026-02-01"
+    # Anthropic API pricing (USD per 1M tokens, 2026 official docs).
+    _MODEL_BASE_RATES_PER_MTOK: Dict[str, Tuple[float, float]] = {
+        "claude-opus-4-6": (5.00, 25.00),
+        "claude-opus-4-5": (5.00, 25.00),
+        "claude-opus-4-1": (15.00, 75.00),
+        "claude-opus-4": (15.00, 75.00),
+        "claude-sonnet-4-6": (3.00, 15.00),
+        "claude-sonnet-4-5": (3.00, 15.00),
+        "claude-sonnet-4": (3.00, 15.00),
+        "claude-sonnet-3-7": (3.00, 15.00),
+        "claude-haiku-4-5": (1.00, 5.00),
+        "claude-haiku-3-5": (0.80, 4.00),
+        "claude-haiku-3": (0.25, 1.25),
+    }
+    _PROMPT_CACHE_WRITE_MULTIPLIER_5M = 1.25
+    _PROMPT_CACHE_WRITE_MULTIPLIER_1H = 2.00
+    _PROMPT_CACHE_READ_MULTIPLIER = 0.10
+    _BATCH_DISCOUNT_MULTIPLIER = 0.50
+    _FAST_MODE_MULTIPLIER = 6.00
 
     def __init__(
         self,
@@ -286,6 +305,90 @@ class AnthropicClient:
             )
             return len(text) // 4
 
+    @classmethod
+    def _resolve_base_rates_per_mtok(cls, model_name: Optional[str]) -> Tuple[float, float]:
+        """Resolve base input/output rates (USD per 1M tokens) for a model name."""
+        normalized = (model_name or "").strip().lower()
+        if normalized:
+            for prefix, rates in cls._MODEL_BASE_RATES_PER_MTOK.items():
+                if normalized.startswith(prefix):
+                    return rates
+        # Default to Sonnet-family rates for unknown IDs to preserve prior behavior.
+        logger.warning(
+            f"[COST] Unknown Anthropic model '{model_name}'. "
+            "Falling back to Sonnet 4.6 rates for estimation."
+        )
+        return cls._MODEL_BASE_RATES_PER_MTOK["claude-sonnet-4-6"]
+
+    @classmethod
+    def estimate_usage_cost_usd(
+        cls,
+        *,
+        model_name: Optional[str],
+        input_tokens: int,
+        output_tokens: int,
+        cache_read_tokens: int = 0,
+        cache_creation_tokens: int = 0,
+        cache_ttl: str = "5m",
+        batch_mode: bool = False,
+        fast_mode: bool = False,
+    ) -> Dict[str, float]:
+        """
+        Estimate Anthropic usage cost from token counters.
+
+        Returns a dict with per-component costs and combined total:
+        input, output, cache_read, cache_creation, cache_total, total.
+        """
+        input_rate, output_rate = cls._resolve_base_rates_per_mtok(model_name)
+
+        normalized_model = (model_name or "").strip().lower()
+        is_fast = fast_mode and normalized_model.startswith("claude-opus-4-6")
+        if is_fast:
+            input_rate *= cls._FAST_MODE_MULTIPLIER
+            output_rate *= cls._FAST_MODE_MULTIPLIER
+
+        write_multiplier = (
+            cls._PROMPT_CACHE_WRITE_MULTIPLIER_1H
+            if str(cache_ttl).lower() == "1h"
+            else cls._PROMPT_CACHE_WRITE_MULTIPLIER_5M
+        )
+
+        discount_multiplier = cls._BATCH_DISCOUNT_MULTIPLIER if batch_mode else 1.0
+
+        input_cost = (max(0, int(input_tokens)) / 1_000_000.0) * input_rate
+        output_cost = (max(0, int(output_tokens)) / 1_000_000.0) * output_rate
+        cache_read_cost = (
+            (max(0, int(cache_read_tokens)) / 1_000_000.0)
+            * input_rate
+            * cls._PROMPT_CACHE_READ_MULTIPLIER
+        )
+        cache_creation_cost = (
+            (max(0, int(cache_creation_tokens)) / 1_000_000.0)
+            * input_rate
+            * write_multiplier
+        )
+
+        input_cost *= discount_multiplier
+        output_cost *= discount_multiplier
+        cache_read_cost *= discount_multiplier
+        cache_creation_cost *= discount_multiplier
+
+        cache_total = cache_read_cost + cache_creation_cost
+        total_cost = input_cost + output_cost + cache_total
+
+        return {
+            "input_cost_usd": input_cost,
+            "output_cost_usd": output_cost,
+            "cache_read_cost_usd": cache_read_cost,
+            "cache_creation_cost_usd": cache_creation_cost,
+            "cache_total_cost_usd": cache_total,
+            "total_cost_usd": total_cost,
+            "input_rate_per_mtok": input_rate,
+            "output_rate_per_mtok": output_rate,
+            "batch_discount_multiplier": discount_multiplier,
+            "fast_mode_multiplier": cls._FAST_MODE_MULTIPLIER if is_fast else 1.0,
+        }
+
     @staticmethod
     def _backoff_giveup(e: Exception) -> bool:
         """Give up on unrecoverable errors; retry on transient rate limits and overload."""
@@ -467,6 +570,7 @@ class AnthropicClient:
         # Note: fast and standard speed do NOT share prompt cache prefixes — falling back
         # from fast to standard invalidates the cache for that request.
         use_fast_mode = self.fast_mode and target_model.startswith("claude-opus-4-6")
+        effective_fast_mode = use_fast_mode
 
         logger.info(
             f"Calling Anthropic API "
@@ -522,6 +626,7 @@ class AnthropicClient:
                     )
                     standard_kwargs = {k: v for k, v in stream_kwargs.items()
                                        if k not in ("speed", "betas")}
+                    effective_fast_mode = False
                     with self._client.messages.stream(**standard_kwargs) as stream:
                         for event in stream:
                             event_type = getattr(event, "type", None)
@@ -553,18 +658,33 @@ class AnthropicClient:
         )
         self._last_request_time = time.time()
 
-        # ── Cache performance logging ────────────────────────────────
+        cost_breakdown = self.estimate_usage_cost_usd(
+            model_name=target_model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cache_read_tokens=cache_read_tokens,
+            cache_creation_tokens=cache_creation_tokens,
+            cache_ttl=self._cache_ttl,
+            batch_mode=False,
+            fast_mode=effective_fast_mode,
+        )
+        logger.info(
+            "[COST] LLM request usage: "
+            f"in={input_tokens:,} (${cost_breakdown['input_cost_usd']:.6f}) | "
+            f"out={output_tokens:,} (${cost_breakdown['output_cost_usd']:.6f}) | "
+            f"cache_read={cache_read_tokens:,} (${cost_breakdown['cache_read_cost_usd']:.6f}) | "
+            f"cache_write={cache_creation_tokens:,} (${cost_breakdown['cache_creation_cost_usd']:.6f}) | "
+            f"total=${cost_breakdown['total_cost_usd']:.6f}"
+        )
         if cache_read_tokens > 0:
             logger.info(
-                f"✓ Anthropic cache hit: "
-                f"{cache_read_tokens:,} tokens read from cache "
-                f"(cost: {cache_read_tokens * 0.30 / 1_000_000:.4f} USD)"
+                f"✓ Anthropic cache hit: {cache_read_tokens:,} tokens "
+                f"(${cost_breakdown['cache_read_cost_usd']:.6f})"
             )
         if cache_creation_tokens > 0:
             logger.info(
-                f"[CACHE] Cache write: "
-                f"{cache_creation_tokens:,} tokens written "
-                f"(cost: {cache_creation_tokens * 3.75 / 1_000_000:.4f} USD)"
+                f"[CACHE] Cache write: {cache_creation_tokens:,} tokens "
+                f"(${cost_breakdown['cache_creation_cost_usd']:.6f})"
             )
         # Log thinking vs translation token split when thinking is active
         if thinking_cfg.get("enabled", False) and thinking_parts:
@@ -661,6 +781,14 @@ class AnthropicClient:
                 model=target_model,
                 cached_tokens=cached_tokens,
                 thinking_content=None,
+                cache_creation_tokens=cache_creation_tokens,
+                input_cost_usd=cost_breakdown["input_cost_usd"],
+                output_cost_usd=cost_breakdown["output_cost_usd"],
+                cache_read_cost_usd=cost_breakdown["cache_read_cost_usd"],
+                cache_creation_cost_usd=cost_breakdown["cache_creation_cost_usd"],
+                total_cost_usd=cost_breakdown["total_cost_usd"],
+                batch_pricing=False,
+                fast_mode_pricing=bool(effective_fast_mode),
             )
 
         return GeminiResponse(
@@ -671,6 +799,14 @@ class AnthropicClient:
             model=target_model,
             cached_tokens=cached_tokens,
             thinking_content=thinking_content,
+            cache_creation_tokens=cache_creation_tokens,
+            input_cost_usd=cost_breakdown["input_cost_usd"],
+            output_cost_usd=cost_breakdown["output_cost_usd"],
+            cache_read_cost_usd=cost_breakdown["cache_read_cost_usd"],
+            cache_creation_cost_usd=cost_breakdown["cache_creation_cost_usd"],
+            total_cost_usd=cost_breakdown["total_cost_usd"],
+            batch_pricing=False,
+            fast_mode_pricing=bool(effective_fast_mode),
         )
 
     # ──────────────────────────────────────────────────────
@@ -818,6 +954,17 @@ class AnthropicClient:
 
         # ── Collect results ─────────────────────────────────────────────
         results: Dict[str, GeminiResponse] = {}
+        totals = {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cache_read_tokens": 0,
+            "cache_creation_tokens": 0,
+            "input_cost_usd": 0.0,
+            "output_cost_usd": 0.0,
+            "cache_read_cost_usd": 0.0,
+            "cache_creation_cost_usd": 0.0,
+            "total_cost_usd": 0.0,
+        }
         for result in self._client.messages.batches.results(batch_id):
             cid = result.custom_id
             result_type = result.result.type
@@ -847,14 +994,47 @@ class AnthropicClient:
                 raw_thinking = "".join(thinking_parts_b).strip() or None
 
                 usage = msg.usage
+                input_tokens = getattr(usage, "input_tokens", 0)
+                output_tokens = getattr(usage, "output_tokens", 0)
+                cache_read_tokens = getattr(usage, "cache_read_input_tokens", 0) or 0
+                cache_creation_tokens = getattr(usage, "cache_creation_input_tokens", 0) or 0
+                cost_breakdown = self.estimate_usage_cost_usd(
+                    model_name=msg.model,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                    cache_read_tokens=cache_read_tokens,
+                    cache_creation_tokens=cache_creation_tokens,
+                    cache_ttl=self._cache_ttl,
+                    batch_mode=True,
+                    fast_mode=False,
+                )
+
+                totals["input_tokens"] += int(input_tokens)
+                totals["output_tokens"] += int(output_tokens)
+                totals["cache_read_tokens"] += int(cache_read_tokens)
+                totals["cache_creation_tokens"] += int(cache_creation_tokens)
+                totals["input_cost_usd"] += cost_breakdown["input_cost_usd"]
+                totals["output_cost_usd"] += cost_breakdown["output_cost_usd"]
+                totals["cache_read_cost_usd"] += cost_breakdown["cache_read_cost_usd"]
+                totals["cache_creation_cost_usd"] += cost_breakdown["cache_creation_cost_usd"]
+                totals["total_cost_usd"] += cost_breakdown["total_cost_usd"]
+
                 results[cid] = GeminiResponse(
                     content=clean_text,
-                    input_tokens=getattr(usage, "input_tokens", 0),
-                    output_tokens=getattr(usage, "output_tokens", 0),
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
                     finish_reason=msg.stop_reason or "end_turn",
                     model=msg.model,
-                    cached_tokens=getattr(usage, "cache_read_input_tokens", 0) or 0,
+                    cached_tokens=cache_read_tokens,
                     thinking_content=raw_thinking,
+                    cache_creation_tokens=cache_creation_tokens,
+                    input_cost_usd=cost_breakdown["input_cost_usd"],
+                    output_cost_usd=cost_breakdown["output_cost_usd"],
+                    cache_read_cost_usd=cost_breakdown["cache_read_cost_usd"],
+                    cache_creation_cost_usd=cost_breakdown["cache_creation_cost_usd"],
+                    total_cost_usd=cost_breakdown["total_cost_usd"],
+                    batch_pricing=True,
+                    fast_mode_pricing=False,
                 )
             else:
                 # errored or expired
@@ -868,11 +1048,21 @@ class AnthropicClient:
                     model=self.model,
                     cached_tokens=0,
                     thinking_content=None,
+                    cache_creation_tokens=0,
+                    batch_pricing=True,
                 )
 
         logger.info(
             f"[BATCH] Complete: {sum(1 for r in results.values() if r.content)} succeeded, "
             f"{sum(1 for r in results.values() if not r.content)} failed"
+        )
+        logger.info(
+            "[BATCH][COST] usage summary: "
+            f"in={totals['input_tokens']:,} (${totals['input_cost_usd']:.6f}) | "
+            f"out={totals['output_tokens']:,} (${totals['output_cost_usd']:.6f}) | "
+            f"cache_read={totals['cache_read_tokens']:,} (${totals['cache_read_cost_usd']:.6f}) | "
+            f"cache_write={totals['cache_creation_tokens']:,} (${totals['cache_creation_cost_usd']:.6f}) | "
+            f"total=${totals['total_cost_usd']:.6f}"
         )
 
         # Clean up state file on success

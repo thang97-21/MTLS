@@ -31,6 +31,10 @@ Usage:
   mtl.py phase2 [volume_id] --full-ln-cache off  # Run without full-LN cache prep
   mtl.py phase2 [volume_id] --phase1-55-mode skip|overwrite|auto|ask
   mtl.py phase2 [volume_id] --batch     # Anthropic Batch API (50% cost, ~1h latency)
+  mtl.py phase1.56 [volume_id]          # Phase 1.56: Translator's Guidance Brief (Anthropic batch pre-analysis)
+  mtl.py batch [volume_id]              # OPTION 1 (Anthropic): Full batch pipeline — 1.5→1.55→1.56→1.6→1.7→Phase 2 batch
+  mtl.py batch [volume_id] --skip-multimodal  # Skip Phase 1.6 (no illustrations)
+  mtl.py batch [volume_id] --force-brief      # Re-generate brief even if cached
   mtl.py multimodal [volume_id]          # Run Phase 1.6 + Phase 2 with multimodal (visual translation)
   mtl.py phase4 [volume_id]              # Run Phase 4 (interactive if no ID)
   mtl.py status <volume_id>              # Check pipeline status
@@ -835,7 +839,7 @@ class PipelineController:
                         tracker.skip(chapter_id)
                         seen_terminal.add(chapter_id)
 
-                if "[ERROR]" in line or "Volume translation" in line:
+                if "[ERROR]" in line or "Volume translation" in line or "[BATCH][COST]" in line:
                     logger.info(line)
 
             process.stdout.close()
@@ -1473,6 +1477,142 @@ class PipelineController:
             return True
         return False
     
+    # ── Phase 1.56 ────────────────────────────────────────────────────────────
+
+    def run_phase1_56(self, volume_id: str, force: bool = False) -> bool:
+        """Run Phase 1.56: Translator's Guidance Brief (Anthropic batch pre-analysis)."""
+        self._ui_header(
+            "Phase 1.56 - Translator's Guidance Brief",
+            "Full-corpus Gemini Flash pass → single reference doc injected into every batch prompt",
+        )
+
+        manifest = self.load_manifest(volume_id)
+        if not manifest:
+            logger.error(f"No manifest.json found for volume: {volume_id}")
+            logger.error("  Please run Phase 1 and Phase 1.5 first")
+            return False
+
+        cmd = [
+            sys.executable, "-m", "pipeline.post_processor.translation_brief_agent",
+            "--volume", volume_id,
+        ]
+        if force:
+            cmd.append("--force")
+
+        if self._run_command(cmd, "Phase 1.56 (Translation Brief)"):
+            logger.info("✓ Phase 1.56 completed successfully")
+            return True
+        return False
+
+    # ── Full Anthropic Batch Pipeline ─────────────────────────────────────────
+
+    def run_batch(
+        self,
+        volume_id: str,
+        force: bool = False,
+        skip_multimodal: bool = False,
+        force_brief: bool = False,
+        chapters: Optional[list] = None,
+    ) -> bool:
+        """
+        Option 1: Full Anthropic Batch Pipeline.
+
+        Runs all preparation phases in sequence, then submits the entire
+        volume to the Anthropic Batch API in a single job.
+
+          Phase 1.5  — Metadata extraction & character roster
+          Phase 1.55 — Gemini full-LN rich metadata enrichment
+          Phase 1.56 — Translator's Guidance Brief (full-corpus pre-analysis)
+          Phase 1.6  — Multimodal visual analysis (skippable)
+          Phase 1.7  — Stage 1 Scene Planner (narrative scaffold)
+          Phase 2    — Anthropic Batch API translation (50% cost, ~1h latency)
+
+        Requires:
+          - Phase 1 (EPUB extraction) already completed.
+          - translator_provider: anthropic in config.yaml.
+        """
+        from pipeline.translator.config import get_translator_provider
+        if get_translator_provider() != "anthropic":
+            logger.error(
+                "[BATCH-PIPELINE] translator_provider is not 'anthropic'. "
+                "Set translator_provider: anthropic in config.yaml before running full batch pipeline."
+            )
+            return False
+
+        self._ui_header(
+            "Full Anthropic Batch Pipeline",
+            "Phase 1.5 → 1.55 → 1.56 → 1.6 → 1.7 → Phase 2 (Batch API)",
+        )
+
+        # ── Phase 1.5: Metadata ────────────────────────────────────────
+        logger.info("[BATCH-PIPELINE] Step 1/6 — Phase 1.5: Metadata Processor")
+        if not self.run_phase1_5(volume_id):
+            logger.error("[BATCH-PIPELINE] Phase 1.5 failed. Aborting.")
+            return False
+
+        # ── Phase 1.55: Rich Metadata Cache ───────────────────────────
+        # Generates Gemini CachedContent + rich JSON.  Phase 2 will purge the
+        # Gemini cache resource (Anthropic path) but the metadata JSON is kept.
+        logger.info("[BATCH-PIPELINE] Step 2/6 — Phase 1.55: Rich Metadata Cache")
+        if not self.run_phase1_55(volume_id):
+            logger.warning(
+                "[BATCH-PIPELINE] Phase 1.55 failed or skipped — continuing. "
+                "(Gemini cache is not used by Anthropic path; metadata JSON may be incomplete.)"
+            )
+
+        # ── Phase 1.56: Translator's Guidance Brief ───────────────────
+        logger.info("[BATCH-PIPELINE] Step 3/6 — Phase 1.56: Translator's Guidance Brief")
+        if not self.run_phase1_56(volume_id, force=force_brief):
+            logger.warning(
+                "[BATCH-PIPELINE] Phase 1.56 brief generation failed — continuing. "
+                "Batch will proceed without the volume-wide guidance brief."
+            )
+
+        # ── Phase 1.6: Multimodal Visual Analysis ─────────────────────
+        if skip_multimodal:
+            logger.info("[BATCH-PIPELINE] Step 4/6 — Phase 1.6: Skipped (--skip-multimodal)")
+            enable_multimodal = False
+        else:
+            logger.info("[BATCH-PIPELINE] Step 4/6 — Phase 1.6: Multimodal Visual Analysis")
+            enable_multimodal = self.run_phase1_6(
+                volume_id,
+                standalone=False,
+                full_ln_cache_mode="off",  # Anthropic path: no Gemini cache
+            )
+            if not enable_multimodal:
+                logger.warning(
+                    "[BATCH-PIPELINE] Phase 1.6 failed or skipped — "
+                    "continuing without visual context."
+                )
+
+        # ── Phase 1.7: Scene Planner ───────────────────────────────────
+        logger.info("[BATCH-PIPELINE] Step 5/6 — Phase 1.7: Scene Planner")
+        if not self.run_phase1_7(volume_id):
+            logger.error("[BATCH-PIPELINE] Phase 1.7 failed. Aborting.")
+            return False
+
+        # ── Phase 2: Anthropic Batch Translation ──────────────────────
+        logger.info("[BATCH-PIPELINE] Step 6/6 — Phase 2: Anthropic Batch Translation")
+        success = self.run_phase2(
+            volume_id,
+            chapters=chapters,
+            force=force,
+            enable_multimodal=bool(enable_multimodal),
+            full_ln_cache_mode="off",   # Anthropic path: skip Gemini cache gate
+            standalone=False,
+            batch=True,                 # Always batch for this command
+        )
+
+        if success:
+            logger.info("")
+            logger.info("✓ Full Anthropic Batch Pipeline completed successfully.")
+        else:
+            logger.error("✗ Phase 2 batch translation failed.")
+
+        return success
+
+    # ─────────────────────────────────────────────────────────────────────────
+
     def _resolve_full_ln_cache_mode(
         self,
         *,
@@ -1838,8 +1978,9 @@ class PipelineController:
                    enable_multimodal: bool = False,
                    phase155_mode: str = "auto",
                    full_ln_cache_mode: str = "ask",
-                   standalone: bool = False) -> bool:
-        """Run Phase 2: Translator (Gemini MT)."""
+                   standalone: bool = False,
+                   batch: bool = False) -> bool:
+        """Run Phase 2: Translator (Gemini MT / Anthropic Batch)."""
         self._ui_header(
             "Phase 2 - Translator",
             "Advanced stack: Bible continuity + Tiered RAG + Vector Search + Multimodal (optional)"
@@ -1992,6 +2133,13 @@ class PipelineController:
 
         if enable_multimodal:
             cmd.append("--enable-multimodal")
+
+        # Auto-enable Anthropic Batch API: explicit --batch flag OR Anthropic provider default.
+        # get_translator_provider() is already imported above (line ~1864) within this method scope.
+        use_batch = batch or (get_translator_provider() == "anthropic")
+        if use_batch:
+            cmd.append("--batch")
+            logger.info("[ANTHROPIC] Batch API enabled — chapters will be submitted as a single batch job (50% cost, ~1h latency).")
 
         if self._run_phase2_command_with_progress(cmd, expected_total=expected_total):
             logger.info("✓ Phase 2 completed successfully")
@@ -3750,7 +3898,24 @@ def main():
     elif args.command == 'phase1.55':
         success = controller.run_phase1_55(args.volume_id)
         sys.exit(0 if success else 1)
-    
+
+    elif args.command == 'phase1.56':
+        success = controller.run_phase1_56(
+            args.volume_id,
+            force=getattr(args, 'force', False),
+        )
+        sys.exit(0 if success else 1)
+
+    elif args.command == 'batch':
+        success = controller.run_batch(
+            args.volume_id,
+            force=getattr(args, 'force', False),
+            skip_multimodal=getattr(args, 'skip_multimodal', False),
+            force_brief=getattr(args, 'force_brief', False),
+            chapters=getattr(args, 'chapters', None),
+        )
+        sys.exit(0 if success else 1)
+
     elif args.command == 'phase2':
         # Keep legacy verbose behavior in plain mode; rich mode has live chapter bars.
         if not args.verbose and not controller.ui.rich_enabled:
@@ -3767,11 +3932,13 @@ def main():
         # rebuild. Only re-run Phase 1.55 if the user explicitly passes --phase1-55-mode overwrite.
         phase155_mode = getattr(args, 'phase1_55_mode', 'skip')
         full_ln_cache_mode = getattr(args, 'full_ln_cache', 'ask')
+        use_batch = getattr(args, 'batch', False)
         success = controller.run_phase2(args.volume_id, args.chapters, args.force,
                                         enable_gap_analysis, enable_multimodal,
                                         phase155_mode=phase155_mode,
                                         full_ln_cache_mode=full_ln_cache_mode,
-                                        standalone=True)
+                                        standalone=True,
+                                        batch=use_batch)
         sys.exit(0 if success else 1)
     
     elif args.command == 'phase3':

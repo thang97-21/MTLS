@@ -24,6 +24,14 @@ class GeminiResponse:
     model: str
     cached_tokens: int = 0  # Track cached input tokens
     thinking_content: Optional[str] = None  # CoT/thinking parts from model
+    cache_creation_tokens: int = 0
+    input_cost_usd: float = 0.0
+    output_cost_usd: float = 0.0
+    cache_read_cost_usd: float = 0.0
+    cache_creation_cost_usd: float = 0.0
+    total_cost_usd: float = 0.0
+    batch_pricing: bool = False
+    fast_mode_pricing: bool = False
 
 class GeminiClient:
     _CACHE_DISPLAY_NAME_MAX_LEN = 128

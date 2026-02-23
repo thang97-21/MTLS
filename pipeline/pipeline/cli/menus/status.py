@@ -253,7 +253,39 @@ def show_translation_log(work_dir: Path, volume_id: str) -> None:
         console.print(f"  Total chapters: {summary.get('total_chapters', 'N/A')}")
         console.print(f"  Completed: {summary.get('completed', 'N/A')}")
         console.print(f"  Failed: {summary.get('failed', 'N/A')}")
-        console.print(f"  Total tokens: {summary.get('total_tokens', 'N/A'):,}")
+        total_tokens = summary.get('total_tokens')
+        if isinstance(total_tokens, (int, float)):
+            console.print(f"  Total tokens: {int(total_tokens):,}")
+        else:
+            console.print(f"  Total tokens: {total_tokens}")
+
+        input_tokens = summary.get("total_input_tokens")
+        output_tokens = summary.get("total_output_tokens")
+        cache_read_tokens = summary.get("total_cache_read_tokens")
+        cache_write_tokens = summary.get("total_cache_creation_tokens")
+        if isinstance(input_tokens, (int, float)) and isinstance(output_tokens, (int, float)):
+            console.print(
+                f"  In/Out tokens: {int(input_tokens):,} / {int(output_tokens):,}"
+            )
+        if isinstance(cache_read_tokens, (int, float)) or isinstance(cache_write_tokens, (int, float)):
+            console.print(
+                f"  Cache tokens (read/write): {int(cache_read_tokens or 0):,} / {int(cache_write_tokens or 0):,}"
+            )
+
+        total_cost = summary.get("total_cost_usd")
+        if isinstance(total_cost, (int, float)):
+            input_cost = float(summary.get("total_input_cost_usd", 0.0) or 0.0)
+            output_cost = float(summary.get("total_output_cost_usd", 0.0) or 0.0)
+            cache_read_cost = float(summary.get("total_cache_read_cost_usd", 0.0) or 0.0)
+            cache_write_cost = float(summary.get("total_cache_creation_cost_usd", 0.0) or 0.0)
+            console.print(
+                "  Cost USD: "
+                f"in=${input_cost:.6f}, "
+                f"out=${output_cost:.6f}, "
+                f"cache_read=${cache_read_cost:.6f}, "
+                f"cache_write=${cache_write_cost:.6f}, "
+                f"total=${float(total_cost):.6f}"
+            )
 
     # Recent entries
     entries = log_data.get('entries', [])

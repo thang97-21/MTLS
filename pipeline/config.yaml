@@ -57,17 +57,19 @@ anthropic:
   http_timeout_seconds: 600
   generation:
     temperature: 1.0
-    max_output_tokens: 128000  # 64K supported natively via streaming (no beta headers needed)
+    max_output_tokens: 128000  # Opus 4.6 native 128K — no beta headers needed
   thinking_mode:
-    enabled: true         # hard budget cap: server-enforced ceiling on thinking tokens
-    thinking_type: enabled  # "enabled" = hard server-side cap (works on Sonnet + Opus); "adaptive" = Opus only
-    thinking_budget: 8192 # 4096 tok ≈ ~3000 words — full chapter analysis without scratchpad bleed
+    enabled: true               # Opus 4.6 exclusive features:
+    thinking_type: adaptive     #   1. Adaptive thinking — self-managed budget (Opus only; Sonnet rejects this type)
+                                #   2. effort=max — applied automatically in code for claude-opus-4-6
+                                #   3. 128K output — max_output_tokens above; code enforces 128000 for Opus
+                                # Note: budget_tokens is NOT sent for adaptive type (API rejects it)
   caching:
-    enabled: true         # uses Anthropic ephemeral cache_control on system prompt
-    ttl_minutes: 5        # 5m = free refresh (default); 1h = 2x write cost. Inter-chapter cadence ~30-120s so 5m is sufficient.
+    enabled: true               # Anthropic ephemeral cache_control on system prompt
+    ttl_minutes: 5              # 5m = free refresh; inter-chapter cadence ~30-120s so 5m is sufficient
   fast_mode:
-    enabled: false        # 2x cost for 2.2x speed — not justified at <5 volumes/day. Enable when throughput > 5 vol/day.
-    fallback_on_rate_limit: true  # fall back to standard speed on 429 rather than waiting
+    enabled: false              # 2x cost for 2.2x speed — enable when throughput > 5 vol/day
+    fallback_on_rate_limit: true
 
 gemini:
   backend: auto   # auto | developer (GenAI) | vertex

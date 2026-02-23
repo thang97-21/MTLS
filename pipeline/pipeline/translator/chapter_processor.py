@@ -50,6 +50,16 @@ class TranslationResult:
     output_path: Path
     input_tokens: int = 0
     output_tokens: int = 0
+    cached_tokens: int = 0
+    cache_creation_tokens: int = 0
+    input_cost_usd: float = 0.0
+    output_cost_usd: float = 0.0
+    cache_read_cost_usd: float = 0.0
+    cache_creation_cost_usd: float = 0.0
+    total_cost_usd: float = 0.0
+    model: Optional[str] = None
+    batch_mode: bool = False
+    fast_mode_pricing: bool = False
     audit_result: Optional[AuditResult] = None
     warnings: List[str] = None
     error: Optional[str] = None
@@ -896,6 +906,7 @@ This document contains the internal reasoning process that {reasoning_model_labe
         cached_content: Optional[str] = None,
         scene_plan: Optional[Dict[str, Any]] = None,
         model_name: Optional[str] = None,
+        translation_brief: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         Build the full translation prompt WITHOUT calling the API.
@@ -1091,6 +1102,7 @@ This document contains the internal reasoning process that {reasoning_model_labe
                 visual_guidance=visual_guidance,
                 scene_plan=scene_plan,
                 volume_context=volume_context_text,
+                translation_brief=translation_brief,
             )
             logger.debug(f"[BATCH-EXTRACT] Prompt built for {chapter_id} ({len(user_prompt)} chars)")
 
@@ -1145,6 +1157,16 @@ This document contains the internal reasoning process that {reasoning_model_labe
                     False, output_path,
                     input_tokens=response.input_tokens,
                     output_tokens=response.output_tokens,
+                    cached_tokens=getattr(response, "cached_tokens", 0) or 0,
+                    cache_creation_tokens=getattr(response, "cache_creation_tokens", 0) or 0,
+                    input_cost_usd=getattr(response, "input_cost_usd", 0.0) or 0.0,
+                    output_cost_usd=getattr(response, "output_cost_usd", 0.0) or 0.0,
+                    cache_read_cost_usd=getattr(response, "cache_read_cost_usd", 0.0) or 0.0,
+                    cache_creation_cost_usd=getattr(response, "cache_creation_cost_usd", 0.0) or 0.0,
+                    total_cost_usd=getattr(response, "total_cost_usd", 0.0) or 0.0,
+                    model=getattr(response, "model", None),
+                    batch_mode=bool(getattr(response, "batch_pricing", False)),
+                    fast_mode_pricing=bool(getattr(response, "fast_mode_pricing", False)),
                     error=f"Batch returned empty response (finish_reason={finish_reason})",
                 )
 
@@ -1217,6 +1239,16 @@ This document contains the internal reasoning process that {reasoning_model_labe
                 output_path=output_path,
                 input_tokens=response.input_tokens,
                 output_tokens=response.output_tokens,
+                cached_tokens=getattr(response, "cached_tokens", 0) or 0,
+                cache_creation_tokens=getattr(response, "cache_creation_tokens", 0) or 0,
+                input_cost_usd=getattr(response, "input_cost_usd", 0.0) or 0.0,
+                output_cost_usd=getattr(response, "output_cost_usd", 0.0) or 0.0,
+                cache_read_cost_usd=getattr(response, "cache_read_cost_usd", 0.0) or 0.0,
+                cache_creation_cost_usd=getattr(response, "cache_creation_cost_usd", 0.0) or 0.0,
+                total_cost_usd=getattr(response, "total_cost_usd", 0.0) or 0.0,
+                model=getattr(response, "model", None),
+                batch_mode=bool(getattr(response, "batch_pricing", False)),
+                fast_mode_pricing=bool(getattr(response, "fast_mode_pricing", False)),
                 audit_result=audit,
                 warnings=list(audit.warnings or []),
                 stage3_metrics=stage3_metrics or None,
@@ -1238,6 +1270,7 @@ This document contains the internal reasoning process that {reasoning_model_labe
         volume_cache: Optional[str] = None,
         scene_plan: Optional[Dict[str, Any]] = None,
         allow_chunking: bool = True,
+        translation_brief: Optional[str] = None,
     ) -> TranslationResult:
         """
         Translate a single chapter file.
@@ -1625,6 +1658,7 @@ This document contains the internal reasoning process that {reasoning_model_labe
                 visual_guidance=visual_guidance,
                 scene_plan=scene_plan,
                 volume_context=volume_context_text,  # Phase 1.2 - Volume-level context
+                translation_brief=translation_brief,  # Phase 1.56 - Full-volume brief
             )
             logger.debug(f"[VERBOSE] User prompt length: {len(user_prompt)} characters")
             
@@ -1680,6 +1714,16 @@ This document contains the internal reasoning process that {reasoning_model_labe
                     False, output_path,
                     input_tokens=response.input_tokens,
                     output_tokens=response.output_tokens,
+                    cached_tokens=getattr(response, "cached_tokens", 0) or 0,
+                    cache_creation_tokens=getattr(response, "cache_creation_tokens", 0) or 0,
+                    input_cost_usd=getattr(response, "input_cost_usd", 0.0) or 0.0,
+                    output_cost_usd=getattr(response, "output_cost_usd", 0.0) or 0.0,
+                    cache_read_cost_usd=getattr(response, "cache_read_cost_usd", 0.0) or 0.0,
+                    cache_creation_cost_usd=getattr(response, "cache_creation_cost_usd", 0.0) or 0.0,
+                    total_cost_usd=getattr(response, "total_cost_usd", 0.0) or 0.0,
+                    model=getattr(response, "model", None),
+                    batch_mode=bool(getattr(response, "batch_pricing", False)),
+                    fast_mode_pricing=bool(getattr(response, "fast_mode_pricing", False)),
                     error=(
                         f"Gemini returned empty response "
                         f"(finish_reason={finish_reason}; possible safety block)"
@@ -1890,6 +1934,16 @@ This document contains the internal reasoning process that {reasoning_model_labe
                 output_path=output_path,
                 input_tokens=response.input_tokens,
                 output_tokens=response.output_tokens,
+                cached_tokens=getattr(response, "cached_tokens", 0) or 0,
+                cache_creation_tokens=getattr(response, "cache_creation_tokens", 0) or 0,
+                input_cost_usd=getattr(response, "input_cost_usd", 0.0) or 0.0,
+                output_cost_usd=getattr(response, "output_cost_usd", 0.0) or 0.0,
+                cache_read_cost_usd=getattr(response, "cache_read_cost_usd", 0.0) or 0.0,
+                cache_creation_cost_usd=getattr(response, "cache_creation_cost_usd", 0.0) or 0.0,
+                total_cost_usd=getattr(response, "total_cost_usd", 0.0) or 0.0,
+                model=getattr(response, "model", None),
+                batch_mode=bool(getattr(response, "batch_pricing", False)),
+                fast_mode_pricing=bool(getattr(response, "fast_mode_pricing", False)),
                 audit_result=audit,
                 warnings=validation_warnings,
                 stage3_metrics=stage3_metrics if stage3_metrics else None
@@ -1928,6 +1982,13 @@ This document contains the internal reasoning process that {reasoning_model_labe
 
             total_input_tokens = 0
             total_output_tokens = 0
+            total_cached_tokens = 0
+            total_cache_creation_tokens = 0
+            total_input_cost_usd = 0.0
+            total_output_cost_usd = 0.0
+            total_cache_read_cost_usd = 0.0
+            total_cache_creation_cost_usd = 0.0
+            total_cost_usd = 0.0
 
             for idx, chunk in enumerate(chunks, start=1):
                 chunk_json_path = temp_dir / f"{chapter_id}_chunk_{idx:03d}.json"
@@ -1959,6 +2020,22 @@ This document contains the internal reasoning process that {reasoning_model_labe
                         output_path,
                         input_tokens=total_input_tokens + chunk_result.input_tokens,
                         output_tokens=total_output_tokens + chunk_result.output_tokens,
+                        cached_tokens=total_cached_tokens + chunk_result.cached_tokens,
+                        cache_creation_tokens=(
+                            total_cache_creation_tokens + chunk_result.cache_creation_tokens
+                        ),
+                        input_cost_usd=total_input_cost_usd + chunk_result.input_cost_usd,
+                        output_cost_usd=total_output_cost_usd + chunk_result.output_cost_usd,
+                        cache_read_cost_usd=(
+                            total_cache_read_cost_usd + chunk_result.cache_read_cost_usd
+                        ),
+                        cache_creation_cost_usd=(
+                            total_cache_creation_cost_usd + chunk_result.cache_creation_cost_usd
+                        ),
+                        total_cost_usd=total_cost_usd + chunk_result.total_cost_usd,
+                        model=chunk_result.model,
+                        batch_mode=chunk_result.batch_mode,
+                        fast_mode_pricing=chunk_result.fast_mode_pricing,
                         error=f"Chunk {idx}/{total_chunks} failed: {chunk_result.error}",
                     )
 
@@ -1981,6 +2058,13 @@ This document contains the internal reasoning process that {reasoning_model_labe
 
                 total_input_tokens += chunk_result.input_tokens
                 total_output_tokens += chunk_result.output_tokens
+                total_cached_tokens += chunk_result.cached_tokens
+                total_cache_creation_tokens += chunk_result.cache_creation_tokens
+                total_input_cost_usd += chunk_result.input_cost_usd
+                total_output_cost_usd += chunk_result.output_cost_usd
+                total_cache_read_cost_usd += chunk_result.cache_read_cost_usd
+                total_cache_creation_cost_usd += chunk_result.cache_creation_cost_usd
+                total_cost_usd += chunk_result.total_cost_usd
 
                 try:
                     chunk_source_path.unlink()
@@ -2029,6 +2113,13 @@ This document contains the internal reasoning process that {reasoning_model_labe
                 output_path=output_path,
                 input_tokens=total_input_tokens,
                 output_tokens=total_output_tokens,
+                cached_tokens=total_cached_tokens,
+                cache_creation_tokens=total_cache_creation_tokens,
+                input_cost_usd=total_input_cost_usd,
+                output_cost_usd=total_output_cost_usd,
+                cache_read_cost_usd=total_cache_read_cost_usd,
+                cache_creation_cost_usd=total_cache_creation_cost_usd,
+                total_cost_usd=total_cost_usd,
                 audit_result=audit,
                 warnings=validation_warnings,
                 stage3_metrics=stage3_metrics if stage3_metrics else None
@@ -2742,6 +2833,7 @@ This document contains the internal reasoning process that {reasoning_model_labe
         visual_guidance: Optional[str] = None,  # Multimodal visual context
         scene_plan: Optional[Dict[str, Any]] = None,  # Stage 1 scene planner output
         volume_context: Optional[str] = None,  # Phase 1.2 - Volume-level context
+        translation_brief: Optional[str] = None,  # Phase 1.56 - Full-volume Translator's Guidance brief
     ) -> str:
         """Construct the user message part of the prompt."""
         # Build base prompt
@@ -2753,7 +2845,27 @@ This document contains the internal reasoning process that {reasoning_model_labe
             name_registry=self.character_names if self.character_names else None,
             jp_title=jp_title,
         )
-        
+
+        # ── Phase 1.56: Translator's Guidance Brief ─────────────────────────
+        # Prepend the full-volume brief as the very first block so the model
+        # reads complete LN context before encountering any chapter-specific
+        # content.  Only active in Anthropic batch mode; ignored otherwise.
+        if translation_brief:
+            logger.debug(
+                f"[BRIEF] Injecting Translator's Guidance brief "
+                f"({len(translation_brief):,} chars) into prompt for {chapter_id}"
+            )
+            brief_block = (
+                "<!-- TRANSLATOR'S GUIDANCE BRIEF (FULL VOLUME) -->\n"
+                "The following is a comprehensive reference guide for this entire volume. "
+                "It was generated from the complete Japanese source before translation began. "
+                "Use it to ensure consistency across all chapters.\n\n"
+                f"{translation_brief}\n\n"
+                "<!-- END TRANSLATOR'S GUIDANCE BRIEF -->"
+            )
+            base_prompt = f"{brief_block}\n\n---\n\n{base_prompt}"
+        # ── end Phase 1.56 ────────────────────────────────────────────────────
+
         # Inject Sino-Vietnamese guidance if available (Vietnamese translations only)
         if sino_vn_guidance and sino_vn_guidance.get("high_confidence"):
             guidance_section = self._format_sino_vietnamese_guidance(sino_vn_guidance)

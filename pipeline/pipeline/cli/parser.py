@@ -233,6 +233,63 @@ Metadata Schema Auto-Transform:
         default='ask',
         help='Full-LN cache policy before Phase 2: ask (prompt), on (prepare), off (skip)',
     )
+    phase2_parser.add_argument(
+        '--batch',
+        action='store_true',
+        default=False,
+        help=(
+            'Submit all chapters as one Anthropic Batch API job (50%% cost, ~1h latency). '
+            'Auto-enabled when translator_provider=anthropic. '
+            'Requires provider=anthropic in config.yaml.'
+        ),
+    )
+
+    # Phase 1.56 (standalone Translation Brief)
+    phase156_parser = subparsers.add_parser(
+        'phase1.56',
+        parents=[parent_parser],
+        help='Run Phase 1.56: Translator\'s Guidance Brief (full-corpus pre-analysis for Anthropic batch)',
+    )
+    phase156_parser.add_argument(
+        'volume_id', type=str, nargs='?',
+        help='Volume ID (optional - will prompt if not provided)'
+    )
+    phase156_parser.add_argument(
+        '--force',
+        action='store_true',
+        help='Re-generate even if a cached brief already exists',
+    )
+
+    # Batch (Full Anthropic Batch Pipeline — Option 1 for Anthropic provider)
+    batch_parser = subparsers.add_parser(
+        'batch',
+        parents=[parent_parser],
+        help=(
+            'Option 1: Full Anthropic Batch Pipeline — '
+            'Phase 1.5 → 1.55 → 1.56 → 1.6 → 1.7 → Phase 2 (Batch API). '
+            'Requires translator_provider: anthropic in config.yaml.'
+        ),
+    )
+    batch_parser.add_argument(
+        'volume_id', type=str, nargs='?',
+        help='Volume ID (optional - will prompt if not provided)'
+    )
+    batch_parser.add_argument(
+        '--chapters', nargs='+',
+        help='Specific chapters to translate in Phase 2 (default: all)'
+    )
+    batch_parser.add_argument(
+        '--force', action='store_true',
+        help='Re-translate already-completed chapters'
+    )
+    batch_parser.add_argument(
+        '--skip-multimodal', action='store_true',
+        help='Skip Phase 1.6 (visual analysis); useful when no illustrations are present'
+    )
+    batch_parser.add_argument(
+        '--force-brief', action='store_true',
+        help='Re-generate Phase 1.56 Translator\'s Guidance Brief even if already cached'
+    )
 
     # Phase 3
     phase3_parser = subparsers.add_parser('phase3', parents=[parent_parser], help='Show Phase 3 instructions (Manual/Agentic Workflow)')

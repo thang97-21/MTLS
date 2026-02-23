@@ -29,6 +29,7 @@ from pipeline.translator.per_chapter_workflow import PerChapterWorkflow
 from pipeline.translator.glossary_lock import GlossaryLock
 from pipeline.translator.series_bible import BibleController
 from pipeline.post_processor.chapter_summarizer import ChapterSummarizationAgent
+from pipeline.post_processor.translation_brief_agent import AnthropicTranslationBriefAgent
 from pipeline.config import get_target_language, get_language_config, PIPELINE_ROOT
 from modules.gap_integration import GapIntegrationEngine
 
@@ -46,6 +47,13 @@ class TranslationReport:
     status: str  # 'completed', 'partial', 'failed'
     started_at: str
     completed_at: str
+    total_cache_read_tokens: int = 0
+    total_cache_creation_tokens: int = 0
+    total_input_cost_usd: float = 0.0
+    total_output_cost_usd: float = 0.0
+    total_cache_read_cost_usd: float = 0.0
+    total_cache_creation_cost_usd: float = 0.0
+    total_cost_usd: float = 0.0
     errors: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -147,7 +155,10 @@ class TranslatorAgent:
 
         # Initialize translator LLM client — provider-routed
         provider = get_translator_provider()
+        self.translator_provider = provider
         logger.info(f"Translator provider: {provider.upper()}")
+        gemini_config = get_gemini_config()
+        self._gemini_subagent_config = gemini_config
 
         if provider == "anthropic":
             anthropic_cfg = get_anthropic_config()
@@ -172,7 +183,6 @@ class TranslatorAgent:
             )
             self.client.set_cache_ttl(cache_ttl_minutes)
             # Sub-agents (summarizer, etc.) always use Gemini — keep a dedicated client
-            gemini_config = get_gemini_config()
             self._gemini_subagent_client = GeminiClient(
                 model=gemini_config.get("fallback_model", "gemini-2.5-flash"),
                 enable_caching=False,
@@ -180,7 +190,6 @@ class TranslatorAgent:
         else:
             model_name = get_model_name()
             logger.info(f"Using model: {model_name}")
-            gemini_config = get_gemini_config()
             caching_config = gemini_config.get("caching", {})
             enable_caching = caching_config.get("enabled", True)
             cache_ttl = caching_config.get("ttl_minutes", 120)
@@ -922,17 +931,227 @@ class TranslatorAgent:
             json.dump(self.manifest, f, indent=2, ensure_ascii=False)
 
     def _load_log(self) -> Dict:
-        if self.log_path.exists():
-            try:
-                with open(self.log_path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except Exception:
-                return {"chapters": []}
-        return {"chapters": []}
+        base = {"chapters": [], "summary": {}, "last_run_summary": {}}
+        if not self.log_path.exists():
+            return dict(base)
+        try:
+            with open(self.log_path, 'r', encoding='utf-8') as f:
+                payload = json.load(f)
+            if not isinstance(payload, dict):
+                return dict(base)
+            payload.setdefault("chapters", [])
+            payload.setdefault("summary", {})
+            payload.setdefault("last_run_summary", {})
+            return payload
+        except Exception:
+            return dict(base)
 
     def _save_log(self):
+        self.translation_log["summary"] = self._compute_totals_from_entries(
+            self.translation_log.get("chapters", []),
+            include_label=False,
+        )
+        self.translation_log["updated_at"] = datetime.now().isoformat()
         with open(self.log_path, 'w', encoding='utf-8') as f:
             json.dump(self.translation_log, f, indent=2, ensure_ascii=False)
+
+    @staticmethod
+    def _to_int(value: Any) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return 0
+
+    @staticmethod
+    def _to_float(value: Any) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return 0.0
+
+    def _estimate_entry_costs(
+        self,
+        *,
+        model: Optional[str],
+        input_tokens: int,
+        output_tokens: int,
+        cached_tokens: int,
+        cache_creation_tokens: int,
+        batch_mode: bool,
+        fast_mode_pricing: bool,
+    ) -> Dict[str, float]:
+        if self.translator_provider != "anthropic":
+            return {
+                "input_cost_usd": 0.0,
+                "output_cost_usd": 0.0,
+                "cache_read_cost_usd": 0.0,
+                "cache_creation_cost_usd": 0.0,
+                "total_cost_usd": 0.0,
+            }
+        cache_ttl = getattr(self.client, "_cache_ttl", "5m")
+        cost = AnthropicClient.estimate_usage_cost_usd(
+            model_name=model or self._active_model_name,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cache_read_tokens=cached_tokens,
+            cache_creation_tokens=cache_creation_tokens,
+            cache_ttl=cache_ttl,
+            batch_mode=batch_mode,
+            fast_mode=fast_mode_pricing,
+        )
+        return {
+            "input_cost_usd": cost["input_cost_usd"],
+            "output_cost_usd": cost["output_cost_usd"],
+            "cache_read_cost_usd": cost["cache_read_cost_usd"],
+            "cache_creation_cost_usd": cost["cache_creation_cost_usd"],
+            "total_cost_usd": cost["total_cost_usd"],
+        }
+
+    def _build_log_entry(
+        self,
+        *,
+        chapter_id: str,
+        result: TranslationResult,
+        batch_mode: bool = False,
+    ) -> Dict[str, Any]:
+        model_name = result.model or self._active_model_name
+        cached_tokens = self._to_int(result.cached_tokens)
+        cache_creation_tokens = self._to_int(result.cache_creation_tokens)
+        input_cost = self._to_float(result.input_cost_usd)
+        output_cost = self._to_float(result.output_cost_usd)
+        cache_read_cost = self._to_float(result.cache_read_cost_usd)
+        cache_creation_cost = self._to_float(result.cache_creation_cost_usd)
+        total_cost = self._to_float(result.total_cost_usd)
+
+        # Backward compatibility: compute costs if provider response didn't populate them.
+        if (
+            self.translator_provider == "anthropic"
+            and (result.input_tokens > 0 or result.output_tokens > 0 or cached_tokens > 0 or cache_creation_tokens > 0)
+            and (input_cost + output_cost + cache_read_cost + cache_creation_cost + total_cost) <= 0.0
+        ):
+            estimated = self._estimate_entry_costs(
+                model=model_name,
+                input_tokens=result.input_tokens,
+                output_tokens=result.output_tokens,
+                cached_tokens=cached_tokens,
+                cache_creation_tokens=cache_creation_tokens,
+                batch_mode=batch_mode or bool(result.batch_mode),
+                fast_mode_pricing=bool(result.fast_mode_pricing),
+            )
+            input_cost = estimated["input_cost_usd"]
+            output_cost = estimated["output_cost_usd"]
+            cache_read_cost = estimated["cache_read_cost_usd"]
+            cache_creation_cost = estimated["cache_creation_cost_usd"]
+            total_cost = estimated["total_cost_usd"]
+
+        return {
+            "chapter_id": chapter_id,
+            "model": model_name,
+            "input_tokens": self._to_int(result.input_tokens),
+            "output_tokens": self._to_int(result.output_tokens),
+            "cached_tokens": cached_tokens,
+            "cache_creation_tokens": cache_creation_tokens,
+            "input_cost_usd": input_cost,
+            "output_cost_usd": output_cost,
+            "cache_read_cost_usd": cache_read_cost,
+            "cache_creation_cost_usd": cache_creation_cost,
+            "total_cost_usd": total_cost,
+            "batch_mode": bool(batch_mode or result.batch_mode),
+            "fast_mode_pricing": bool(result.fast_mode_pricing),
+            "success": result.success,
+            "error": result.error,
+            "quality": result.audit_result.to_dict() if result.audit_result else None,
+        }
+
+    def _compute_totals_from_entries(
+        self,
+        entries: List[Dict[str, Any]],
+        *,
+        include_label: bool = True,
+    ) -> Dict[str, Any]:
+        totals = {
+            "total_chapters": len(entries),
+            "completed": 0,
+            "failed": 0,
+            "total_input_tokens": 0,
+            "total_output_tokens": 0,
+            "total_cache_read_tokens": 0,
+            "total_cache_creation_tokens": 0,
+            "total_input_cost_usd": 0.0,
+            "total_output_cost_usd": 0.0,
+            "total_cache_read_cost_usd": 0.0,
+            "total_cache_creation_cost_usd": 0.0,
+            "total_cost_usd": 0.0,
+            "total_tokens": 0,
+        }
+
+        for entry in entries:
+            in_tokens = self._to_int(entry.get("input_tokens", 0))
+            out_tokens = self._to_int(entry.get("output_tokens", 0))
+            cached_tokens = self._to_int(entry.get("cached_tokens", 0))
+            cache_creation_tokens = self._to_int(entry.get("cache_creation_tokens", 0))
+
+            in_cost = self._to_float(entry.get("input_cost_usd", 0.0))
+            out_cost = self._to_float(entry.get("output_cost_usd", 0.0))
+            cache_read_cost = self._to_float(entry.get("cache_read_cost_usd", 0.0))
+            cache_creation_cost = self._to_float(entry.get("cache_creation_cost_usd", 0.0))
+            total_cost = self._to_float(entry.get("total_cost_usd", 0.0))
+
+            if (
+                self.translator_provider == "anthropic"
+                and (in_tokens > 0 or out_tokens > 0 or cached_tokens > 0 or cache_creation_tokens > 0)
+                and (in_cost + out_cost + cache_read_cost + cache_creation_cost + total_cost) <= 0.0
+            ):
+                estimated = self._estimate_entry_costs(
+                    model=entry.get("model") or self._active_model_name,
+                    input_tokens=in_tokens,
+                    output_tokens=out_tokens,
+                    cached_tokens=cached_tokens,
+                    cache_creation_tokens=cache_creation_tokens,
+                    batch_mode=bool(entry.get("batch_mode", False)),
+                    fast_mode_pricing=bool(entry.get("fast_mode_pricing", False)),
+                )
+                in_cost = estimated["input_cost_usd"]
+                out_cost = estimated["output_cost_usd"]
+                cache_read_cost = estimated["cache_read_cost_usd"]
+                cache_creation_cost = estimated["cache_creation_cost_usd"]
+                total_cost = estimated["total_cost_usd"]
+
+            totals["completed"] += 1 if entry.get("success") else 0
+            totals["failed"] += 0 if entry.get("success") else 1
+            totals["total_input_tokens"] += in_tokens
+            totals["total_output_tokens"] += out_tokens
+            totals["total_cache_read_tokens"] += cached_tokens
+            totals["total_cache_creation_tokens"] += cache_creation_tokens
+            totals["total_input_cost_usd"] += in_cost
+            totals["total_output_cost_usd"] += out_cost
+            totals["total_cache_read_cost_usd"] += cache_read_cost
+            totals["total_cache_creation_cost_usd"] += cache_creation_cost
+            totals["total_cost_usd"] += total_cost
+
+        totals["total_tokens"] = totals["total_input_tokens"] + totals["total_output_tokens"]
+        if include_label:
+            totals["provider"] = self.translator_provider
+        return totals
+
+    def _log_run_cost_summary(self, run_entries: List[Dict[str, Any]]) -> Dict[str, Any]:
+        summary = self._compute_totals_from_entries(run_entries)
+        logger.info(
+            "Volume translation token summary: "
+            f"in={summary['total_input_tokens']:,} | "
+            f"out={summary['total_output_tokens']:,} | "
+            f"cache_read={summary['total_cache_read_tokens']:,} | "
+            f"cache_write={summary['total_cache_creation_tokens']:,}"
+        )
+        logger.info(
+            "Volume translation cost summary: "
+            f"input=${summary['total_input_cost_usd']:.6f} | "
+            f"output=${summary['total_output_cost_usd']:.6f} | "
+            f"cache_read=${summary['total_cache_read_cost_usd']:.6f} | "
+            f"cache_write=${summary['total_cache_creation_cost_usd']:.6f} | "
+            f"total=${summary['total_cost_usd']:.6f}"
+        )
+        return summary
 
     def _canonical_title_from_chapter_id(self, chapter_id: str) -> Optional[str]:
         """Derive stable title from chapter_id (chapter_01 -> Chapter 1)."""
@@ -1339,6 +1558,7 @@ class TranslatorAgent:
                     )
         
         success_count = 0
+        run_entries: List[Dict[str, Any]] = []
         
         # Language-specific output directory (e.g., EN/, VN/)
         output_dir_name = self.target_language.upper()
@@ -1472,15 +1692,13 @@ class TranslatorAgent:
                     # Save fallback model to manifest for tracking
                     chapter["model"] = fallback_model
             
-            # Update Log
-            log_entry = {
-                "chapter_id": chapter_id,
-                "input_tokens": result.input_tokens,
-                "output_tokens": result.output_tokens,
-                "success": result.success,
-                "error": result.error,
-                "quality": result.audit_result.to_dict() if result.audit_result else None
-            }
+            # Update log + run summary entry
+            log_entry = self._build_log_entry(
+                chapter_id=chapter_id,
+                result=result,
+                batch_mode=False,
+            )
+            run_entries.append(log_entry)
             
             # Remove old entry if exists
             self.translation_log["chapters"] = [c for c in self.translation_log["chapters"] if c["chapter_id"] != chapter_id]
@@ -1664,6 +1882,11 @@ class TranslatorAgent:
             self.manifest["pipeline_state"]["translator"]["status"] = "partial"
             logger.warning(f"Volume translation PARTIAL ({success_count}/{total} completed)")
 
+        run_summary = self._log_run_cost_summary(run_entries)
+        self.translation_log["last_run_summary"] = run_summary
+        self.translation_log["last_run_at"] = datetime.now().isoformat()
+        self._save_log()
+
         self._save_manifest()
 
         # Clean up context cache
@@ -1729,6 +1952,44 @@ class TranslatorAgent:
             self._prewarm_cache()
             logger.info("[BATCH][CACHE] System instruction pre-warmed.")
 
+        # ── Phase 1.56: Translator's Guidance Brief ────────────────────
+        # Generate a single full-volume brief via Gemini Flash (reads entire JP
+        # corpus in one call).  The brief replaces the sequential per-chapter
+        # summary feed: every chapter in the batch receives the complete picture
+        # simultaneously rather than only what came before it.
+        translation_brief: Optional[str] = None
+        try:
+            brief_agent = AnthropicTranslationBriefAgent(
+                gemini_client=self._gemini_subagent_client,
+                work_dir=self.work_dir,
+                manifest=self.manifest,
+                target_language=self.target_language,
+                model=(
+                    self.translation_config.get("chapter_summarizer_model")
+                    or self._gemini_subagent_config.get("fallback_model")
+                    or "gemini-2.5-flash"
+                ),
+            )
+            brief_result = brief_agent.generate_brief()
+            if brief_result.success:
+                translation_brief = brief_result.brief_text
+                status = "cached" if brief_result.cached else "generated"
+                logger.info(
+                    f"[BATCH][BRIEF] Translator's Guidance brief {status} "
+                    f"({len(translation_brief):,} chars) — injecting into all {total} chapter prompts."
+                )
+            else:
+                logger.warning(
+                    f"[BATCH][BRIEF] Brief generation failed: {brief_result.error}. "
+                    "Continuing without volume brief."
+                )
+        except Exception as _brief_exc:
+            logger.warning(
+                f"[BATCH][BRIEF] Unexpected error during brief generation: {_brief_exc}. "
+                "Continuing without volume brief."
+            )
+        # ── end Phase 1.56 ─────────────────────────────────────────────
+
         output_dir = self.work_dir / self.target_language.upper()
         output_dir.mkdir(exist_ok=True)
 
@@ -1736,6 +1997,7 @@ class TranslatorAgent:
         logger.info("[BATCH] Phase 1: Collecting prompts for all chapters...")
         batch_requests: List[dict] = []
         chapter_metadata: dict = {}
+        run_entries: List[Dict[str, Any]] = []
 
         for i, chapter in enumerate(target_chapters):
             chapter_id = chapter["id"]
@@ -1771,6 +2033,7 @@ class TranslatorAgent:
                 cached_content=None,
                 scene_plan=scene_plan,
                 model_name=chapter_model,
+                translation_brief=translation_brief,
             )
 
             if prompt_dict is None:
@@ -1783,6 +2046,7 @@ class TranslatorAgent:
                     model_name=chapter_model,
                     cached_content=None,
                     scene_plan=scene_plan,
+                    translation_brief=translation_brief,
                 )
                 chapter_metadata[chapter_id] = {
                     "output_path": output_path,
@@ -1798,6 +2062,18 @@ class TranslatorAgent:
                 else:
                     chapter["translation_status"] = "failed"
                     logger.error(f"[BATCH] Streaming fallback failed for {chapter_id}: {result.error}")
+
+                log_entry = self._build_log_entry(
+                    chapter_id=chapter_id,
+                    result=result,
+                    batch_mode=False,  # streamed fallback uses standard per-request pricing
+                )
+                run_entries.append(log_entry)
+                self.translation_log["chapters"] = [
+                    c for c in self.translation_log["chapters"] if c["chapter_id"] != chapter_id
+                ]
+                self.translation_log["chapters"].append(log_entry)
+                self._save_log()
                 self._save_manifest()
                 continue
 
@@ -1858,6 +2134,24 @@ class TranslatorAgent:
             if response is None:
                 logger.error(f"[BATCH] No result for {chapter_id}")
                 chapter["translation_status"] = "failed"
+                failed_result = TranslationResult(
+                    success=False,
+                    output_path=output_path,
+                    model=meta.get("prompt_dict", {}).get("model_name") or self._active_model_name,
+                    batch_mode=True,
+                    error="Batch result missing for chapter",
+                )
+                log_entry = self._build_log_entry(
+                    chapter_id=chapter_id,
+                    result=failed_result,
+                    batch_mode=True,
+                )
+                run_entries.append(log_entry)
+                self.translation_log["chapters"] = [
+                    c for c in self.translation_log["chapters"] if c["chapter_id"] != chapter_id
+                ]
+                self.translation_log["chapters"].append(log_entry)
+                self._save_log()
                 self._save_manifest()
                 continue
 
@@ -1869,15 +2163,12 @@ class TranslatorAgent:
                 en_title=en_title,
             )
 
-            # Update log
-            log_entry = {
-                "chapter_id":    chapter_id,
-                "input_tokens":  result.input_tokens,
-                "output_tokens": result.output_tokens,
-                "success":       result.success,
-                "error":         result.error,
-                "quality":       result.audit_result.to_dict() if result.audit_result else None,
-            }
+            log_entry = self._build_log_entry(
+                chapter_id=chapter_id,
+                result=result,
+                batch_mode=True,
+            )
+            run_entries.append(log_entry)
             self.translation_log["chapters"] = [
                 c for c in self.translation_log["chapters"] if c["chapter_id"] != chapter_id
             ]
@@ -1966,6 +2257,11 @@ class TranslatorAgent:
             self.manifest["pipeline_state"]["translator"]["status"] = "partial"
             logger.warning(f"[BATCH] Volume translation PARTIAL ({success_count}/{total})")
 
+        run_summary = self._log_run_cost_summary(run_entries)
+        self.translation_log["last_run_summary"] = run_summary
+        self.translation_log["last_run_at"] = datetime.now().isoformat()
+        self._save_log()
+
         self._save_manifest()
 
         if self.client.enable_caching:
@@ -1974,9 +2270,7 @@ class TranslatorAgent:
     def generate_report(self) -> TranslationReport:
         """Generate a summary report of the translation."""
         log_chapters = self.translation_log.get("chapters", [])
-
-        total_input = sum(c.get("input_tokens", 0) for c in log_chapters)
-        total_output = sum(c.get("output_tokens", 0) for c in log_chapters)
+        totals = self._compute_totals_from_entries(log_chapters, include_label=False)
 
         quality_scores = []
         for c in log_chapters:
@@ -1996,12 +2290,19 @@ class TranslatorAgent:
             chapters_total=len(log_chapters),
             chapters_completed=completed,
             chapters_failed=failed,
-            total_input_tokens=total_input,
-            total_output_tokens=total_output,
+            total_input_tokens=totals["total_input_tokens"],
+            total_output_tokens=totals["total_output_tokens"],
             average_quality_score=avg_quality,
             status=status,
             started_at=self.manifest.get("pipeline_state", {}).get("translator", {}).get("started_at", ""),
             completed_at=datetime.now().isoformat(),
+            total_cache_read_tokens=totals["total_cache_read_tokens"],
+            total_cache_creation_tokens=totals["total_cache_creation_tokens"],
+            total_input_cost_usd=totals["total_input_cost_usd"],
+            total_output_cost_usd=totals["total_output_cost_usd"],
+            total_cache_read_cost_usd=totals["total_cache_read_cost_usd"],
+            total_cache_creation_cost_usd=totals["total_cache_creation_cost_usd"],
+            total_cost_usd=totals["total_cost_usd"],
             errors=errors
         )
 
