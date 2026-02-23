@@ -358,6 +358,18 @@ class PublisherProfileManager:
                 confidence="confirmed" if pattern_source != "fallback" else "fallback"
             )
 
+        # Compatibility fallback: preserve double-spread kuchie filenames such as
+        # kuchie-002-003.jpg / kuchie_002_003.jpg even when publisher profile
+        # patterns only match single-index variants (kuchie-002.jpg).
+        if re.match(r"^(o_)?kuchie[-_]\d+(?:[-_]\d+)+\.jpe?g$", filename, re.IGNORECASE):
+            return PatternMatch(
+                matched=True,
+                image_type="kuchie",
+                pattern_used="compat:kuchie_double_spread",
+                publisher=pattern_source,
+                confidence="fallback",
+            )
+
         # No match - report mismatch
         self._track_mismatch(filename, publisher)
 

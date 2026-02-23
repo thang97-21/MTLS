@@ -176,7 +176,10 @@ class PipelineController:
                 get_language_config,
                 get_target_language,
             )
-            from pipeline.translator.config import get_fallback_model_name, get_model_name
+            from pipeline.translator.config import (
+                get_fallback_model_name, get_model_name,
+                get_translator_provider, get_anthropic_config,
+            )
 
             target_lang = get_target_language()
             lang_config = get_language_config(target_lang)
@@ -185,6 +188,9 @@ class PipelineController:
             gemini_cfg = get_config_section("gemini")
             multimodal_cfg = get_config_section("multimodal")
             massive_cfg = translation_cfg.get("massive_chapter", {})
+
+            # Active translator provider
+            provider = get_translator_provider()
 
             # Tiered RAG signals
             modules_dir = CONFIG_PIPELINE_ROOT / lang_config.get("modules_dir", "modules/")
@@ -201,10 +207,24 @@ class PipelineController:
             else:
                 vector_hint = "language pattern stores"
 
-            # Caching signals
-            caching_cfg = gemini_cfg.get("caching", {})
-            cache_enabled = bool(caching_cfg.get("enabled", True))
-            cache_ttl = int(caching_cfg.get("ttl_minutes", 120))
+            # Caching signals — provider-aware
+            if provider == "anthropic":
+                anthropic_cfg = get_anthropic_config()
+                caching_cfg = anthropic_cfg.get("caching", {})
+                cache_enabled = bool(caching_cfg.get("enabled", True))
+                _ttl_min = int(caching_cfg.get("ttl_minutes", 5))
+                _ttl_label = "5m" if _ttl_min <= 5 else "1h"
+                cache_ttl_str = f"{_ttl_label} ephemeral" if cache_enabled else "OFF"
+                active_model = anthropic_cfg.get("model", "claude-sonnet-4-6")
+                active_fallback = anthropic_cfg.get("fallback_model", "claude-haiku-4-5-20251001")
+            else:
+                caching_cfg = gemini_cfg.get("caching", {})
+                cache_enabled = bool(caching_cfg.get("enabled", True))
+                cache_ttl_str = f"{int(caching_cfg.get('ttl_minutes', 120))}m"
+                active_model = get_model_name()
+                active_fallback = get_fallback_model_name()
+
+            cache_ttl = cache_ttl_str  # used in the cache line below
 
             # Multimodal signals
             multimodal_allowed = bool(multimodal_cfg.get("enabled", False))
@@ -229,7 +249,7 @@ class PipelineController:
             lines = [
                 (
                     f"Runtime Profile: DONE | {target_lang.upper()} ({lang_config.get('language_name', target_lang.upper())}) "
-                    f"| Model={get_model_name()} | Fallback={get_fallback_model_name()}"
+                    f"| Provider={provider.upper()} | Model={active_model} | Fallback={active_fallback}"
                 ),
                 (
                     f"Tiered RAG: {rag_status} | T1 Core={core_module_count} | T1 Grammar={'ON' if grammar_rag_enabled else 'OFF'} "
@@ -239,7 +259,7 @@ class PipelineController:
                     f"Vector Search: {vector_status} | {'ON' if grammar_rag_enabled else 'AUTO'} | Source={vector_hint}"
                 ),
                 (
-                    f"Context Cache: {cache_status} | {'ON' if cache_enabled else 'OFF'} | TTL={cache_ttl}m"
+                    f"Context Cache: {cache_status} | {'ON' if cache_enabled else 'OFF'} | TTL={cache_ttl}"
                 ),
                 (
                     f"Smart Chunking: {chunk_status} | {'ON' if smart_chunking_enabled else 'OFF'} "
@@ -1242,25 +1262,28 @@ class PipelineController:
         
         return manifest.get('pipeline_state', {})
     
-    def run_phase1(self, epub_path: Path, volume_id: str) -> bool:
+    def run_phase1(self, epub_path: Path, volume_id: str, ref_validate: bool = False) -> bool:
         """Run Phase 1: Librarian (EPUB Extraction)."""
         from pipeline.config import get_target_language
-        
+
         self._ui_header("Phase 1 - Librarian", "Extract EPUB, chapters, assets, and manifest state")
-        
+
         # Get target language from config
         target_lang = get_target_language()
-        
+
         cmd = [
             sys.executable, "-m", "pipeline.librarian.agent",
             str(epub_path),
             "--work-dir", str(self.work_dir),
             "--target-lang", target_lang
         ]
-        
+
         # Only add volume-id if provided
         if volume_id:
             cmd.extend(["--volume-id", volume_id])
+
+        if ref_validate:
+            cmd.append("--ref-validate")
         
         logger.info(f"Target Language: {target_lang.upper()}")
         
@@ -1802,13 +1825,40 @@ class PipelineController:
             logger.error("  Please run Phase 1 first to extract the EPUB")
             return False
 
-        use_full_ln_cache = self._resolve_full_ln_cache_mode(
-            standalone=standalone,
-            full_ln_cache_mode=full_ln_cache_mode,
-            volume_id=volume_id,
-            manifest=manifest,
-            phase_label="Phase 2 (Translator)",
-        )
+        # ── Anthropic provider: bypass Gemini-exclusive cache infrastructure ──
+        # Phase 1.55 (rich_metadata_cache) runs Gemini 2.5 Flash to create a
+        # named CachedContent resource on Google's servers. This resource is
+        # meaningless when the translator is Anthropic — skip it entirely and
+        # purge any stale Gemini cache state so the gate never blocks startup.
+        from pipeline.translator.config import get_translator_provider
+        if get_translator_provider() == "anthropic":
+            pipeline_state = manifest.get("pipeline_state", {})
+            if isinstance(pipeline_state, dict) and "rich_metadata_cache" in pipeline_state:
+                logger.info(
+                    "[ANTHROPIC] Detected existing Gemini full-LN cache state — purging "
+                    "(Gemini CachedContent resources are not used by the Anthropic translator path)."
+                )
+                self._purge_full_ln_cache_state(volume_id)
+                manifest = self.load_manifest(volume_id) or manifest
+            else:
+                logger.info(
+                    "[ANTHROPIC] No Gemini full-LN cache state found — nothing to purge."
+                )
+            logger.info(
+                "[ANTHROPIC] Skipping Phase 1.55 and Full-LN Cache Gate "
+                "(Gemini-exclusive; Anthropic builds its own inline cache at translation time)."
+            )
+            use_full_ln_cache = False
+        else:
+            use_full_ln_cache = self._resolve_full_ln_cache_mode(
+                standalone=standalone,
+                full_ln_cache_mode=full_ln_cache_mode,
+                volume_id=volume_id,
+                manifest=manifest,
+                phase_label="Phase 2 (Translator)",
+            )
+        # ── end Anthropic bypass ──────────────────────────────────────────────
+
         if use_full_ln_cache:
             resolved_phase155_mode = self._resolve_phase155_mode_for_phase2(
                 standalone=standalone,
@@ -1833,21 +1883,7 @@ class PipelineController:
                 )
             elif resolved_phase155_mode == "skip":
                 logger.info(
-                    "Skipping Phase 1.55 metadata overwrite by user request; "
-                    "preparing full-LN cache path in cache-only mode."
-                )
-                if not self.run_phase1_55_cache_only(volume_id):
-                    logger.error("Phase 1.55 cache-only prep failed; cannot continue Phase 2.")
-                    return False
-                manifest = self.load_manifest(volume_id) or manifest
-                refreshed_state = self._check_full_ln_cache_state(manifest)
-                logger.info(
-                    f"Full-LN cache status after cache-only prep: "
-                    f"{refreshed_state['cached']}/{refreshed_state['expected']} "
-                    f"(ready={refreshed_state['ready']}, reason={refreshed_state['reason']})."
-                )
-                logger.info(
-                    "Continuing with current manifest metadata (rich metadata fields not overwritten)."
+                    "Skipping Phase 1.55 — translator will build the full-LN cache directly."
                 )
             else:
                 if not self.ensure_full_ln_cache(
@@ -3673,7 +3709,7 @@ def main():
 
     elif args.command == 'phase1':
         epub_path = Path(args.epub_path)
-        success = controller.run_phase1(epub_path, args.volume_id)
+        success = controller.run_phase1(epub_path, args.volume_id, ref_validate=getattr(args, 'ref_validate', False))
         sys.exit(0 if success else 1)
     
     elif args.command == 'phase1.5':
@@ -3696,7 +3732,9 @@ def main():
             )
         enable_gap_analysis = getattr(args, 'enable_gap_analysis', False)
         enable_multimodal = getattr(args, 'enable_multimodal', False)
-        phase155_mode = getattr(args, 'phase155_mode', 'ask')
+        # Default to 'skip' (cache-only): the full-LN cache gate already asks whether to
+        # rebuild. Only re-run Phase 1.55 if the user explicitly passes --phase1-55-mode overwrite.
+        phase155_mode = getattr(args, 'phase1_55_mode', 'skip')
         full_ln_cache_mode = getattr(args, 'full_ln_cache', 'ask')
         success = controller.run_phase2(args.volume_id, args.chapters, args.force,
                                         enable_gap_analysis, enable_multimodal,

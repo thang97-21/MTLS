@@ -38,6 +38,7 @@ class ChapterSummary:
     plot_points: List[str] = field(default_factory=list)
     emotional_tone: str = ""
     new_characters: List[str] = field(default_factory=list)
+    name_rendering: Dict[str, str] = field(default_factory=dict)  # full name → nickname used
     running_jokes: List[str] = field(default_factory=list)
     tone_shifts: List[str] = field(default_factory=list)
 
@@ -67,13 +68,34 @@ class VolumeContext:
         sections.append(f"**Overall Tone:** {self.overall_tone}")
         sections.append("")
 
-        # Section 2: Character Registry
+        # Section 2: Locked Name Rendering Table
+        # Aggregated from all previous chapter name_rendering dicts.
+        # This is the single most critical continuity signal — prevents per-chapter
+        # name drift (e.g. "Luna" vs "Runa") by locking the rendering decision made
+        # in the chapter where the character was first addressed by name.
+        consolidated_rendering: Dict[str, str] = {}
+        for summary in self.chapter_summaries:
+            for full_name, nickname in summary.name_rendering.items():
+                if full_name not in consolidated_rendering:
+                    consolidated_rendering[full_name] = nickname  # first-seen wins
+        if consolidated_rendering:
+            sections.append("## LOCKED NAME RENDERING")
+            sections.append(
+                "These name forms are ESTABLISHED. Use them exactly — do not alternate:"
+            )
+            sections.append("")
+            for full_name, nickname in consolidated_rendering.items():
+                sections.append(f"- **{full_name}** → call as **{nickname}**")
+            sections.append("")
+
+        # Section 3: Character Registry
         if self.character_registry:
             sections.append("## CHARACTER REGISTRY")
             sections.append("Established characters from previous chapters:")
             sections.append("")
             for name, char in self.character_registry.items():
-                sections.append(f"### {char.name_en} ({char.name_jp})")
+                jp_part = f" ({char.name_jp})" if char.name_jp else ""
+                sections.append(f"### {char.name_en}{jp_part}")
                 sections.append(f"- **First appearance:** Chapter {char.first_appearance_chapter}")
                 if char.personality_traits:
                     sections.append(f"- **Personality:** {', '.join(char.personality_traits)}")
@@ -85,27 +107,27 @@ class VolumeContext:
                     sections.append(f"- **Honorifics:** {', '.join(char.honorifics_used)}")
                 sections.append("")
 
-        # Section 3: Chapter Progression
+        # Section 4: Chapter Progression
         if self.chapter_summaries:
             sections.append("## CHAPTER PROGRESSION")
             for summary in self.chapter_summaries[-5:]:  # Last 5 chapters for relevance
                 sections.append(f"### Chapter {summary.chapter_num}: {summary.title}")
                 if summary.plot_points:
-                    sections.append(f"**Plot:** {'; '.join(summary.plot_points[:3])}")  # Top 3 points
+                    sections.append(f"**Plot:** {'; '.join(summary.plot_points[:3])}")
                 if summary.emotional_tone:
                     sections.append(f"**Tone:** {summary.emotional_tone}")
                 if summary.new_characters:
                     sections.append(f"**New characters:** {', '.join(summary.new_characters)}")
                 sections.append("")
 
-        # Section 4: Established Patterns
+        # Section 5: Established Patterns
         if self.recurring_patterns:
             sections.append("## RECURRING PATTERNS")
             for pattern_type, pattern_data in self.recurring_patterns.items():
                 sections.append(f"**{pattern_type}:** {pattern_data}")
             sections.append("")
 
-        # Section 5: Terminology Consistency
+        # Section 6: Terminology Consistency
         if self.established_terminology:
             sections.append("## ESTABLISHED TERMINOLOGY")
             for jp_term, en_translation in self.established_terminology.items():
@@ -221,33 +243,88 @@ class VolumeContextAggregator:
         return title
 
     def _load_bible(self) -> Optional[Dict[str, Any]]:
-        """Load bible.json if exists."""
-        if not self.bible_path.exists():
-            logger.warning(f"Bible not found: {self.bible_path}")
-            return None
+        """Load bible.json if exists, falling back to manifest.json character_profiles."""
+        if self.bible_path.exists():
+            try:
+                with open(self.bible_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.error(f"Failed to load bible: {e}")
 
-        try:
-            with open(self.bible_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception as e:
-            logger.error(f"Failed to load bible: {e}")
-            return None
+        # Fallback: synthesize bible-compatible structure from manifest.json
+        manifest_path = self.work_dir / 'manifest.json'
+        if manifest_path.exists():
+            try:
+                with open(manifest_path, 'r', encoding='utf-8') as f:
+                    manifest = json.load(f)
+                meta = manifest.get('metadata_en', {})
+                profiles = meta.get('character_profiles', {})
+                if profiles:
+                    logger.info(
+                        f"[VOL-CTX] Bible not found — synthesizing character registry "
+                        f"from manifest.json ({len(profiles)} profiles)"
+                    )
+                    # Convert character_profiles to bible-compatible format
+                    bible_chars = {}
+                    for char_name, p in profiles.items():
+                        ruby_base = p.get('ruby_base', '')
+                        nickname = p.get('nickname', '')
+                        full_name = p.get('full_name', char_name)
+                        personality = p.get('personality_traits', '')
+                        dialogue = p.get('speech_pattern', '')
+                        keigo = p.get('keigo_switch', {})
+                        honorifics = list(keigo.get('speaking_to', {}).keys()) if keigo else []
+                        relationships = {
+                            'role': p.get('relationship_to_protagonist', ''),
+                        }
+                        if p.get('relationship_to_others'):
+                            relationships['others'] = p['relationship_to_others']
+                        en_name = full_name
+                        if nickname and nickname.lower() not in full_name.lower():
+                            en_name = f"{full_name} (nickname: {nickname})"
+                        bible_chars[char_name] = {
+                            'name_en': en_name,
+                            'name_jp': ruby_base,
+                            'first_appearance': 1,
+                            'personality': [personality] if isinstance(personality, str) and personality else personality if isinstance(personality, list) else [],
+                            'dialogue_style': dialogue,
+                            'honorifics': honorifics,
+                            'relationships': relationships,
+                        }
+                    return {'characters': bible_chars}
+            except Exception as e:
+                logger.warning(f"[VOL-CTX] Failed to synthesize from manifest: {e}")
+
+        logger.warning(f"[VOL-CTX] No bible or manifest found at {self.work_dir}")
+        return None
 
     def _extract_characters_from_bible(self, bible_data: Dict[str, Any]) -> Dict[str, CharacterEntry]:
-        """Extract character registry from bible.json."""
+        """Extract character registry from bible-compatible dict."""
         characters = {}
 
-        # Bible structure: {"characters": {"CharName": {...}}}
         bible_characters = bible_data.get('characters', {})
 
         for char_name, char_data in bible_characters.items():
+            name_en = char_data.get('name_en', char_name)
+            personality_raw = char_data.get('personality', [])
+            personality = (
+                [personality_raw] if isinstance(personality_raw, str) and personality_raw
+                else personality_raw if isinstance(personality_raw, list)
+                else []
+            )
+            relationships_raw = char_data.get('relationships', {})
+            relationships = (
+                relationships_raw if isinstance(relationships_raw, dict)
+                else {}
+            )
             characters[char_name] = CharacterEntry(
-                name_en=char_data.get('name_en', char_name),
+                name_en=name_en,
                 name_jp=char_data.get('name_jp', ''),
                 first_appearance_chapter=char_data.get('first_appearance', 1),
-                personality_traits=char_data.get('personality', []),
+                personality_traits=personality,
                 dialogue_style=char_data.get('dialogue_style', ''),
-                honorifics_used=char_data.get('honorifics', [])
+                honorifics_used=char_data.get('honorifics', []),
+                relationships=relationships,
             )
 
         return characters
@@ -270,7 +347,12 @@ class VolumeContextAggregator:
             try:
                 with open(summary_file, 'r', encoding='utf-8') as f:
                     summary_data = json.load(f)
-                    return ChapterSummary(**summary_data)
+                # Tolerate summaries written before name_rendering field was added
+                summary_data.setdefault('name_rendering', {})
+                # Keep only fields that ChapterSummary accepts
+                valid_fields = {f.name for f in ChapterSummary.__dataclass_fields__.values()}
+                filtered = {k: v for k, v in summary_data.items() if k in valid_fields}
+                return ChapterSummary(**filtered)
             except Exception as e:
                 logger.warning(f"Failed to load summary for Chapter {chapter_num}: {e}")
 
@@ -339,17 +421,34 @@ class VolumeContextAggregator:
         return most_common_tone
 
     def _extract_terminology(self, bible_data: Optional[Dict[str, Any]]) -> Dict[str, str]:
-        """Extract established terminology from bible."""
-        if not bible_data:
-            return {}
-
+        """Extract established terminology from bible or manifest."""
         terminology = {}
 
-        # Bible structure: {"terminology": {"JP_term": "EN_translation"}}
-        bible_terms = bible_data.get('terminology', {})
+        if bible_data:
+            # Standard bible structure: {"terminology": {"JP_term": "EN_translation"}}
+            for jp_term, en_translation in bible_data.get('terminology', {}).items():
+                terminology[jp_term] = str(en_translation)
 
-        for jp_term, en_translation in bible_terms.items():
-            terminology[jp_term] = en_translation
+        # Also pull from manifest cultural_terms if available
+        manifest_path = self.work_dir / 'manifest.json'
+        if manifest_path.exists():
+            try:
+                with open(manifest_path, 'r', encoding='utf-8') as f:
+                    manifest = json.load(f)
+                meta = manifest.get('metadata_en', {})
+                cultural = meta.get('cultural_terms', {})
+                if isinstance(cultural, dict):
+                    for jp_term, data in cultural.items():
+                        if jp_term in terminology:
+                            continue  # bible takes precedence
+                        if isinstance(data, str):
+                            terminology[jp_term] = data
+                        elif isinstance(data, dict):
+                            en = data.get('translation') or data.get('en') or data.get('meaning', '')
+                            if en:
+                                terminology[jp_term] = str(en)
+            except Exception as e:
+                logger.debug(f"[VOL-CTX] Could not read manifest cultural_terms: {e}")
 
         return terminology
 
@@ -381,6 +480,7 @@ class VolumeContextAggregator:
                         'plot_points': s.plot_points,
                         'emotional_tone': s.emotional_tone,
                         'new_characters': s.new_characters,
+                        'name_rendering': s.name_rendering,
                         'running_jokes': s.running_jokes,
                         'tone_shifts': s.tone_shifts
                     }

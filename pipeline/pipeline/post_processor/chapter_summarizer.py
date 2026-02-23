@@ -179,12 +179,16 @@ class ChapterSummarizationAgent:
             '  "title": <string>,\n'
             '  "plot_points": <array of 3-6 short strings>,\n'
             '  "emotional_tone": <string>,\n'
-            '  "new_characters": <array of character names introduced in this chapter>,\n'
+            '  "new_characters": <array of objects: {"name": <string as rendered in this chapter>, "nickname": <string or null>, "role": <short descriptor>}>,\n'
+            '  "name_rendering": <object mapping each character\'s canonical full name to the nickname/short form used in this chapter, e.g. {"Harukawa Runa": "Luna"}>,\n'
             '  "running_jokes": <array of recurring joke motifs appearing in this chapter>,\n'
             '  "tone_shifts": <array of notable tone changes in chapter order>\n'
             "}\n\n"
             f"Language of summary fields should match chapter language: {self.target_language}.\n"
-            "Keep each array item short and concrete.\n\n"
+            "Keep each array item short and concrete.\n"
+            "For name_rendering: include EVERY named character who appears, mapping their full surname+given name "
+            "to the nickname or short form actually used when addressing them in this chapter. "
+            "This is critical for cross-chapter name consistency.\n\n"
             f"CHAPTER NUMBER: {chapter_num}\n"
             f"CHAPTER TITLE: {chapter_title}\n\n"
             "CHAPTER TEXT:\n"
@@ -226,12 +230,43 @@ class ChapterSummarizationAgent:
         fallback_text: str,
     ) -> Dict[str, Any]:
         """Normalize to strict ChapterSummary schema."""
+        # new_characters: accept both legacy string list and new object list
+        raw_new_chars = parsed.get("new_characters", [])
+        new_characters: List[str] = []
+        if isinstance(raw_new_chars, list):
+            for item in raw_new_chars:
+                if isinstance(item, str):
+                    new_characters.append(item)
+                elif isinstance(item, dict):
+                    name = str(item.get("name") or "").strip()
+                    nickname = str(item.get("nickname") or "").strip()
+                    role = str(item.get("role") or "").strip()
+                    if name:
+                        label = name
+                        if nickname and nickname.lower() != name.lower():
+                            label = f"{name} (nickname: {nickname})"
+                        if role:
+                            label = f"{label} — {role}"
+                        new_characters.append(label)
+        new_characters = new_characters[:12]
+
+        # name_rendering: dict mapping full name → nickname used in this chapter
+        raw_rendering = parsed.get("name_rendering", {})
+        name_rendering = {}
+        if isinstance(raw_rendering, dict):
+            for full, nick in raw_rendering.items():
+                full = str(full).strip()
+                nick = str(nick).strip()
+                if full and nick:
+                    name_rendering[full] = nick
+
         payload = {
             "chapter_num": chapter_num,
             "title": str(parsed.get("title") or chapter_title).strip() or chapter_title,
             "plot_points": self._clean_string_list(parsed.get("plot_points"), limit=6),
             "emotional_tone": str(parsed.get("emotional_tone") or "").strip(),
-            "new_characters": self._clean_string_list(parsed.get("new_characters"), limit=12),
+            "new_characters": new_characters,
+            "name_rendering": name_rendering,
             "running_jokes": self._clean_string_list(parsed.get("running_jokes"), limit=8),
             "tone_shifts": self._clean_string_list(parsed.get("tone_shifts"), limit=8),
         }
@@ -263,6 +298,7 @@ class ChapterSummarizationAgent:
             "plot_points": plot_points,
             "emotional_tone": "neutral",
             "new_characters": [],
+            "name_rendering": {},
             "running_jokes": [],
             "tone_shifts": [],
         }

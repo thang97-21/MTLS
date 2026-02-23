@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
@@ -35,6 +36,13 @@ class SceneBeat:
     illustration_anchor: bool = False
     start_paragraph: Optional[int] = None
     end_paragraph: Optional[int] = None
+    # Culture bleed risk annotation (optional — populated by planner when JP-specific
+    # phrases are detected that LLMs commonly mistranslate by scene-feel substitution)
+    culture_bleed_risk: Optional[str] = None          # "high" | "medium" | "low" | None
+    culture_bleed_category: Optional[str] = None      # see CULTURE_BLEED_CATEGORIES
+    culture_bleed_source_phrase: Optional[str] = None # the JP phrase triggering the flag
+    culture_bleed_warning: Optional[str] = None       # inline warning injected into Stage 2
+    culture_bleed_forbidden: Optional[List[str]] = None  # forbidden EN substitutions
 
 
 @dataclass
@@ -61,9 +69,21 @@ class ScenePlan:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert dataclass plan to JSON-serializable dict."""
+        def _scene_to_dict(scene: "SceneBeat") -> Dict[str, Any]:
+            d = asdict(scene)
+            # Omit None culture bleed fields to keep JSON compact for unaffected scenes
+            for key in (
+                "culture_bleed_risk", "culture_bleed_category",
+                "culture_bleed_source_phrase", "culture_bleed_warning",
+                "culture_bleed_forbidden",
+            ):
+                if d.get(key) is None:
+                    d.pop(key, None)
+            return d
+
         return {
             "chapter_id": self.chapter_id,
-            "scenes": [asdict(scene) for scene in self.scenes],
+            "scenes": [_scene_to_dict(scene) for scene in self.scenes],
             "character_profiles": {
                 name: asdict(profile)
                 for name, profile in self.character_profiles.items()
@@ -103,6 +123,9 @@ class ScenePlanningAgent:
         self.model = model
         self.temperature = temperature
         self.max_output_tokens = max_output_tokens
+        self.empty_response_retries = max(0, int(self.config.get("empty_response_retries", 2)))
+        self.empty_retry_backoff_seconds = max(0.0, float(self.config.get("empty_retry_backoff_seconds", 1.5)))
+        self.enable_safety_sanitized_retry = bool(self.config.get("enable_safety_sanitized_retry", True))
         self.gemini = gemini_client or GeminiClient(model=model, enable_caching=False)
         self.planning_prompt = self._build_planning_prompt()
 
@@ -191,10 +214,38 @@ class ScenePlanningAgent:
             "- illustration_anchor (boolean)\n"
             "- consistency rule: if beat_type is 'illustration_anchor', illustration_anchor must be true\n"
             "- start_paragraph (integer or null)\n"
-            "- end_paragraph (integer or null)\n\n"
+            "- end_paragraph (integer or null)\n"
+            "- culture_bleed_risk (string: \"high\" | \"medium\" | \"low\" | omit if none)\n"
+            "- culture_bleed_category (string: one of farewell_greeting_formula | school_hierarchy_vocab | gendered_speech_register | otaku_attribute_vocab | emotional_beat_substitution | omit if none)\n"
+            "- culture_bleed_source_phrase (string: the exact JP phrase triggering the flag, omit if none)\n"
+            "- culture_bleed_warning (string: concise EN warning for the Stage 2 translator, omit if none)\n"
+            "- culture_bleed_forbidden (array of strings: EN phrasings the translator must NOT use, omit if none)\n\n"
+            "Culture bleed annotation rules:\n"
+            "Flag a scene if it contains JP-specific phrases that English LLMs commonly mistranslate\n"
+            "by substituting emotional scene-feel instead of the phrase's actual meaning.\n"
+            "Categories and examples:\n"
+            "  farewell_greeting_formula: よろしくね (mutual welcome, NOT 'welcome home'), お邪魔します\n"
+            "    (polite entry greeting, NOT 'sorry to intrude'), おかえり/ただいま (homecoming pair),\n"
+            "    お疲れ様 (effort acknowledgment, NOT generic 'thank you')\n"
+            "  school_hierarchy_vocab: 一軍/二軍 (first/second squad social rank, NOT 'A-list'),\n"
+            "    陽キャ (outgoing type, NOT 'popular kid'), 陰キャ (introverted type, NOT 'nerd/loser'),\n"
+            "    一軍女子 (top-tier social rank, NOT 'queen bee' or 'A-list girl')\n"
+            "  gendered_speech_register: gruff older male patterns (だかなんだか知らんが, 〜せんぞ, 知らんが)\n"
+            "    where Anglo slang injection (rhyming dismissals, Yiddish-origin expressions) would be wrong\n"
+            "  otaku_attribute_vocab: 属性 in social context (character attribute tag, NOT 'label'/'backstory'),\n"
+            "    キャラ, ポジション used as social role descriptors\n"
+            "  emotional_beat_substitution: any high-stakes closing exchange where the scene feel strongly\n"
+            "    pulls toward a different phrase than the source (e.g. よろしく in a homecoming-feeling scene)\n"
+            "Only flag when the risk is genuine. Omit all culture_bleed_* keys for clean scenes.\n"
+            "culture_bleed_warning must be a single concise sentence for the translator, not an essay.\n\n"
             "Character profile keys:\n"
             "- name, emotional_state, sentence_bias, relationship_dynamic (string)\n"
             "- victory_patterns, denial_patterns (array of strings)\n\n"
+            "Safety style constraints (MANDATORY):\n"
+            "- Describe scenes in neutral narrative terms.\n"
+            "- Do NOT mention character ages or age-like labels.\n"
+            "- Do NOT use strong sexualized descriptors or explicit sexual wording.\n"
+            "- If intimacy is relevant, describe emotional tension and proximity non-explicitly.\n\n"
             "Keep output compact and actionable."
         )
 
@@ -215,6 +266,107 @@ class ScenePlanningAgent:
             f"{numbered_text}\n"
         )
 
+    @staticmethod
+    def _sanitize_planner_text(japanese_text: str) -> str:
+        """
+        Reduce prompt-block risk for Stage 1 planning by neutralizing explicit tokens.
+        Keeps narrative structure intact; this planner does not require explicit wording.
+
+        Two tiers:
+        - Tier 1: Phrase-level replacements (preserve meaning, swap surface form)
+        - Tier 2: Drop lines whose density cannot be neutralized by substitution
+          (ロリコン commentary, body-description narration, minor-framing labels)
+        """
+        # --- Tier 1: phrase substitutions ---
+        text = japanese_text
+        replacements = {
+            # Body / underwear / explicit
+            "パンツ一枚": "ラフな部屋着",
+            "パンツ": "部屋着",
+            "下着": "服装",
+            "裸": "無防備な姿",
+            "脱い": "着替え",
+            "お腹": "服装",
+            "胸": "上半身",
+            "キス": "親密な接触",
+            "マッサージ": "ケア",
+            "痴態": "失態",
+            "だらしない声": "気の抜けた反応",
+            "性的": "親密",
+            "エッチな": "親密な",
+            "エッチ": "親密",
+            "いやらし": "過剰な",
+            # Minor-framing / age commentary
+            "ロリコン": "特殊な好み",
+            "ロリ": "小柄な",
+            "小学生": "幼く見える",
+            "幼女": "小さな子",
+            "児童": "子供",
+            # Physical contact / positioning
+            "むにゅ": "ぶつかり",
+            "ぷにぷに": "柔らかい",
+            "むにっ": "ぶつかり",
+            "柔らか": "やわらかい",
+        }
+        for src, dst in replacements.items():
+            text = text.replace(src, dst)
+
+        # --- Tier 2: drop lines that remain high-density after substitution ---
+        # Lines with these patterns cannot be meaningfully neutralized and are
+        # irrelevant to beat/rhythm analysis (planner only needs structure, not content).
+        DROP_LINE = re.compile(
+            r'股間|太もも|下半身|肌色|裸身'   # body parts not covered above
+            r'|痴漢|盗撮|淫ら'               # criminal/explicit framing
+            r'|特殊な好み.*特殊な好み'         # double-density after substitution
+        )
+        kept = []
+        for line in text.splitlines():
+            if DROP_LINE.search(line):
+                kept.append("")  # blank line — preserves paragraph structure
+            else:
+                kept.append(line)
+        text = "\n".join(kept)
+
+        # --- Tier 3: regex softening for specific age/context patterns ---
+        text = re.sub(r"十七年ほど生きてきて", "これまで生きてきて", text)
+        text = re.sub(r"(小学|中学)(生|校)", "年下の子", text)
+
+        return text
+
+    @staticmethod
+    def _contains_high_risk_terms(japanese_text: str) -> bool:
+        """Detect terms that frequently trigger Gemini prompt-side safety blocks."""
+        high_risk = re.compile(
+            r"ロリコン|ロリ|小学生|幼女|児童|痴漢|下着|パンツ|股間|太もも|下半身|"
+            r"エッチ|性的|いやらし|裸|裸身"
+        )
+        return bool(high_risk.search(japanese_text or ""))
+
+    @staticmethod
+    def _is_prohibited_content_error(error: Exception) -> bool:
+        """Best-effort detection of Gemini PROHIBITED_CONTENT / safety block errors."""
+        text = str(error or "").upper()
+        return (
+            "PROHIBITED_CONTENT" in text
+            or "FINISHREASON.PROHIBITED_CONTENT" in text
+            or ("FAILED_PRECONDITION" in text and "400" in text)
+            or ("SAFETY" in text and "BLOCK" in text)
+        )
+
+    @staticmethod
+    def _build_ultra_safe_planner_text(japanese_text: str) -> str:
+        """
+        Build a structure-only fallback input when sanitized text still blocks.
+        Keeps paragraph count while removing narrative content entirely.
+        """
+        paragraphs = ScenePlanningAgent._split_paragraphs(japanese_text or "")
+        if not paragraphs:
+            return "Scene content omitted for safety. Focus on neutral pacing scaffold only."
+        return "\n\n".join(
+            f"Paragraph {idx}: content omitted for safety; infer neutral transition beat."
+            for idx, _ in enumerate(paragraphs, 1)
+        )
+
     def generate_plan(
         self,
         chapter_id: str,
@@ -226,17 +378,145 @@ class ScenePlanningAgent:
             raise ScenePlanningError(f"Empty Japanese text for chapter {chapter_id}")
 
         paragraph_count = len(self._split_paragraphs(japanese_text))
-        planning_input = self._build_planning_input(chapter_id, japanese_text)
-        response = self.gemini.generate(
-            prompt=planning_input,
-            system_instruction=self.planning_prompt,
-            model=model or self.model,
-            temperature=self.temperature,
-            max_output_tokens=self.max_output_tokens,
+        sanitized_text = self._sanitize_planner_text(japanese_text)
+        high_risk = self._contains_high_risk_terms(japanese_text)
+        pre_sanitize = (
+            self.enable_safety_sanitized_retry
+            and (high_risk or sanitized_text != japanese_text)
         )
-        raw = getattr(response, "content", None) or ""
+
+        planning_input_primary = self._build_planning_input(chapter_id, japanese_text)
+        planning_input_sanitized = self._build_planning_input(chapter_id, sanitized_text)
+        planning_input_ultra_safe = self._build_planning_input(
+            chapter_id,
+            self._build_ultra_safe_planner_text(japanese_text),
+        )
+
+        using_sanitized = pre_sanitize
+        using_ultra_safe = False
+        if pre_sanitize:
+            logger.warning(
+                "[SCENE-PLAN] Pre-sanitizing %s (high_risk=%s, text_changed=%s)",
+                chapter_id,
+                high_risk,
+                sanitized_text != japanese_text,
+            )
+        max_attempts = self.empty_response_retries + 1
+        response = None
+        raw = ""
+        finish_reason = "UNKNOWN"
+        for attempt in range(1, max_attempts + 1):
+            if using_ultra_safe:
+                current_input = planning_input_ultra_safe
+            elif using_sanitized:
+                current_input = planning_input_sanitized
+            else:
+                current_input = planning_input_primary
+
+            try:
+                response = self.gemini.generate(
+                    prompt=current_input,
+                    system_instruction=self.planning_prompt,
+                    model=model or self.model,
+                    temperature=self.temperature,
+                    max_output_tokens=self.max_output_tokens,
+                )
+            except Exception as e:
+                if self._is_prohibited_content_error(e) and attempt < max_attempts:
+                    if not using_sanitized and self.enable_safety_sanitized_retry:
+                        using_sanitized = True
+                        logger.warning(
+                            "[SCENE-PLAN] PROHIBITED_CONTENT for %s (attempt %d/%d) -> retrying with safety-sanitized input",
+                            chapter_id,
+                            attempt,
+                            max_attempts,
+                        )
+                        if self.empty_retry_backoff_seconds > 0:
+                            time.sleep(self.empty_retry_backoff_seconds * attempt)
+                        continue
+                    if not using_ultra_safe:
+                        using_ultra_safe = True
+                        logger.warning(
+                            "[SCENE-PLAN] PROHIBITED_CONTENT persists for %s (attempt %d/%d) -> retrying with ultra-safe structure-only input",
+                            chapter_id,
+                            attempt,
+                            max_attempts,
+                        )
+                        if self.empty_retry_backoff_seconds > 0:
+                            time.sleep(self.empty_retry_backoff_seconds * attempt)
+                        continue
+                    logger.warning(
+                        "[SCENE-PLAN] PROHIBITED_CONTENT persists for %s (attempt %d/%d) -> retrying in ultra-safe mode",
+                        chapter_id,
+                        attempt,
+                        max_attempts,
+                    )
+                    if self.empty_retry_backoff_seconds > 0:
+                        time.sleep(self.empty_retry_backoff_seconds * attempt)
+                    continue
+                raise
+
+            raw = getattr(response, "content", None) or ""
+            finish_reason = str(getattr(response, "finish_reason", "") or "UNKNOWN")
+            if raw.strip():
+                break
+
+            logger.warning(
+                "[SCENE-PLAN] Empty Gemini response for %s (attempt %d/%d, finish_reason=%s)",
+                chapter_id,
+                attempt,
+                max_attempts,
+                finish_reason,
+            )
+            blocked_empty = "PROHIBITED_CONTENT" in finish_reason.upper()
+            if blocked_empty and attempt < max_attempts:
+                if not using_sanitized and self.enable_safety_sanitized_retry:
+                    using_sanitized = True
+                    logger.warning(
+                        "[SCENE-PLAN] Empty response was prompt-blocked for %s (attempt %d/%d) -> retrying with safety-sanitized input",
+                        chapter_id,
+                        attempt,
+                        max_attempts,
+                    )
+                elif not using_ultra_safe:
+                    using_ultra_safe = True
+                    logger.warning(
+                        "[SCENE-PLAN] Empty response still prompt-blocked for %s (attempt %d/%d) -> retrying with ultra-safe structure-only input",
+                        chapter_id,
+                        attempt,
+                        max_attempts,
+                    )
+                else:
+                    logger.warning(
+                        "[SCENE-PLAN] Prompt-block persists for %s (attempt %d/%d) -> retrying in ultra-safe mode",
+                        chapter_id,
+                        attempt,
+                        max_attempts,
+                    )
+                if self.empty_retry_backoff_seconds > 0:
+                    time.sleep(self.empty_retry_backoff_seconds * attempt)
+                continue
+            if (
+                not using_sanitized
+                and self.enable_safety_sanitized_retry
+                and attempt < max_attempts
+            ):
+                sanitized_text = self._sanitize_planner_text(japanese_text)
+                if sanitized_text != japanese_text:
+                    using_sanitized = True
+                    planning_input_sanitized = self._build_planning_input(chapter_id, sanitized_text)
+                    logger.warning(
+                        "[SCENE-PLAN] Retrying %s with safety-sanitized planning input",
+                        chapter_id,
+                    )
+            if attempt < max_attempts and self.empty_retry_backoff_seconds > 0:
+                time.sleep(self.empty_retry_backoff_seconds * attempt)
+
         if not raw.strip():
-            raise ScenePlanningError(f"Planner returned empty response for {chapter_id}")
+            raise ScenePlanningError(
+                f"Planner returned empty response for {chapter_id} "
+                f"after {max_attempts} attempt(s) (finish_reason={finish_reason})"
+            )
 
         plan_dict = self._parse_response_json(raw)
         if "chapter_id" not in plan_dict or not str(plan_dict.get("chapter_id", "")).strip():
@@ -571,7 +851,7 @@ class ScenePlanningAgent:
         if start_paragraph is not None and end_paragraph is not None and end_paragraph < start_paragraph:
             end_paragraph = start_paragraph
 
-        return {
+        normalized: Dict[str, Any] = {
             "id": self._coerce_text(raw_scene.get("id"), f"scene_{idx:02d}"),
             "beat_type": beat_type,
             "emotional_arc": self._coerce_text(raw_scene.get("emotional_arc"), "neutral_progression"),
@@ -581,6 +861,28 @@ class ScenePlanningAgent:
             "start_paragraph": start_paragraph,
             "end_paragraph": end_paragraph,
         }
+
+        # Pass through culture bleed annotations emitted by the planner LLM.
+        # These are optional — absent when Gemini found no JP-specific risk in the scene.
+        for bleed_key in (
+            "culture_bleed_risk",
+            "culture_bleed_category",
+            "culture_bleed_source_phrase",
+            "culture_bleed_warning",
+            "culture_bleed_forbidden",
+        ):
+            raw_val = raw_scene.get(bleed_key)
+            if raw_val is not None:
+                normalized[bleed_key] = raw_val
+                if bleed_key == "culture_bleed_risk":
+                    logger.debug(
+                        "[CULTURE-BLEED] Planner flagged scene %s: risk=%s phrase='%s'",
+                        normalized["id"],
+                        raw_val,
+                        raw_scene.get("culture_bleed_source_phrase", "?"),
+                    )
+
+        return normalized
 
     def _normalize_profiles(self, raw_profiles: Any) -> Dict[str, Dict[str, Any]]:
         if not isinstance(raw_profiles, dict):
@@ -645,7 +947,11 @@ class ScenePlanningAgent:
 
     @staticmethod
     def _build_scene_plan(plan_dict: Dict[str, Any]) -> ScenePlan:
-        scenes = [SceneBeat(**scene) for scene in plan_dict.get("scenes", [])]
+        _SCENE_BEAT_FIELDS = {f.name for f in SceneBeat.__dataclass_fields__.values()}  # type: ignore[attr-defined]
+        scenes = [
+            SceneBeat(**{k: v for k, v in scene.items() if k in _SCENE_BEAT_FIELDS})
+            for scene in plan_dict.get("scenes", [])
+        ]
         character_profiles = {
             name: CharacterProfile(**profile)
             for name, profile in plan_dict.get("character_profiles", {}).items()

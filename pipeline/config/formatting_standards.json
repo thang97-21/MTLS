@@ -1,12 +1,13 @@
 {
     "version": "2.0",
     "description": "Tier 1 RAG: Universal Formatting Standards for Light Novel Translation - Always Inject (Language-Neutral with EN/VN Variants)",
-    "last_updated": "2026-02-08",
+    "last_updated": "2026-02-21",
     "priority": "critical",
     "scope": "language_neutral",
     "category_order": [
         "punctuation_conversion",
         "emphasis_texture",
+        "romanization_standards",
         "scene_breaks",
         "sound_effects",
         "poetry_verse",
@@ -269,6 +270,39 @@
                         }
                     ],
                     "why_matters": "Respects narrative pacing, preserves comedic impact, mimics Japanese reader experience"
+                }
+            ]
+        },
+        "romanization_standards": {
+            "description": "Tier 1 Standard Hepburn romanization for names/terms (ASCII style, no macrons)",
+            "priority": "critical",
+            "patterns": [
+                {
+                    "id": "standard_hepburn_ascii_no_macron",
+                    "rule": "When no official series spelling is locked, use Standard Hepburn in ASCII: long vowels as -ou/-oo/-ei/-ii/-uu. Do NOT use macrons (ō/ū/ā/ī/ē).",
+                    "scope": "character_names_locations_key_terms",
+                    "examples": [
+                        {
+                            "jp": "みどう",
+                            "correct": "Midou",
+                            "incorrect": "Midō"
+                        },
+                        {
+                            "jp": "こうじ",
+                            "correct": "Kouji",
+                            "incorrect": "Kōji"
+                        },
+                        {
+                            "jp": "とおる",
+                            "correct": "Tooru",
+                            "incorrect": "Tōru"
+                        }
+                    ],
+                    "usage_rules": [
+                        "If ruby/furigana exists, ruby is authoritative.",
+                        "If official publisher spelling exists, lock it even if non-standard.",
+                        "Once first appearance is established, keep romanization consistent across all chapters."
+                    ]
                 }
             ]
         },

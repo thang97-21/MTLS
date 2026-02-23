@@ -25,6 +25,7 @@ from .xhtml_builder import XHTMLBuilder
 from .markdown_to_xhtml import MarkdownToXHTML
 from .epub_packager import EPUBPackager
 from .image_analyzer import get_image_dimensions, is_horizontal, analyze_kuchie_images
+from .merge_translated_shards_to_spine import merge_translated_shards_to_spine
 import re
 
 
@@ -282,6 +283,40 @@ class BuilderAgent:
         text = str(value).strip()
         return text if text else fallback
 
+    def _resolve_book_title(
+        self,
+        manifest: dict,
+        metadata_jp: dict,
+        metadata_translated: dict,
+        target_language: str,
+        fallback: str = "Unknown",
+    ) -> str:
+        """
+        Resolve localized book title with official-localization fallback.
+        """
+        title_key = f"title_{target_language}"
+        official_localization = metadata_translated.get("official_localization", {})
+        official_volume_key = f"volume_title_{target_language}"
+        official_series_key = f"series_title_{target_language}"
+        official_title = ""
+        if isinstance(official_localization, dict):
+            official_title = self._coerce_text(
+                official_localization.get(official_volume_key)
+                or official_localization.get("volume_title_en")
+                or official_localization.get(official_series_key)
+                or official_localization.get("series_title_en"),
+                "",
+            )
+
+        return self._coerce_text(
+            metadata_translated.get(title_key)
+            or metadata_translated.get("title_en")
+            or official_title
+            or manifest.get("title_en")
+            or metadata_jp.get("title", fallback),
+            fallback,
+        )
+
     def build_epub(
         self,
         volume_id: str,
@@ -335,6 +370,12 @@ class BuilderAgent:
             if not skip_qc_check:
                 self._validate_pipeline_state(manifest)
 
+            manifest = self._run_spine_merge_preflight(
+                manifest=manifest,
+                work_dir=work_dir,
+                target_language=actual_target_lang,
+            )
+
             metadata_jp = manifest.get('metadata', {})
             # Get language-specific metadata using actual target language
             metadata_key = f'metadata_{actual_target_lang}'
@@ -369,11 +410,14 @@ class BuilderAgent:
                     book_title = series_data.get('title') or 'Unknown'
             else:
                 # v3.0 schema or fallback
-                # Check metadata_translated first, then top-level title_en, then fall back to Japanese
-                book_title = (metadata_translated.get(title_key) or 
-                             metadata_translated.get('title_en') or 
-                             manifest.get('title_en') or 
-                             metadata_jp.get('title', 'Unknown'))
+                # Check metadata_translated first, then official localization, then fall back to Japanese
+                book_title = self._resolve_book_title(
+                    manifest=manifest,
+                    metadata_jp=metadata_jp,
+                    metadata_translated=metadata_translated,
+                    target_language=actual_target_lang,
+                    fallback="Unknown",
+                )
             book_title = self._coerce_text(book_title, "Unknown")
             print(f"     Title: {book_title}")
             print(f"     Target Language: {actual_language_name}")
@@ -544,6 +588,43 @@ class BuilderAgent:
                 raise ValueError("No chapters translated yet")
             print("     [WARNING] Translator not fully complete, building available chapters")
 
+    def _run_spine_merge_preflight(
+        self,
+        manifest: dict,
+        work_dir: Path,
+        target_language: str
+    ) -> dict:
+        """
+        Preflight: merge fragmented translated shards into canonical spine groups.
+
+        Returns an in-memory manifest override. This does not mutate manifest.json.
+        """
+        try:
+            merged_manifest, diagnostics = merge_translated_shards_to_spine(
+                work_dir=work_dir,
+                manifest=manifest,
+                target_language=target_language,
+                apply_manifest=False,
+            )
+        except Exception as e:
+            print(f"     [WARNING] Spine merge preflight failed: {e}")
+            return manifest
+
+        if not diagnostics.get("applied"):
+            reason = self._coerce_text(diagnostics.get("reason"), "not_applicable")
+            print(f"     [INFO] Spine merge preflight skipped: {reason}")
+            return manifest
+
+        print(
+            "     [INFO] Spine merge preflight applied: "
+            f"{diagnostics.get('source_chapters', 0)} -> "
+            f"{diagnostics.get('canonical_chapters', 0)} chapters"
+        )
+        map_path = self._coerce_text(diagnostics.get("map_path"), "")
+        if map_path:
+            print(f"            Map: {map_path}")
+        return merged_manifest
+
     def _process_chapters(
         self,
         manifest: dict,
@@ -561,12 +642,13 @@ class BuilderAgent:
         # Get language-specific metadata
         metadata_key = f'metadata_{target_language}'
         metadata_translated = manifest.get(metadata_key) or manifest.get('metadata_en', {})
-        title_key = f'title_{target_language}'
-        book_title = (metadata_translated.get(title_key) or 
-                     metadata_translated.get('title_en') or 
-                     manifest.get('title_en') or 
-                     metadata_jp.get('title', ''))
-        book_title = self._coerce_text(book_title, "Unknown")
+        book_title = self._resolve_book_title(
+            manifest=manifest,
+            metadata_jp=metadata_jp,
+            metadata_translated=metadata_translated,
+            target_language=target_language,
+            fallback="Unknown",
+        )
         lang_config = get_language_config(target_language)
         lang_code = lang_config.get('language_code', target_language)
 
@@ -1343,12 +1425,13 @@ class BuilderAgent:
         assets = manifest.get('assets', {})
         
         # Get title in target language
-        title_key = f'title_{target_language}'
-        title = (metadata_translated.get(title_key) or 
-                metadata_translated.get('title_en') or 
-                manifest.get('title_en') or 
-                metadata_jp.get('title', ''))
-        title = self._coerce_text(title, "Unknown")
+        title = self._resolve_book_title(
+            manifest=manifest,
+            metadata_jp=metadata_jp,
+            metadata_translated=metadata_translated,
+            target_language=target_language,
+            fallback="Unknown",
+        )
         
         # Get UI strings from language config
         ui_strings = lang_config.get('ui_strings', {})
@@ -1536,12 +1619,13 @@ class BuilderAgent:
         metadata_jp = manifest.get('metadata', {})
         metadata_key = f'metadata_{target_language}'
         metadata_translated = manifest.get(metadata_key) or manifest.get('metadata_en', {})
-        title_key = f'title_{target_language}'
-        book_title = (metadata_translated.get(title_key) or
-                     metadata_translated.get('title_en') or
-                     manifest.get('title_en') or
-                     metadata_jp.get('title', ''))
-        book_title = self._coerce_text(book_title, "Unknown")
+        book_title = self._resolve_book_title(
+            manifest=manifest,
+            metadata_jp=metadata_jp,
+            metadata_translated=metadata_translated,
+            target_language=target_language,
+            fallback="Unknown",
+        )
         
         # Get full kuchie list for global indexing
         kuchie_list = self._detect_kuchie_images(assets, manifest)
@@ -1635,12 +1719,13 @@ class BuilderAgent:
         metadata_translated = manifest.get(metadata_key) or manifest.get('metadata_en', {})
         
         # Get title in target language
-        title_key = f'title_{target_language}'
-        title = (metadata_translated.get(title_key) or 
-                metadata_translated.get('title_en') or 
-                manifest.get('title_en') or 
-                metadata_jp.get('title', ''))
-        title = self._coerce_text(title, "Unknown")
+        title = self._resolve_book_title(
+            manifest=manifest,
+            metadata_jp=metadata_jp,
+            metadata_translated=metadata_translated,
+            target_language=target_language,
+            fallback="Unknown",
+        )
         identifier = manifest.get('volume_id', '')
         
         # Get UI strings from language config
@@ -1870,12 +1955,12 @@ class BuilderAgent:
                 series_value = series_value.get(f'title_{target_language}') or series_value.get(target_language) or series_value.get('title_english') or series_value.get('english') or ''
         
         book_metadata = BookMetadata(
-            title=self._coerce_text(
-                metadata_translated.get(title_key) or 
-                metadata_translated.get('title_en') or 
-                manifest.get('title_en') or 
-                jp_title,
-                'Unknown'
+            title=self._resolve_book_title(
+                manifest=manifest,
+                metadata_jp=metadata_jp,
+                metadata_translated=metadata_translated,
+                target_language=target_language,
+                fallback='Unknown',
             ),
             author=self._coerce_text(
                 metadata_translated.get(author_key) or metadata_translated.get('author_en') or jp_author,

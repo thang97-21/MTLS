@@ -10,7 +10,6 @@ hardcoded regex patterns.
 
 import re
 import struct
-import imghdr
 import shutil
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional
@@ -18,6 +17,15 @@ from dataclasses import dataclass
 
 from .config import IMAGE_EXTENSIONS
 from .publisher_profiles.manager import PublisherProfileManager, get_profile_manager
+
+
+def _is_jpeg(image_path: Path) -> bool:
+    """Check if file is a JPEG by magic bytes (replaces removed imghdr module)."""
+    try:
+        with open(image_path, 'rb') as f:
+            return f.read(2) == b'\xff\xd8'
+    except OSError:
+        return False
 
 
 def get_jpeg_dimensions(image_path: Path) -> Tuple[int, int]:
@@ -36,7 +44,7 @@ def get_jpeg_dimensions(image_path: Path) -> Tuple[int, int]:
             if len(head) != 24:
                 return (0, 0)
 
-            if imghdr.what(image_path) == 'jpeg':
+            if _is_jpeg(image_path):
                 f.seek(0)
                 size = 2
                 ftype = 0
@@ -140,6 +148,16 @@ class ImageExtractor:
         elif image_type == "illustration":
             return f"illust-{index+1:03d}{original_ext}"
         return f"unknown-{index+1:03d}{original_ext}"
+
+    @staticmethod
+    def _is_allcover_filename(filename: str) -> bool:
+        """Return True when filename is an allcover spread variant."""
+        return "allcover" in str(filename).lower()
+
+    @staticmethod
+    def _is_canonical_cover_filename(filename: str) -> bool:
+        """Canonical cover source is strict cover.jpg."""
+        return Path(str(filename)).name.lower() == "cover.jpg"
 
     def __init__(self, content_dir: Path, publisher: str = None):
         """
@@ -322,22 +340,61 @@ class ImageExtractor:
         output_paths = {}
         filename_mapping = {}  # original -> normalized
 
-        # Copy cover
-        if catalog["cover"]:
-            cover_dir = output_dir
-            cover_dir.mkdir(parents=True, exist_ok=True)
-            for img in catalog["cover"]:
-                # Preserve original extension for non-JPG covers
-                original_ext = Path(img.filename).suffix.lower()
-                dest_filename = f"cover{original_ext if original_ext in ['.jpg', '.jpeg', '.png'] else '.jpg'}"
-                dest = cover_dir / dest_filename
-                shutil.copy2(img.filepath, dest)
-                output_paths["cover"] = dest
-                filename_mapping[img.filename] = dest_filename
-                print(f"[OK] Copied cover: {img.filename} -> {dest_filename}")
+        # Copy cover with strict policy:
+        # 1) Reuse existing assets/cover.jpg if already extracted.
+        # 2) Otherwise copy source cover.jpg only (never allcover*).
+        # 3) If no cover.jpg source exists, fallback to first kuchie image.
+        cover_dir = output_dir
+        cover_dir.mkdir(parents=True, exist_ok=True)
+        canonical_cover = cover_dir / "cover.jpg"
+        cover_candidates = [
+            img for img in catalog["cover"]
+            if not self._is_allcover_filename(img.filename)
+        ]
+
+        if canonical_cover.exists():
+            output_paths["cover"] = canonical_cover
+            filename_mapping["cover.jpg"] = "cover.jpg"
+            print("[OK] Using existing cover: cover.jpg")
         else:
-            # Fallback: Check if OPF metadata points to a cover we missed
-            print("[WARNING] No cover detected by pattern matching. Check OPF metadata for cover reference.")
+            strict_cover_source = next(
+                (
+                    img for img in cover_candidates
+                    if self._is_canonical_cover_filename(img.filename)
+                ),
+                None,
+            )
+
+            if strict_cover_source is not None:
+                shutil.copy2(strict_cover_source.filepath, canonical_cover)
+                output_paths["cover"] = canonical_cover
+                filename_mapping[strict_cover_source.filename] = "cover.jpg"
+                print(f"[OK] Copied cover: {strict_cover_source.filename} -> cover.jpg")
+            else:
+                kuchie_fallback = None
+                for img in catalog["kuchie"]:
+                    if not self._is_allcover_filename(img.filename):
+                        kuchie_fallback = img.filepath
+                        break
+
+                if kuchie_fallback is None:
+                    kuchie_dir = output_dir / "kuchie"
+                    if kuchie_dir.exists():
+                        for f in sorted(kuchie_dir.glob("kuchie-*")):
+                            if f.is_file() and not self._is_allcover_filename(f.name):
+                                kuchie_fallback = f
+                                break
+
+                if kuchie_fallback is not None:
+                    shutil.copy2(kuchie_fallback, canonical_cover)
+                    output_paths["cover"] = canonical_cover
+                    filename_mapping[kuchie_fallback.name] = "cover.jpg"
+                    print(f"[INFO] Cover fallback: {kuchie_fallback.name} -> cover.jpg")
+                else:
+                    print(
+                        "[WARNING] No cover.jpg found and no kuchie fallback available. "
+                        "Cover will be omitted."
+                    )
 
         # Copy kuchie - SKIP if spine-based extraction is being used (exclude_files provided)
         # The spine-based system handles kuchie extraction and copying directly

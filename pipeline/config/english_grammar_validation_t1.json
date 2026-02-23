@@ -1,14 +1,15 @@
 {
-  "version": "1.3",
+  "version": "1.5",
   "tier": "tier_1_mechanical_correctness",
-  "description": "Tier 1 English Grammar Validation Rules - Mechanical correctness checks for possessives, articles, tense, agreement, and basic syntax. Enhanced with MMO/Gaming/Comedy timing patterns from Netoge 1124 audit. v1.3 adds AI-ism purple prose blocklist from v1.6 validation.",
-  "last_updated": "2026-02-12",
+  "description": "Tier 1 English Grammar Validation Rules - Mechanical correctness checks for possessives, articles, tense, agreement, and basic syntax. Enhanced with MMO/Gaming/Comedy timing patterns from Netoge 1124 audit. v1.3 adds AI-ism purple prose blocklist. v1.4 adds show-don't-tell validation patterns synced with literacy_techniques.json v1.6 ICL quality markers. v1.5 adds pov_mechanics_violations synced with literacy_techniques.json v2.0 narrative_techniques subtechniques (persona_shift_pov, physiological_purgation, voyeur_camera_sequence, world_vocabulary_neutrality).",
+  "last_updated": "2026-02-21",
   "enhancements_v1_1": "Added dialogue_register_errors, comedy_punchline_protection, gaming_culture_authenticity categories based on Netoge vs Fan TL literacy audit findings",
   "enhancements_v1_2": "Added rhythm_and_emphasis.target_length_dialogue_examples mirrored from literacy_techniques.mmo_gaming_romcom for live prompt-time grammar enforcement.",
   "enhancements_v1_3": "Added ai_ism_purple_prose category with Phase 2 blocklist patterns from v1.6 Chapter 2 validation (Novel 1790). Targets 'I couldn't help but', 'heavy with', 'drilling into', 'locked in volley', 'fleeting swept away', 'welled up' constructions.",
+  "enhancements_v1_4": "Added show_dont_tell_violations category synced with literacy_techniques.json v1.6 professional ICL quality markers. Patterns: 'a sense of [emotion]' (whitelist-aware, 0.80 confidence), weak to-be verb + abstract emotion (0.75 confidence). Both review-only (no auto-fix) to complement ICL positive examples with negative pattern detection.",
+  "enhancements_v1_5": "Added pov_mechanics_violations category synced with literacy_techniques.json v2.0 narrative_techniques subtechniques (persona_shift_pov, physiological_purgation, voyeur_camera_sequence, world_vocabulary_neutrality). Source: Masquerade Confidence Ch.1 [MF Bunko J] review session. 4 new patterns: scare_quote_removal_persona_shift, emotion_label_in_purgation, voyeur_shot_merge, world_anchor_vocabulary.",
   "priority": "blocking",
   "usage": "Apply after translation to catch mechanical grammar errors before human review",
-
   "validation_categories": {
     "possessive_errors": {
       "description": "Detect missing or incorrect possessive apostrophes",
@@ -99,7 +100,6 @@
       ],
       "confidence_threshold": 0.85
     },
-
     "article_errors": {
       "description": "Detect missing or incorrect articles (a, an, the)",
       "severity": "medium",
@@ -149,7 +149,6 @@
       ],
       "confidence_threshold": 0.75
     },
-
     "subject_verb_agreement": {
       "description": "Detect subject-verb disagreement (singular/plural mismatch)",
       "severity": "high",
@@ -238,7 +237,6 @@
       ],
       "confidence_threshold": 0.9
     },
-
     "tense_consistency": {
       "description": "Comprehensive tense consistency validation for narrative prose",
       "severity": "high",
@@ -421,7 +419,15 @@
         "universal_truths": {
           "description": "Scientific/mathematical/timeless facts remain present",
           "pattern": "\\b(learned|realized|discovered|understood|explained|demonstrated|proved|showed|found out|knew|recognized) that .+\\b(is|are|has|have|does|do|boils|freezes|melts|equals|means|refers to|indicates|signifies)\\b",
-          "keywords": ["boils", "freezes", "equals", "theorem", "law of", "principle of", "theory of"],
+          "keywords": [
+            "boils",
+            "freezes",
+            "equals",
+            "theorem",
+            "law of",
+            "principle of",
+            "theory of"
+          ],
           "priority": 2
         },
         "definitions": {
@@ -507,7 +513,6 @@
         }
       }
     },
-
     "pronoun_errors": {
       "description": "Detect pronoun case and agreement errors",
       "severity": "medium",
@@ -559,11 +564,31 @@
               "correct": "for him and his family"
             }
           ]
+        },
+        {
+          "id": "zero_pronoun_object_collapse",
+          "pattern": "\\b(you see you|I see I|she sees she|he sees he|you hear you|you feel you|you know you|see me, you can't forget me|see her, you can't forget you|once you [a-z]+ you)",
+          "issue": "Pronoun collapse: subject and object resolved to the same pronoun when they refer to different entities. Caused by Japanese zero-pronoun (object drop) where the translator echoed the subject pronoun into the object slot instead of resolving to the true antecedent.",
+          "auto_fix": false,
+          "confidence": 0.95,
+          "action": "review",
+          "root_cause": "JP drops object pronouns (見たら = 'if one sees [∅]'). Object antecedent must be traced back to named referent in surrounding context — not copied from subject.",
+          "examples": [
+            {
+              "incorrect": "\"Once you see you, you can't forget you.\"",
+              "correct": "\"Once you see her, you can't forget her.\"",
+              "jp_source": "成瀬さんの姿形は一度見たら忘れられないよ",
+              "note": "Subject=viewer (general 'you'), object=Naruse-san. Different referents → different pronouns."
+            }
+          ],
+          "exceptions": [
+            "Reflexive constructions are valid: 'You have to see yourself clearly', 'I barely recognized myself'",
+            "Genuine self-directed action where subject and object are the same entity"
+          ]
         }
       ],
       "confidence_threshold": 0.85
     },
-
     "double_negatives": {
       "description": "Detect unintentional double negatives (non-standard English)",
       "severity": "low",
@@ -591,7 +616,6 @@
       ],
       "confidence_threshold": 0.7
     },
-
     "contraction_errors": {
       "description": "Detect malformed contractions",
       "severity": "medium",
@@ -632,7 +656,6 @@
       ],
       "confidence_threshold": 0.95
     },
-
     "sentence_fragments": {
       "description": "Detect incomplete sentences (missing subject or verb)",
       "severity": "low",
@@ -658,7 +681,6 @@
       ],
       "confidence_threshold": 0.5
     },
-
     "literal_phrasing": {
       "description": "Detect literal JP-to-EN phrasing that reads non-native in prose",
       "severity": "medium",
@@ -684,7 +706,6 @@
       ],
       "confidence_threshold": 0.8
     },
-
     "rhythm_and_emphasis": {
       "description": "Tier-1 prose guardrails for rhythm-first readability in EN output",
       "severity": "medium",
@@ -924,7 +945,6 @@
         ]
       }
     },
-
     "dialogue_register_errors": {
       "description": "Detect formal/archaic/Victorian language in casual teen/young adult dialogue - based on Netoge 1124 audit findings",
       "severity": "medium",
@@ -1014,7 +1034,6 @@
       ],
       "confidence_threshold": 0.75
     },
-
     "comedy_punchline_protection": {
       "description": "Detect over-explanation and padding that kills comedic timing - based on Netoge 1124 audit",
       "severity": "high",
@@ -1072,7 +1091,6 @@
       ],
       "confidence_threshold": 0.7
     },
-
     "ai_ism_purple_prose": {
       "description": "AI-generated purple prose patterns that bloat rhythm and feel unnatural - Phase 2 blocklist from v1.6 validation",
       "severity": "high",
@@ -1240,36 +1258,129 @@
           "confidence_threshold": 0.85
         },
         {
-          "id": "a_sense_of_except_idiomatic",
-          "pattern": "\\ba sense of (?!humor\\b|direction\\b|purpose\\b|belonging\\b|urgency\\b|duty\\b|self\\b)([a-z]+)\\b",
-          "issue": "Nominalized construction weakens prose - exception for idiomatic usage",
+          "id": "a_sense_of_emotion",
+          "pattern": "\\ba sense of (?!humor\\b|direction\\b|purpose\\b|belonging\\b|urgency\\b|duty\\b|self\\b|identity\\b|deja[- ]vu\\b|pride\\b|accomplishment\\b|responsibility\\b|obligation\\b)(relief|dread|fear|joy|peace|unease|anxiety|panic|calm|excitement|anticipation|foreboding|wonder|awe|loss|longing|nostalgia|guilt|shame|regret|satisfaction|fulfillment|emptiness|isolation|superiority|inferiority|confusion|clarity)\\b",
+          "issue": "Abstract emotion via 'a sense of' - consider concrete physiological detail (synced with literacy_techniques.json v1.6 ICL quality markers)",
           "fix_suggestions": {
-            "a sense of relief": "relief / felt relieved",
-            "a sense of dread": "dread / felt dread",
-            "a sense of nostalgia": "nostalgia / felt nostalgic",
-            "a sense of superiority": "felt superior"
+            "a sense of relief": "Relief loosened my chest / I exhaled slowly / Relief washed over me",
+            "a sense of dread": "Dread coiled in my stomach / My throat tightened / Dread settled over me",
+            "a sense of unease": "Unease prickled my skin / Something felt wrong / Discomfort crept through me",
+            "a sense of excitement": "Excitement fluttered in my chest / My pulse quickened / Excitement coursed through me",
+            "a sense of loss": "Loss hollowed my chest / Emptiness settled over me / The absence ached",
+            "a sense of nostalgia": "Nostalgia washed over me / Memories flooded back / The past pulled at me",
+            "a sense of peace": "Peace settled over me / Calm washed through me / I felt peaceful",
+            "a sense of anticipation": "Anticipation thrummed through me / I waited eagerly / Eagerness built"
           },
           "examples": [
             {
-              "incorrect": "I felt a sense of relief wash over me.",
-              "correct": "Relief washed over me. / I felt relieved.",
-              "reason": "Direct emotion or verb form tighter"
+              "weak": "A sense of relief spread through me.",
+              "strong_icl": "Relief loosened my chest.",
+              "reason": "Concrete physiological detail (ICL: adachi_009 technique - tactile metaphor for emotion)"
+            },
+            {
+              "weak": "I felt a sense of dread as I opened the door.",
+              "strong_icl": "Dread coiled in my stomach as I reached for the door.",
+              "reason": "Visceral sensation shows emotion without telling (ICL quality marker: imagery density)"
             },
             {
               "correct_exception": "He had no sense of direction.",
-              "reason": "Idiomatic usage - not AI-ism"
+              "reason": "Idiomatic usage - whitelisted"
+            },
+            {
+              "correct_exception": "Her sense of humor was infectious.",
+              "reason": "Idiomatic usage - whitelisted"
             }
           ],
-          "severity": "low",
+          "severity": "medium",
           "auto_fix_eligible": false,
-          "confidence_threshold": 0.7,
-          "note": "Already in rhythm_and_emphasis but worth reinforcing with exceptions"
+          "confidence_threshold": 0.80,
+          "whitelist_note": "Professional translations average 1.22 instances/volume - acceptable in moderation. Whitelist: sense of humor, direction, purpose, belonging, urgency, duty, self, identity, deja vu, pride, accomplishment, responsibility, obligation.",
+          "icl_sync_note": "Pattern synced with literacy_techniques.json v1.6 quality markers: prefer active verbs (gnawed, evaporated, pounded) and concrete physiological details over abstract 'sense of' constructions."
+        },
+        {
+          "id": "filler_quite",
+          "pattern": "\\bquite\\b",
+          "issue": "Filler intensifier that reads stiff in contemporary teen narration when overused",
+          "fix_suggestions": {
+            "quite": "pretty / really / drop entirely when no nuance is lost"
+          },
+          "examples": [
+            {
+              "incorrect": "I was quite surprised by what happened.",
+              "correct": "I was really surprised by what happened.",
+              "reason": "Contemporary narration usually prefers direct modern emphasis"
+            }
+          ],
+          "severity": "medium",
+          "auto_fix_eligible": false,
+          "confidence_threshold": 0.75,
+          "review_required": true,
+          "note": "Allow if deliberate formal/British register is required for character voice."
+        },
+        {
+          "id": "filler_rather",
+          "pattern": "(?<!would\\s)(?<!had\\s)\\brather\\b(?!\\s+than\\b)",
+          "issue": "Filler hedge that can bleed formal voice into casual POV",
+          "fix_suggestions": {
+            "rather": "pretty / fairly / really / direct adjective"
+          },
+          "examples": [
+            {
+              "incorrect": "That was rather awkward.",
+              "correct": "That was pretty awkward.",
+              "reason": "Keeps modern rhythm in casual narration"
+            }
+          ],
+          "severity": "medium",
+          "auto_fix_eligible": false,
+          "confidence_threshold": 0.75,
+          "review_required": true,
+          "note": "Do not flag 'would rather' preference construction; allow formal/British intentional voice."
+        },
+        {
+          "id": "filler_indeed",
+          "pattern": "\\bindeed\\b",
+          "issue": "Formal discourse marker that often sounds translationese in youth dialogue",
+          "fix_suggestions": {
+            "indeed": "yes / definitely / right / direct assertion"
+          },
+          "examples": [
+            {
+              "incorrect": "Indeed, that was the problem.",
+              "correct": "Yeah, that was the problem.",
+              "reason": "Avoids formal tonal drift in teen voice"
+            }
+          ],
+          "severity": "medium",
+          "auto_fix_eligible": false,
+          "confidence_threshold": 0.75,
+          "review_required": true,
+          "note": "Can be retained for intentionally formal characters."
+        },
+        {
+          "id": "translationese_it_cannot_be_helped",
+          "pattern": "\\bit cannot be helped\\b",
+          "issue": "Direct calque of Japanese 仕方がない; unnatural in modern EN prose",
+          "fix_suggestions": {
+            "it cannot be helped": "can't help it / no choice / nothing I can do"
+          },
+          "examples": [
+            {
+              "incorrect": "It cannot be helped.",
+              "correct": "Can't help it.",
+              "reason": "Natural contemporary rendering of the same meaning"
+            }
+          ],
+          "severity": "high",
+          "auto_fix_eligible": true,
+          "confidence_threshold": 0.95
         }
       ],
       "confidence_threshold": 0.85,
       "auto_fix_strategy": {
         "high_confidence_auto_fix": [
-          "couldnt_help_but (0.95 threshold)"
+          "couldnt_help_but (0.95 threshold)",
+          "translationese_it_cannot_be_helped (0.95 threshold)"
         ],
         "flag_for_review": [
           "truth_preface_crutch",
@@ -1277,7 +1388,11 @@
           "drilling_into_metaphor",
           "locked_in_volley",
           "fleeting_swept_away",
-          "welled_up_emotion"
+          "welled_up_emotion",
+          "a_sense_of_emotion",
+          "filler_quite",
+          "filler_rather",
+          "filler_indeed"
         ]
       },
       "validation_notes": {
@@ -1287,7 +1402,78 @@
         "goal": "Phase 2 refinement should catch these automatically"
       }
     },
-
+    "show_dont_tell_violations": {
+      "description": "Patterns that tell emotions/states rather than showing through action, physiology, or behavior - synced with literacy_techniques.json v1.6 professional ICL quality markers (Seven Seas/Yen Press benchmarks)",
+      "severity": "medium",
+      "applies_to": "Narrative prose (not dialogue)",
+      "priority": "normal",
+      "icl_sync_note": "These patterns complement ICL positive examples (what TO write) with negative pattern detection (what NOT to write). When flagged, consult literacy_techniques.json professional_prose_icl_examples for concrete alternatives.",
+      "patterns": [
+        {
+          "id": "weak_to_be_verb_emotion",
+          "pattern": "\\b(I|he|she|they|we) (was|were|am|is|are) (nervous|scared|happy|sad|angry|excited|confused|surprised|relieved|anxious|worried|thrilled|terrified|delighted|devastated|furious|ecstatic|tense|uneasy|uncomfortable|embarrassed|ashamed|proud|confident|hopeful|desperate|eager|reluctant|hesitant|determined|resigned)\\b",
+          "issue": "Weak to-be verb + abstract emotion - consider showing through action or physiological detail (ICL quality marker: active verbs > to-be verbs)",
+          "fix_suggestions": {
+            "I was nervous": "My palms grew slick / Anxiety gnawed at me / I fidgeted with...",
+            "She was scared": "She flinched / Her breath hitched / Fear widened her eyes",
+            "He was angry": "His jaw clenched / He slammed... / Fury flashed in his eyes",
+            "They were happy": "They grinned / Joy lit their faces / Laughter bubbled up",
+            "I was anxious": "Anxiety gnawed at me (ICL: adachi_002 technique)",
+            "She was embarrassed": "Heat flooded her cheeks / She looked away",
+            "He was relieved": "Relief loosened his chest / He exhaled slowly",
+            "I was excited": "Excitement fluttered in my chest / My pulse quickened"
+          },
+          "examples": [
+            {
+              "weak": "I was nervous about the exam.",
+              "strong_icl": "Anxiety gnawed at me as exam time approached.",
+              "reason": "Active verb 'gnawed' creates visceral sensation vs abstract 'was nervous' (ICL: adachi_002)",
+              "icl_reference": "literacy_techniques.json > professional_prose_icl_examples > tension_suspense > adachi_002"
+            },
+            {
+              "weak": "She was scared of the dark hallway.",
+              "strong_icl": "The dark hallway made her heart hammer.",
+              "reason": "Physiological response (heart hammer) shows fear without stating it",
+              "icl_reference": "ICL quality marker: imagery density (1-2 concrete sensory details per beat)"
+            },
+            {
+              "weak": "He was excited to see her.",
+              "strong_icl": "Excitement fluttered in his chest at the thought of seeing her.",
+              "reason": "Concrete physiological detail stronger than abstract 'was excited'",
+              "icl_reference": "ICL quality marker: ground emotions in physiological responses"
+            }
+          ],
+          "severity": "medium",
+          "auto_fix_eligible": false,
+          "confidence_threshold": 0.75,
+          "exceptions": [
+            "Dialogue (character voice may use telling: 'I was angry, but not at her')",
+            "Intentional narrative summary for time compression",
+            "Character self-analysis or reflection",
+            "Contrast structures ('I was nervous, yet...', 'She was scared but...')"
+          ],
+          "icl_alternatives": [
+            "Consult adachi_001: 'tying myself in knots' (idiomatic anxiety)",
+            "Consult adachi_002: 'gnawed and gnawed at me' (obsessive anxiety)",
+            "Consult adachi_003: 'focused all my energy into NOT doing X' (tension through restraint)",
+            "Consult violet_003: 'for some reason' (mystery > explanation)"
+          ]
+        }
+      ],
+      "confidence_threshold": 0.75,
+      "quality_markers_synced": {
+        "verb_strength": "Active, visual verbs (gnawed, evaporated, pounded) > to-be verbs",
+        "imagery_density": "1-2 concrete sensory details per emotional beat",
+        "physiological_grounding": "Ground abstract emotions in body sensations (chest tightened, palms slick, heart hammered)",
+        "show_dont_tell": "Reveal emotions through action, dialogue, physiology - not direct statements"
+      },
+      "validation_notes": {
+        "source": "literacy_techniques.json v1.6 professional ICL quality markers",
+        "icl_corpus": "Seven Seas Entertainment (Violet Evergarden, Adachi & Shimamura) - 14 examples across 5 moods",
+        "professional_benchmark": "13-15w avg sentence length, active verb preference, concrete imagery",
+        "goal": "Complement ICL positive examples with negative pattern detection"
+      }
+    },
     "gaming_culture_authenticity": {
       "description": "Contemporary gaming/internet/SNS vocabulary mapping - based on Netoge 1124 audit",
       "severity": "medium",
@@ -1378,9 +1564,141 @@
         }
       ],
       "confidence_threshold": 0.7
+    },
+    "pov_mechanics_violations": {
+      "description": "Structural POV and worldbuilding violations derived from literacy_techniques.json v2.0 narrative_techniques subtechniques. Linked to: persona_shift_pov, physiological_purgation, voyeur_camera_sequence, world_vocabulary_neutrality. Source: Masquerade Confidence Ch.1 [MF Bunko J] review.",
+      "severity": "medium",
+      "applies_to": "Narrative prose (all genres; elevated priority for mystery/con-artist/steampunk/alternate-history)",
+      "priority": "normal",
+      "literary_technique_sync": "literacy_techniques.json v2.0 > narrative_techniques.first_person.subtechniques (persona_shift_pov, physiological_purgation) + narrative_techniques.third_person.subtechniques (voyeur_camera_sequence, world_vocabulary_neutrality)",
+      "patterns": [
+        {
+          "id": "scare_quote_removal_persona_shift",
+          "linked_technique": "literacy_techniques.json > narrative_techniques.first_person.subtechniques.persona_shift_pov",
+          "pattern": "(?<![\"'])\\b(his|her)\\s+(face|identity|name|role|persona|voice|mask)\\s+(peeled|slipped|fell|came off|dropped|was removed|was stripped)",
+          "issue": "Persona-discard sentence uses plain pronoun for a character narrated in scare-quotes — the scare quote 'his' must be preserved to signal performed identity vs. true self",
+          "trigger_condition": "Only fires if the same chapter previously established a scare-quoted version of this pronoun (\"he\" or \"彼\" in JP source)",
+          "fix_suggestions": {
+            "his face peeled away": "\"his\" face peeled away",
+            "her face slipped off": "\"her\" face slipped off"
+          },
+          "examples": [
+            {
+              "incorrect": "his face peeled away.",
+              "correct": "\"his\" face peeled away.",
+              "source": "Masquerade Confidence Ch.1: 「彼」の顔が剥がれていく — scare quotes are dramatic payload",
+              "reason": "Plain 'his' erases the performed-identity signal. The scare quotes establish that 'Arthur' was always a costume, not a person."
+            }
+          ],
+          "severity": "medium",
+          "auto_fix_eligible": false,
+          "confidence_threshold": 0.80,
+          "exceptions": [
+            "If the character is NOT established as a persona-wearing figure, no scare quotes needed",
+            "Physical masks/bandages being literally removed — do not apply scare quotes to real objects"
+          ]
+        },
+        {
+          "id": "emotion_label_in_purgation",
+          "linked_technique": "literacy_techniques.json > narrative_techniques.first_person.subtechniques.physiological_purgation",
+          "pattern": "\\b(purging|expelling|releasing|draining)\\s+(his|her|my|their|all the|every|the last)\\s*(love|affection|grief|guilt|sorrow|regret|tenderness|warmth|attachment|devotion|longing|desire|pain|anguish)\\b",
+          "issue": "Emotional purgation uses direct emotion-noun label. Per physiological_purgation technique: anchor to body organ/breath mechanics, not emotion noun. Reader must infer the emotion from the physiology.",
+          "fix_suggestions": {
+            "purging the love from his chest": "draining whatever warmth had been kept there / emptying his chest cavity of its last heat",
+            "expelling all the affection": "exhaling it all out slowly / clearing his lungs of it",
+            "releasing his grief": "letting his breath carry it out / pulling it up from his gut"
+          },
+          "examples": [
+            {
+              "incorrect": "He exhaled deeply. Purging the love from his chest.",
+              "correct": "He exhaled deeply, pulling the breath all the way from his gut. Draining out whatever warmth had been kept there.",
+              "source": "Masquerade Confidence Ch.1: 胸の裡でくすぶる妻への愛情を、全て排出するかのように",
+              "reason": "'Love' named = melodrama. 'Warmth drained' = clinical cold. The con-artist's register is the latter."
+            }
+          ],
+          "severity": "medium",
+          "auto_fix_eligible": false,
+          "confidence_threshold": 0.78,
+          "exceptions": [
+            "Dialogue where a character explicitly names their own emotion as part of internal honesty",
+            "Scenes of open grief (funeral, confession) where naming the emotion is intentional vulnerability"
+          ]
+        },
+        {
+          "id": "voyeur_shot_merge",
+          "linked_technique": "literacy_techniques.json > narrative_techniques.third_person.subtechniques.voyeur_camera_sequence",
+          "pattern": "\\b(he|she|they)\\s+watched\\s+(his|her|their)\\s+\\w+\\s+(gaze|stare|look|peer|glance)\\s+(at|upon|toward|into|over)\\b",
+          "issue": "Voyeur camera double-shot collapsed into single sentence ('B watched A gaze at X'). The JP original uses two separate beats: shot 1 = A's gaze at object, shot 2 = B watching A. Merging collapses the surveillance tension into flat exposition.",
+          "fix_suggestions": {
+            "default": "Split into two sentences: (1) A's gaze + object as subject. (2) B observing A from a separate sentence."
+          },
+          "examples": [
+            {
+              "incorrect": "He watched his wife gaze dreamily at the dinner table.",
+              "correct": "She gazed dreamily at the white-linen dinner table — the silver candelabras were a perfect touch. He watched his wife's profile from across the room, deeply satisfied.",
+              "source": "Masquerade Confidence Ch.1: 新妻の瞳がうっとりと眺めていた → そんな妻の横顔を満足げに眺めつつ",
+              "reason": "Two-shot sequence: wife's gaze establishes her innocence; husband's gaze then establishes he is watching. Merging into one sentence destroys the predator-prey subtext."
+            }
+          ],
+          "severity": "medium",
+          "auto_fix_eligible": false,
+          "confidence_threshold": 0.72,
+          "exceptions": [
+            "Scene is not a surveillance/seduction/possessive-gaze context — some merged shots are fine in neutral observation",
+            "One character is literally alongside the other (proximity removes the voyeur tension) — merge is acceptable"
+          ]
+        },
+        {
+          "id": "world_anchor_vocabulary",
+          "linked_technique": "literacy_techniques.json > narrative_techniques.third_person.subtechniques.world_vocabulary_neutrality",
+          "pattern": "\\b(trenches|the front|trench warfare|the Western Front|no man's land|the Eastern Front|samurai|bushido|feudal lord|daimyo|peasant serfs|Victorian|Edwardian|the Great War|the Kaiser|musketeers)\\b",
+          "issue": "Real-world historical period vocabulary detected in a non-realistic (fantasy/steampunk/alternate-history) setting. This anchors the fictional world to a specific real-world era, breaking immersion.",
+          "fix_suggestions": {
+            "trenches": "fortified positions / the front lines / battlefield emplacements",
+            "the front": "the front lines / the fighting front / the battlefield",
+            "samurai": "warrior class / the warrior elite / blade-sworn soldiers",
+            "Victorian": "[use the novel's own era name] / the old imperial era / the aristocratic age",
+            "the Great War": "the last war / the long war / the continental war",
+            "bushido": "the warrior code / the blade-path / the soldier's creed"
+          },
+          "examples": [
+            {
+              "incorrect": "Camaraderie in the trenches had only refined it.",
+              "correct": "Years on campaign with those soldiers had only refined it.",
+              "source": "Masquerade Confidence Ch.1: 数年間の泥臭い軍役 / 戦友との絆",
+              "reason": "'Trenches' = instantly WWI. Setting is a fictional revolution-era republic. Neutral 'campaign' preserves period ambiguity."
+            },
+            {
+              "incorrect": "His samurai discipline never wavered.",
+              "correct": "His warrior's discipline never wavered.",
+              "reason": "'Samurai' anchors to Feudal Japan; story is set in European-coded alternate world."
+            }
+          ],
+          "severity": "low",
+          "auto_fix_eligible": false,
+          "confidence_threshold": 0.85,
+          "exceptions": [
+            "Novel is explicitly set in a real-world historical period (e.g., historical fiction, isekai with Japan-coded world-building)",
+            "The term is used in dialogue where a character quotes real-world history in-universe",
+            "Term is a proper noun in the novel's own glossary (e.g., if the novel calls its military order 'The Samurai Corps')"
+          ]
+        }
+      ],
+      "confidence_threshold": 0.78,
+      "quality_markers_synced": {
+        "persona_integrity": "Preserve scare-quotes on performed-identity pronouns exactly as they appear in JP source",
+        "physiological_precision": "Anchor emotional purgation to body organ/breath mechanics — not emotion noun labels",
+        "voyeur_separation": "Maintain two-beat structure for watched-watcher sequences — never merge into single sentence",
+        "world_neutrality": "Use period-neutral vocabulary in non-realistic settings — no real-world historical era anchors"
+      },
+      "validation_notes": {
+        "source": "literacy_techniques.json v2.0 narrative_techniques subtechniques",
+        "derived_from_review": "Masquerade Confidence Ch.1 [MF Bunko J 滝浪酒利] first-impression audit (2026-02-21)",
+        "genre_priority": "mystery_romcom, con-artist, steampunk, alternate-history, fantasy",
+        "goal": "Catch structural POV errors and worldbuilding vocabulary breaks that grammar checkers normally miss"
+      }
     }
   },
-
   "post_processing_rules": {
     "auto_fix_eligible": {
       "description": "Patterns that can be automatically corrected with high confidence",
@@ -1410,12 +1728,19 @@
         "ai_ism_purple_prose.drilling_into_metaphor",
         "ai_ism_purple_prose.locked_in_volley",
         "ai_ism_purple_prose.fleeting_swept_away",
-        "ai_ism_purple_prose.welled_up_emotion"
+        "ai_ism_purple_prose.welled_up_emotion",
+        "ai_ism_purple_prose.a_sense_of_emotion",
+        "show_dont_tell_violations.weak_to_be_verb_emotion",
+        "pov_mechanics_violations.scare_quote_removal_persona_shift",
+        "pov_mechanics_violations.emotion_label_in_purgation",
+        "pov_mechanics_violations.voyeur_shot_merge",
+        "pov_mechanics_violations.world_anchor_vocabulary"
       ],
-      "confidence_required": 0.7
+      "confidence_required": 0.7,
+      "icl_sync_note_v1_4": "v1.4 adds show_dont_tell patterns synced with literacy_techniques.json v1.6 professional ICL quality markers. When these patterns are flagged, consult ICL examples for concrete physiological alternatives.",
+      "icl_sync_note_v1_5": "v1.5 adds pov_mechanics_violations synced with literacy_techniques.json v2.0 narrative_techniques subtechniques. When flagged, consult literacy_techniques.json > narrative_techniques for source JP example + banned form + preferred alternative."
     }
   },
-
   "integration_notes": {
     "translator_agent": "Apply after translation pass, before final output",
     "audit_agent": "Use as part of Prose Quality audit (Subagent 3)",

@@ -200,6 +200,7 @@ class RichMetadataCacheUpdater:
     # Restrict patch structure to v4.0 fields (bible + rich metadata).
     ALLOWED_PATCH_FIELDS = {
         "character_profiles",
+        "relationship_progress",
         "localization_notes",
         "world_setting",
         "geography",
@@ -444,14 +445,37 @@ class RichMetadataCacheUpdater:
             patch = self._sanitize_patch(patch)
         except Exception as e:
             logger.error(f"Failed to parse rich metadata patch: {e}")
+            self._save_parse_failure_payload(
+                stage="rich_metadata_patch",
+                content=(response.content if response else ""),
+                error=e,
+            )
+            metadata_block = self._get_metadata_block()
+            self._set_metadata_block(metadata_block)
+            self._save_metadata_file(metadata_block)
+            context_processor_stats = self._run_context_processors(
+                full_volume_text=full_volume_text,
+                metadata_en=metadata_block,
+                cache_stats=cache_stats,
+                scene_plan_index=scene_plan_index,
+            )
             self._mark_pipeline_state(
-                status="failed",
-                error=f"Patch parse error: {str(e)[:420]}",
+                status="completed",
+                error=(
+                    f"Patch parse error (fallback metadata retained): {str(e)[:420]}"
+                ),
                 cache_stats=cache_stats,
                 used_external_cache=used_external_cache,
+                output_tokens=getattr(response, "output_tokens", 0),
+                patch_keys=[],
+                mode="full_fallback_no_patch",
+                context_processor_stats=context_processor_stats,
             )
             self._save_manifest()
-            return False
+            logger.warning(
+                "Phase 1.55 continued in fallback mode (metadata patch skipped, context processors still executed)."
+            )
+            return True
 
         metadata_block = self._get_metadata_block()
         filtered_patch = self._filter_patch_to_placeholders(metadata_block, patch)
@@ -1447,6 +1471,24 @@ class RichMetadataCacheUpdater:
                     "flashback": "past_perfect" if is_flashback else "past",
                 }
 
+                # Prose rhythm guidance derived from beat_type
+                beat = str(scene.get("beat_type", "setup")).lower()
+                _BEAT_PROSE_RHYTHM = {
+                    "setup":                {"sentence_length": "medium (10-14w)",      "prose_temperature": "descriptive"},
+                    "inciting_incident":    {"sentence_length": "punchy (6-10w)",       "prose_temperature": "urgent"},
+                    "rising_action":        {"sentence_length": "variable (8-14w)",     "prose_temperature": "active"},
+                    "climax":               {"sentence_length": "short/punchy (4-8w)",  "prose_temperature": "high-intensity"},
+                    "falling_action":       {"sentence_length": "medium (10-14w)",      "prose_temperature": "reflective"},
+                    "resolution":           {"sentence_length": "long/variable (12-18w)", "prose_temperature": "warm"},
+                    "character_development":{"sentence_length": "variable (10-16w)",    "prose_temperature": "introspective"},
+                    "flashback":            {"sentence_length": "medium (10-14w)",      "prose_temperature": "muted/nostalgic"},
+                    "foreshadowing":        {"sentence_length": "medium (10-14w)",      "prose_temperature": "understated"},
+                }
+                scene["prose_rhythm"] = _BEAT_PROSE_RHYTHM.get(
+                    beat,
+                    {"sentence_length": "variable (8-14w)", "prose_temperature": "neutral"},
+                )
+
             chapter["scene_count"] = len([s for s in scenes if isinstance(s, dict)])
 
         payload["summary"] = {
@@ -1562,6 +1604,7 @@ class RichMetadataCacheUpdater:
             "{\n"
             '  "metadata_en_patch": {\n'
             '    "character_profiles": {...},\n'
+            '    "relationship_progress": [...],\n'
             '    "localization_notes": {...},\n'
             '    "world_setting": {...},\n'
             '    "geography": {...},\n'
@@ -1590,6 +1633,9 @@ class RichMetadataCacheUpdater:
             "   hairstyle, outfit silhouette/signature, expression baseline, posture/gesture, accessories.\n"
             "8) Keep Bible-compatible continuity fields schema-safe: world_setting/geography/weapons_artifacts/"
             "organizations/cultural_terms/mythology/translation_rules.\n"
+            "9) Always include metadata_en_patch.relationship_progress as an array.\n"
+            "   For slow-burn romance arcs, encode chapter-scoped progression entries with contraction_override.\n"
+            "   This progression policy can override global contraction targets within the scoped scene/voice context.\n"
         )
         if self.schema_spec_path.exists():
             try:
@@ -1616,6 +1662,8 @@ class RichMetadataCacheUpdater:
             "Refine and expand rich metadata for this volume using the cached full LN text.\n"
             "Focus on character_profiles, localization_notes, dialogue/register behavior,\n"
             "and any semantic guidance that improves Phase 2 translation consistency.\n"
+            "Also maintain relationship progression for long-running/slow-burn romance in relationship_progress array,\n"
+            "including chapter scope and contraction_override when needed.\n"
             "Keep Bible continuity categories aligned and schema-safe:\n"
             "world_setting, geography, weapons_artifacts, organizations, cultural_terms, mythology, translation_rules.\n"
             "For character_profiles, fill/maintain `visual_identity_non_color` with non-color descriptors.\n"
@@ -1646,6 +1694,8 @@ class RichMetadataCacheUpdater:
             if key in self.PROTECTED_FIELDS:
                 continue
             if key not in self.ALLOWED_PATCH_FIELDS:
+                continue
+            if key == "relationship_progress" and not isinstance(value, list):
                 continue
             cleaned[key] = value
         return cleaned
@@ -1684,6 +1734,12 @@ class RichMetadataCacheUpdater:
                 continue
 
             cur_value = current.get(key)
+
+            if key == "relationship_progress":
+                if self._should_replace_relationship_progress(cur_value):
+                    filtered[key] = new_value
+                continue
+
             if isinstance(new_value, dict) and isinstance(cur_value, dict):
                 nested = self._filter_patch_to_placeholders(cur_value, new_value)
                 if nested:
@@ -1693,6 +1749,40 @@ class RichMetadataCacheUpdater:
             if self._is_blank_or_placeholder(cur_value):
                 filtered[key] = new_value
         return filtered
+
+    def _should_replace_relationship_progress(self, current_value: Any) -> bool:
+        """
+        Allow relationship_progress updates when existing value is effectively template-only.
+
+        This keeps the "fill placeholders only" policy while permitting Phase 1.55
+        to replace Librarian scaffold entries such as [PROTAGONIST]/[LOVE_INTEREST].
+        """
+        if self._is_blank_or_placeholder(current_value):
+            return True
+        if not isinstance(current_value, list):
+            return False
+        if not current_value:
+            return True
+        return self._contains_relationship_progress_template_markers(current_value)
+
+    def _contains_relationship_progress_template_markers(self, value: Any) -> bool:
+        """Detect scaffold/template markers in relationship_progress payloads."""
+        if isinstance(value, str):
+            lowered = value.strip().lower()
+            if (
+                "[protagonist]" in lowered
+                or "[love_interest]" in lowered
+                or "[optional]" in lowered
+                or "slow_burn_main_pair" in lowered
+                or "guarded_formal" in lowered
+            ):
+                return True
+            return any(tok in lowered for tok in self.PLACEHOLDER_TOKENS)
+        if isinstance(value, list):
+            return any(self._contains_relationship_progress_template_markers(v) for v in value)
+        if isinstance(value, dict):
+            return any(self._contains_relationship_progress_template_markers(v) for v in value.values())
+        return False
 
     def _deep_merge_dict(self, base: Dict[str, Any], patch: Dict[str, Any]) -> Dict[str, Any]:
         result = dict(base)
@@ -1801,9 +1891,78 @@ class RichMetadataCacheUpdater:
             r'\1"chapter_id": "\2",\n\3',
             cleaned,
         )
+        # Repair malformed chapter object entries like:
+        #   "chapter_04",
+        #   "event": "..."
+        # -> "chapter_id": "chapter_04",
+        # Scope guard: only when next non-empty line is an object key (contains colon).
+        cleaned = re.sub(
+            r'(?m)^(\s*)"(chapter_\d{1,3})"\s*,?\s*$\n(?=\s*"[A-Za-z_][A-Za-z0-9_]*"\s*:)',
+            r'\1"chapter_id": "\2",\n',
+            cleaned,
+        )
         # Remove non-JSON control chars that models occasionally emit in long outputs.
         cleaned = re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F]", " ", cleaned)
         return cleaned.strip()
+
+    def _repair_chapter_wrapper_missing_outer_brace_with_decoder_feedback(
+        self,
+        text: str,
+        *,
+        max_attempts: int = 10,
+    ) -> Optional[str]:
+        """
+        Repair malformed chapter wrapper entries by JSON decoder feedback.
+
+        Targets parse errors where parser expects an object property key but sees
+        the next array item `{`, which often means one `}` is missing before a comma:
+          "chapter_18": { ... },   <-- should be "chapter_18": { ... }},
+          {
+        """
+        candidate = text
+        for _ in range(max_attempts):
+            try:
+                json.loads(candidate)
+                return candidate
+            except json.JSONDecodeError as e:
+                if "Expecting property name enclosed in double quotes" not in str(e.msg):
+                    return None
+
+                pos = int(e.pos)
+                if pos <= 0 or pos >= len(candidate):
+                    return None
+
+                # Typical symptom: parser sees next array item '{' while still in object context.
+                if candidate[pos] != "{":
+                    return None
+
+                # Scope guard: the offending token should start a chapter wrapper item:
+                #   { "chapter_19": { ... } }
+                # If not, skip this targeted repair.
+                next_chunk = candidate[pos : pos + 120]
+                if not re.match(r'\{\s*"chapter_\d{1,3}"\s*:\s*\{', next_chunk):
+                    return None
+
+                prev_close_comma = candidate.rfind("},", 0, pos)
+                if prev_close_comma < 0:
+                    return None
+
+                between = candidate[prev_close_comma + 2 : pos]
+                if between.strip():
+                    return None
+
+                if candidate[prev_close_comma : prev_close_comma + 3] == "}},":
+                    return None
+
+                candidate = (
+                    candidate[:prev_close_comma]
+                    + "}},"
+                    + candidate[prev_close_comma + 2 :]
+                )
+                continue
+            except Exception:
+                return None
+        return None
 
     def _repair_missing_comma_with_decoder_feedback(
         self,
@@ -1844,6 +2003,58 @@ class RichMetadataCacheUpdater:
 
                 candidate = candidate[:insert_at] + "," + candidate[insert_at:]
                 candidate = re.sub(r",\s*,+", ",", candidate)
+                candidate = re.sub(r",\s*([}\]])", r"\1", candidate)
+                continue
+            except Exception:
+                return None
+        return None
+
+    def _repair_missing_colon_with_decoder_feedback(
+        self,
+        text: str,
+        *,
+        max_attempts: int = 10,
+    ) -> Optional[str]:
+        """
+        Repair JSON that is syntactically valid except for missing ':' delimiters.
+
+        Uses JSON decoder feedback to insert a colon at the reported error offset
+        when the decoder specifically requests a colon delimiter.
+        """
+        candidate = text
+        for _ in range(max_attempts):
+            try:
+                json.loads(candidate)
+                return candidate
+            except json.JSONDecodeError as e:
+                if "Expecting ':' delimiter" not in str(e.msg):
+                    return None
+
+                insert_at = int(e.pos)
+                if insert_at <= 0 or insert_at > len(candidate):
+                    return None
+
+                # Move insertion point to first non-space character.
+                while insert_at < len(candidate) and candidate[insert_at].isspace():
+                    insert_at += 1
+                if insert_at >= len(candidate):
+                    return None
+
+                if candidate[insert_at] == ":":
+                    return None
+
+                prev = insert_at - 1
+                while prev >= 0 and candidate[prev].isspace():
+                    prev -= 1
+                if prev < 0:
+                    return None
+
+                # Most valid recoveries happen after quoted keys.
+                if candidate[prev] != '"':
+                    return None
+
+                candidate = candidate[:insert_at] + ": " + candidate[insert_at:]
+                candidate = re.sub(r":\s*:", ": ", candidate)
                 candidate = re.sub(r",\s*([}\]])", r"\1", candidate)
                 continue
             except Exception:
@@ -1998,12 +2209,35 @@ class RichMetadataCacheUpdater:
             except Exception as e:
                 last_error = e
 
+            repaired_wrappers = self._repair_chapter_wrapper_missing_outer_brace_with_decoder_feedback(
+                cleaned
+            )
+            if repaired_wrappers:
+                try:
+                    return json.loads(repaired_wrappers)
+                except Exception as e:
+                    last_error = e
+
             balanced_cleaned = self._extract_balanced_json_object(cleaned)
             if balanced_cleaned:
                 try:
                     return json.loads(balanced_cleaned)
                 except Exception as e:
                     last_error = e
+
+            repaired_missing_colons = self._repair_missing_colon_with_decoder_feedback(cleaned)
+            if repaired_missing_colons:
+                try:
+                    return json.loads(repaired_missing_colons)
+                except Exception as e:
+                    last_error = e
+
+                balanced_colon = self._extract_balanced_json_object(repaired_missing_colons)
+                if balanced_colon:
+                    try:
+                        return json.loads(balanced_colon)
+                    except Exception as e:
+                        last_error = e
 
             repaired_missing_commas = self._repair_missing_comma_with_decoder_feedback(cleaned)
             if repaired_missing_commas:
@@ -2012,8 +2246,18 @@ class RichMetadataCacheUpdater:
                 except Exception as e:
                     last_error = e
 
+            if repaired_missing_colons:
+                repaired_colon_then_comma = self._repair_missing_comma_with_decoder_feedback(
+                    repaired_missing_colons
+                )
+                if repaired_colon_then_comma:
+                    try:
+                        return json.loads(repaired_colon_then_comma)
+                    except Exception as e:
+                        last_error = e
+
             repaired_truncated = self._repair_truncated_json_candidate(
-                repaired_missing_commas or cleaned
+                repaired_missing_commas or repaired_missing_colons or cleaned
             )
             if repaired_truncated:
                 try:
@@ -2024,6 +2268,22 @@ class RichMetadataCacheUpdater:
         if last_error:
             raise last_error
         raise ValueError("Unable to parse JSON response")
+
+    def _save_parse_failure_payload(self, stage: str, content: str, error: Exception) -> None:
+        """Persist raw malformed payload for debugging parse failures."""
+        try:
+            debug_dir = self._context_dir_path() / "_debug"
+            debug_dir.mkdir(parents=True, exist_ok=True)
+            volume_id = self.manifest.get("volume_id", self.work_dir.name)
+            safe_volume = re.sub(r"[^\w\-]+", "_", str(volume_id)).strip("_")[:80] or "volume"
+            safe_stage = re.sub(r"[^\w\-]+", "_", str(stage)).strip("_") or "stage"
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            debug_path = debug_dir / f"{timestamp}_{safe_volume}_{safe_stage}_raw_response.txt"
+            error_header = f"# Parse failure: {type(error).__name__}: {error}\n\n"
+            debug_path.write_text(error_header + (content or ""), encoding="utf-8")
+            logger.warning(f"[P1.55] Saved malformed payload for debugging: {debug_path}")
+        except Exception as save_err:
+            logger.debug(f"[P1.55] Could not persist parse failure payload: {save_err}")
 
     def _extract_event_metadata(self, profile_data: Dict[str, Any]) -> Dict[str, Any]:
         """Extract only current-volume event/relationship metadata from character profile."""

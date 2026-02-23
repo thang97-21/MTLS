@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "version": "2.0",
-  "description": "Literary narrative techniques configuration for AI-driven transcreation. This JSON alters Gemini's default translation behavior by activating specific narrative latent spaces, transforming word-for-word translation into literary prose. Enhanced with MMO/Gaming/Comedy patterns from Netoge 1124 audit. v1.4 adds hard caps for sentence length enforcement. v1.5 adds concrete 9-10 word contemporary dialogue targets. v1.6 adds 14 professional ICL examples from Seven Seas/Yen Press corpus. v1.7 replaces fan-TL VE examples with Hibike Yen Press; adds deep_introspection and dramatized_romance categories. v1.8 adds 7 new examples across 4 categories + new endurance_as_devotion category (32 total, 8 mood categories). v1.9 adds kinetic_action_sequence category (5 examples) from 86—Eighty-Six Vols 2-4 [Yen Press] (37 total, 9 mood categories). v2.0 adds 13 new examples across 3 new categories (mystery_deduction, psychological_duel, grief_romance) from The Detective Is Already Dead Vols 1-4 [Yen Press] (50 total, 12 mood categories).",
+  "version": "1.6",
+  "description": "Literary narrative techniques configuration for AI-driven transcreation. This JSON alters Gemini's default translation behavior by activating specific narrative latent spaces, transforming word-for-word translation into literary prose. Enhanced with MMO/Gaming/Comedy patterns from Netoge 1124 audit. v1.4 adds hard caps for sentence length enforcement. v1.5 adds concrete 9-10 word contemporary dialogue targets. v1.6 adds 14 professional ICL examples from Seven Seas/Yen Press corpus.",
   "metadata": {
     "purpose": "Define narrative voice, psychic distance, and sensory focus for consistent literary output",
     "tier": 1,
@@ -10,8 +10,8 @@
       "EN",
       "VN"
     ],
-    "last_updated": "2026-02-20",
-    "version": "2.0",
+    "last_updated": "2026-02-19",
+    "version": "1.6",
     "enhancements_v1_3": "Added mmo_gaming_romcom genre preset and comedy_killer_patterns section based on Netoge vs Fan TL comparative literacy audit",
     "enhancements_v1_4": "Added hard caps (10w dialogue, 15w narration, 5w punchlines) with split guidance based on 0116 validation report findings. Accepts Gemini's prose refinement strength while enforcing tighter rhythm.",
     "enhancements_v1_5": "Added target_length_dialogue_examples with validated 0116 successes plus curated 9-10 word contemporary dialogue patterns for slice-of-life romcom and MMO/SNS/game-media subculture.",
@@ -21,12 +21,8 @@
       "fid": 15,
       "show_dont_tell": 2,
       "psychic_distance_shifts": 7,
-      "professional_icl_examples": 50
-    },
-    "enhancements_v1_7": "v1.7 (2026-02-20): Replaced 4 fan-TL Violet Evergarden examples (literary_poetic) with 4 verbatim Hibike! Euphonium [Yen Press] examples. Added deep_introspection category (4 examples) and dramatized_romance category (3 examples) from Love Unseen Beneath the Clear Night Sky [Yen Press]. All 21 ICL examples now sourced exclusively from publisher-verified professional translations. Zero fan-TL contamination. New categories address reluctant-protagonist introspection and show-dont-tell romance (avoidance-as-confession, breath-as-intimacy, beauty-as-exclusion).",
-    "enhancements_v1_8": "v1.8 (2026-02-20): Added 7 new examples from Love Unseen later chapters (ch10-26) + new endurance_as_devotion category (3 examples). tension_suspense +1 (loveunseen_008: nailed-feet paralysis metaphor). dramatized_romance +2 (loveunseen_009: confession-through-accusation; loveunseen_010: two-step breath as near-tears). deep_introspection +1 (loveunseen_011: double-negation recursive surrender). New category endurance_as_devotion (loveunseen_012: hospital sprint body-cost-as-love; loveunseen_013: origami micro-act disproportionate joy; loveunseen_014: sparkler wish object-as-confession). Total: 32 examples, 8 mood categories.",
-    "enhancements_v1_9": "v1.9 (2026-02-20): Added kinetic_action_sequence category (5 examples) all sourced from 86—Eighty-Six Vols 2-4 [Yen Press]. Covers: sensor-substitution tracking (eighty6_001), high-frequency blade physics with sensory overload (eighty6_002), optical-camouflage reveal via timed-fuse shockwave (eighty6_003), prisoner-identity horror through Legion visual contact (eighty6_004), post-battle sensory recession / survival cost (eighty6_005). New techniques documented: body_as_sensor, kinetic_verb_chain, physics_as_threat, absence_as_presence, staccato_under_fire, survival_cost_as_proof. Total: 37 examples, 9 mood categories.",
-    "enhancements_v2_0": "v2.0 (2026-02-20): Added 13 new examples across 3 new categories all sourced from The Detective Is Already Dead Vols 1-4 [Yen Press]. mystery_deduction (5 examples): deduction-as-compassion (tanmoshi_001), lie-in-silence (tanmoshi_002), identity-trap inversion (tanmoshi_003), pre-crisis premonition (tanmoshi_004), villain-motive reveal through concession (tanmoshi_005). psychological_duel (4 examples): oracle fatalism confronted by action (tanmoshi_006), human-emotions taxonomy vs alien (tanmoshi_007), mind-control reversal (tanmoshi_008), two-justice collision (tanmoshi_009). grief_romance (4 examples): proxy heart reunion flash (tanmoshi_010), future-forfeit sacrifice (tanmoshi_011), casino hand-take Siesta echo (tanmoshi_012), mission-as-love inheritance (tanmoshi_013). New techniques: deduction_as_therapy, strategic_concession, omission_as_proof, word_soul_power, justice_vs_love_binary, inherited_mission_as_confession. Total: 50 examples, 12 mood categories."
+      "professional_icl_examples": 14
+    }
   },
   "narrative_techniques": {
     "first_person": {
@@ -95,48 +91,6 @@
             "Perhaps you think..."
           ],
           "tone": "intimate, conversational, self-aware"
-        },
-        "persona_shift_pov": {
-          "label_en": "Persona Shift POV",
-          "label_vn": "Thay đổi nhân cách giữa chương",
-          "definition": "A chapter or scene begins narrating a character in scare-quoted third person ('he', '\"his\"') — establishing them as a performed identity — then deliberately shifts to first-person ('I') when the mask drops. Common in con-artist, actor, and unreliable-identity fiction.",
-          "instruction": "Preserve the scare-quotes on third-person pronouns exactly as they appear in the source (e.g. '\"彼\"の顔' → '\"his\" face'). Do NOT normalize to plain 'his'. The POV shift from 'he' to 'I' is the chapter's emotional pivot — never smooth it over. When the protagonist discards the persona, the sentence rhythm should also shift: from third-person past-tense narration to first-person present-tense interiority.",
-          "source_example": "Masquerade Confidence Ch.1 [MF Bunko J]: 「彼」の顔が剥がれていく → '\"his\" face peeled away' (third) — then 俺の名はライナス → 'I'm Linus Krueger' (first). The pivot is the chapter's entire dramatic payload.",
-          "trigger_markers": [
-            "Character establishes an alias or role at scene start",
-            "Scare-quoted pronouns in JP (「彼」、「彼女」) used for a character the reader will later recognize as the narrator",
-            "Scene ends with persona-discard ritual (mask-peel, mirror, deliberate exhale)"
-          ],
-          "banned_normalizations": [
-            "Do not remove scare quotes from '\"his\"/\"her\"'",
-            "Do not merge the third-person setup and first-person reveal into one POV",
-            "Do not add transition phrases like 'suddenly' or 'actually' at the POV shift — the break should be silent and abrupt"
-          ]
-        },
-        "physiological_purgation": {
-          "label_en": "Physiological Purgation",
-          "label_vn": "Xả cảm xúc qua hành động sinh lý",
-          "definition": "When a character releases, suppresses, or discards an emotion (especially love, grief, guilt) — the JP anchors this to a specific body organ or breathing mechanism (肺腑から = gut-depth lungs, 胸の裡 = within the chest cavity). The emotion is framed as a physical substance being expelled, not named as a feeling.",
-          "instruction": "Translate emotional purgation through body-organ precision, NOT through emotional noun labels. '胸の裡でくすぶる妻への愛情を全て排出する' should become something like 'draining the last warmth from his chest' — not 'purging his love' or 'expelling his affection'. The reader must INFER the emotion from the physiological metaphor — never state it directly.",
-          "source_example": "Masquerade Confidence Ch.1: 肺腑から息という息を静かに吐き出していく。胸の裡でくすぶる妻への愛情を、全て排出するかのように → 'He exhaled slowly, pulling the breath all the way from his gut. Draining out whatever warmth had been kept there.' (NOT: 'Purging the love from his chest')",
-          "banned_translations": [
-            "purging [emotion noun]",
-            "expelling [emotion noun]",
-            "releasing [emotion noun]",
-            "Any translation that names the emotion directly in the purgation sentence"
-          ],
-          "preferred_anchors": [
-            "gut",
-            "lungs",
-            "chest cavity",
-            "ribs",
-            "sternum",
-            "heat",
-            "warmth",
-            "weight",
-            "pressure",
-            "NOTE: use physical sensation nouns above, not emotion nouns like 'love' or 'affection'"
-          ]
         }
       }
     },
@@ -225,46 +179,6 @@
             "Ensure each character has a distinct internal voice",
             "Avoid rapid-fire switches (stay with each character for at least 2-3 paragraphs)"
           ]
-        },
-        "voyeur_camera_sequence": {
-          "label_en": "Voyeur Camera Sequence",
-          "label_vn": "Chuỗi máy quay dạng quan sát",
-          "definition": "A JP cinematographic narration technique where the camera first establishes Character A gazing at an object or scene — then pulls back to show Character B watching Character A. This creates a nested surveillance structure: the reader watches the watcher. Often used in romantic seduction, spy/con-artist, and possessive-gaze scenes.",
-          "instruction": "Preserve the two-shot sequence as two separate beats. Do NOT merge them into a single sentence ('He watched his wife gaze at the table') — this collapses the double-gaze into a flat statement. First sentence: A's gaze and its object. Second sentence: B observing A. The delay between the two shots is the emotional content.",
-          "source_example": "Masquerade Confidence Ch.1: 新妻の瞳がうっとりと眺めていた [wife gazes dreamily at table] → そんな妻の横顔を満足げに眺めつつ [he watches her profile, satisfied]. EN should be: 'She gazed dreamily at the white-linen dinner table — the silver candelabras were a perfect touch. He watched his wife's profile from across the room, deeply satisfied.' NOT: 'He watched his wife gaze dreamily at the dinner table.'",
-          "trigger_markers": [
-            "JP sentence 1: Subject A + verb-of-perception + object/scene",
-            "JP sentence 2: そんなAを/Aの横顔を + Subject B + verb-of-observation",
-            "Scene involves a watcher who is concealing their observation (seduction, surveillance, jealousy)"
-          ],
-          "banned_collapses": [
-            "Do not merge both shots into: 'B watched A [verb] the [object]'",
-            "Do not reorder so B appears before A's action is established",
-            "Do not add B's internal monologue during A's shot — keep the first sentence purely observational"
-          ]
-        },
-        "world_vocabulary_neutrality": {
-          "label_en": "World Vocabulary Neutrality",
-          "label_vn": "Từ vựng trung tính với thế giới hư cấu",
-          "definition": "In fantasy, alternate-history, or steampunk settings, JP source text uses generic military/social vocabulary (軍役, 内戦, 名家) that must NOT be translated with real-world-specific equivalents that anchor the story to a known historical period (WWI trenches, Victorian era, feudal Japan, etc.).",
-          "instruction": "When translating military, social, or historical vocabulary in non-realistic settings, use period-neutral equivalents. Check: would this word make a reader think of a specific real-world era or war? If yes, replace with a generic equivalent that keeps the fictional world intact.",
-          "source_example": "Masquerade Confidence Ch.1: 数年間の泥臭い軍役 = 'years of brutal military service' or 'years in the field' — NOT 'years in the trenches' (pulls to WWI). 戦友 = 'comrades-in-arms' or 'fellow soldiers' — NOT 'trench mates'.",
-          "real_world_anchors_to_avoid": [
-            "trenches / trench warfare (WWI-specific)",
-            "the front (WWII-specific)",
-            "barons / serfs (medieval European-specific)",
-            "samurai / bushido (Japan-specific)",
-            "Victorian (English 1837-1901)",
-            "musketeer (French 17th century)"
-          ],
-          "safe_neutral_alternatives": [
-            "campaigns → military campaigns, field service",
-            "trenches → the front lines, fortified positions, the battlefield",
-            "baron → lord, liege, estate holder",
-            "manor → estate, manor house (acceptable if setting is explicitly medieval-European-coded)",
-            "servants → household staff, retainers"
-          ],
-          "exception": "If the novel explicitly codes itself to a real-world period (e.g., a WWI-coded steampunk), period-specific vocabulary is acceptable. Only avoid anchoring when the setting is purely fictional."
         }
       }
     },
@@ -858,10 +772,7 @@
               "word_count": 20,
               "violation": "Exceeds 10-word dialogue cap",
               "split_correct": "\"It's hard for me to be in the classroom. So I use 'just going to buy a drink' as an excuse.\"",
-              "split_word_counts": [
-                9,
-                11
-              ],
+              "split_word_counts": [9, 11],
               "note": "Still slightly over on second part, but acceptable. Further split: 'It's hard for me to be in the classroom.' + 'So I escape using that drink excuse.'"
             },
             {
@@ -869,13 +780,7 @@
               "word_count": 44,
               "violation": "Exceeds 15-word narration cap",
               "split_correct": "I have a recommendation. The title is *Honey Story*. It's a peaceful game. You move left and right with arrow keys. Only two buttons at the start: attack and jump.",
-              "split_word_counts": [
-                4,
-                5,
-                5,
-                9,
-                9
-              ],
+              "split_word_counts": [4, 5, 5, 9, 9],
               "note": "Fragmented into digestible beats"
             }
           ]
@@ -1408,20 +1313,14 @@
               "violation": "It's hard for me to be in the classroom, so I was using 'just going to buy a drink' as an excuse to escape.",
               "word_count": 20,
               "correct_split": "\"It's hard for me to be in the classroom. So I use 'buy a drink' as my escape.\"",
-              "word_counts": [
-                9,
-                10
-              ],
+              "word_counts": [9, 10],
               "technique": "Split at conjunction, tighten second part"
             },
             {
               "violation": "\"I fundamentally disagree with your strategy because it doesn't account for the enemy's positioning and movement patterns.\"",
               "word_count": 16,
               "correct_split": "\"I totally disagree with your strategy. You're not accounting for enemy positioning.\"",
-              "word_counts": [
-                6,
-                7
-              ],
+              "word_counts": [6, 7],
               "technique": "Split at subordinate clause, convert to direct statement"
             }
           ],
@@ -1430,21 +1329,14 @@
               "violation": "The guild master was a guy named †Black Sorcerer†, clad from head to toe in gleaming, powerful-looking gear that you could tell was top-tier at a glance.",
               "word_count": 28,
               "correct_split": "The guild master was †Black Sorcerer†. He was clad head to toe in gleaming gear. Top-tier, no question.",
-              "word_counts": [
-                6,
-                11,
-                3
-              ],
+              "word_counts": [6, 11, 3],
               "technique": "Fragment into beats: identification → description → judgment"
             },
             {
               "violation": "After listening to my story, Ako looked down and spoke sympathetically, her voice soft and understanding as she tried to comfort me.",
               "word_count": 22,
               "correct_split": "After listening to my story, Ako looked down. Her voice was soft and sympathetic.",
-              "word_counts": [
-                9,
-                7
-              ],
+              "word_counts": [9, 7],
               "technique": "Split action from description, remove redundancy"
             }
           ],
@@ -1775,83 +1667,62 @@
       }
     },
     "professional_prose_icl_examples": {
-      "version": "1.7",
-      "description": "In-context learning examples extracted from Yen Press and Seven Seas professional translations (Hibike! Euphonium, Adachi & Shimamura, Love Unseen Beneath the Clear Night Sky). v1.7: Replaced 4 fan-TL Violet Evergarden examples with 4 Hibike! Euphonium [Yen Press] examples in literary_poetic. Added 2 new mood categories: deep_introspection (4 examples) and dramatized_romance (3 examples) from Love Unseen Beneath the Clear Night Sky [Yen Press]. All 21 examples are now verbatim from publisher-verified professional translations.",
+      "version": "1.0",
+      "description": "In-context learning examples extracted from Seven Seas Entertainment and Yen Press professional translations (Violet Evergarden, Adachi & Shimamura). These are premium reference patterns for contemporary light novel prose quality benchmarking. Use these as stylistic north stars when translating similar emotional beats or scene types.",
       "source_corpus": {
-        "hibike_euphonium": {
-          "publisher": "Yen Press",
-          "avg_sentence_length": "13.5 words",
-          "genre": "School drama, music competition, coming-of-age",
-          "prose_style": "Kinetic imagery, restrained emotion, sharp sensory detail, invisible membrane metaphors"
+        "violet_evergarden": {
+          "publisher": "Seven Seas Entertainment",
+          "translator": "trollo (fan translation benchmark quality)",
+          "avg_sentence_length": "14.2 words",
+          "genre": "Literary drama, military fiction, emotional character study",
+          "prose_style": "Poetic, visual, wistful, heavy with sensory details"
         },
         "adachi_and_shimamura": {
           "publisher": "Seven Seas Entertainment",
           "avg_sentence_length": "13.8 words",
           "genre": "Yuri romance, slice-of-life, internal monologue-heavy",
           "prose_style": "Introspective, tension-building, playful yet anxious"
-        },
-        "love_unseen_beneath_the_clear_night_sky": {
-          "publisher": "Yen Press",
-          "avg_sentence_length": "14.1 words",
-          "genre": "One-shot drama romance, college setting, disability narrative",
-          "prose_style": "Deep introspection, reluctant-protagonist voice, show-dont-tell through avoidance and shame, devastatingly understated"
         }
       },
       "examples_by_mood": {
         "literary_poetic": {
-          "description": "Visual imagery, kinetic physical detail, emotional weight conveyed through sensory observation rather than abstract statement. Short punchy sentences for tension; long sentences for atmosphere. Ideal for dramatic scenes, character introductions, atmospheric transitions.",
+          "description": "Visual imagery, metaphorical language, emotional weight conveyed through concrete sensory details rather than abstract statements. Ideal for dramatic scenes, character introspection, wistful nostalgia.",
           "examples": [
             {
-              "id": "hibike_001",
-              "source": "Hibike! Euphonium Volume 01 [Yen Press]",
-              "context": "Concert climax — physical response to collective performance energy",
-              "text": "Hundreds of gazes focused on the same spot. The atmosphere was tinged with a swirling, feverish energy that brought a flush to the girls' faces. Kumiko slowly exhaled, trying to steel herself against the contagious emotion. Her heartbeat hammered in her eardrums. Her fingernails pressed crescent-shaped marks into the sweat-sticky palms of her clenched fists.",
-              "word_count": 60,
-              "techniques": [
-                "physiological_cascade",
-                "collective_to_individual_zoom",
-                "tactile_specificity"
-              ],
-              "why_premium": "\"Crescent-shaped marks into the sweat-sticky palms\" is exact tactile detail, not \"she was nervous.\" The paragraph moves from crowd to protagonist to skin, tightening focus like a camera zoom."
+              "id": "violet_001",
+              "source": "Violet Evergarden Volume 01",
+              "context": "Description of protagonist after battlefield trauma",
+              "text": "Her figure as she stood with the knife in hand in the middle of the fallen ones was horrifyingly extraordinary, like a fairy conceived from petals of blood.",
+              "word_count": 30,
+              "techniques": ["metaphor", "visual_imagery", "juxtaposition"],
+              "why_premium": "Transforms violent scene into haunting visual metaphor. 'Fairy conceived from petals of blood' is literary-grade imagery that avoids generic 'like a demon' comparisons."
             },
             {
-              "id": "hibike_002",
-              "source": "Hibike! Euphonium Volume 01 [Yen Press]",
-              "context": "Spring courtyard — transitional season, students indifferent to beauty",
-              "text": "The courtyard was enclosed by a border of sakura cherry trees, which were already shedding their pink petals, and pale green buds were hesitantly beginning to peek out from the slender branches. The students passing beneath seemed uninterested in the scattering blossoms; not a single one paid them any mind.",
-              "word_count": 52,
-              "techniques": [
-                "seasonal_symbolism",
-                "human_indifference_contrast",
-                "semicolon_pivot"
-              ],
-              "why_premium": "\"Hesitantly beginning to peek out\" gives agency to buds. The semicolon pivots from beauty to indifference — the contrast IS the emotional statement. No one says it was lonely. The scene says it."
+              "id": "violet_002",
+              "source": "Violet Evergarden Volume 01",
+              "context": "Naming ceremony, tender moment between mentor and child soldier",
+              "text": "It's the name of a mythological flower goddess. Surely, when you grow up, you'll become a woman worthy of it.",
+              "word_count": 21,
+              "techniques": ["foreshadowing", "gentle_tone_shift", "symbolic_naming"],
+              "why_premium": "Conveys emotional weight through simple declarative sentences. 'Surely' adds gentle conviction. No purple prose, just clean forward motion."
             },
             {
-              "id": "hibike_003",
-              "source": "Hibike! Euphonium Volume 01 [Yen Press]",
-              "context": "Hallway confrontation — two characters isolated from the rest of the school",
-              "text": "The two girls' shadows fell starkly on the white-painted hallway. It was bright outside, but the space they occupied felt somehow dim. The shouts of the baseball team floated in as they practiced outside on the athletics field. They seemed to come from a distant world, and it felt like this particular hallway was somehow separated from the rest of existence. The two girls were drowning inside that invisible membrane.",
-              "word_count": 72,
-              "techniques": [
-                "spatial_isolation",
-                "ambient_sound_as_distance",
-                "closing_metaphor_beat"
-              ],
-              "why_premium": "\"Invisible membrane\" closes the paragraph like a key turning in a lock. Sound from outside (baseball team) deepens their isolation through contrast: the world continues; their moment is suspended."
+              "id": "violet_003",
+              "source": "Violet Evergarden Volume 01",
+              "context": "Protagonist's first words after months of silence",
+              "text": "Although she was supposed to not know how to speak, for some reason, she nodded slowly and opened her mouth, 'Major.'",
+              "word_count": 22,
+              "techniques": ["show_dont_tell", "delayed_revelation", "emotional_restraint"],
+              "why_premium": "Builds tension through slow motion description. 'For some reason' adds mystery rather than explaining everything. Lets moment breathe."
             },
             {
-              "id": "hibike_004",
-              "source": "Hibike! Euphonium Volume 01 [Yen Press]",
-              "context": "A recurring memory of a classmate's raw grief after a competition loss",
-              "text": "Her strained voice carved itself with unpleasant clarity into Kumiko's brain. It was the last competition of middle school. When she remembered the moment, it was always Reina's eyes that came to mind. And whenever she thought of them, Kumiko wanted to run as far away from that summer as she could.",
-              "word_count": 53,
-              "techniques": [
-                "sensory_memory_anchor",
-                "avoidance_as_guilt",
-                "season_as_emotional_landmark"
-              ],
-              "why_premium": "\"Carved itself with unpleasant clarity\" — the voice is a blade. Memory returns through a specific physical detail (eyes), not abstract guilt. \"Run as far away from that summer\" — the season becomes the wound, not the person."
+              "id": "violet_004",
+              "source": "Violet Evergarden Volume 01",
+              "context": "Battlefield atmosphere description",
+              "text": "Said sight was the sole nuance of the warriors whose mission was to take their enemies' lives. It was not something to feel at ease for by any means; rather, it only caused disturbance.",
+              "word_count": 35,
+              "techniques": ["abstract_to_concrete", "semicolon_rhythm", "internal_contradiction"],
+              "why_premium": "Uses semicolon to pivot from observation to effect. 'Sole nuance' is sophisticated word choice. Avoids generic 'they felt scared' telling."
             }
           ]
         },
@@ -1864,11 +1735,7 @@
               "context": "Protagonist anxious about Valentine's Day plans",
               "text": "So, there I stood, tying myself in knots, to the point that I actually forgot about how much leg I was showing.",
               "word_count": 24,
-              "techniques": [
-                "physiological_detail",
-                "self_aware_humor",
-                "concrete_image"
-              ],
+              "techniques": ["physiological_detail", "self_aware_humor", "concrete_image"],
               "why_premium": "'Tying myself in knots' is idiomatic and visual. Grounds abstract anxiety in concrete detail (forgotten modesty). Avoids 'I was nervous' telling."
             },
             {
@@ -1877,11 +1744,7 @@
               "context": "Protagonist checking phone obsessively",
               "text": "It gnawed and gnawed at me until I gave in and checked my phone.",
               "word_count": 15,
-              "techniques": [
-                "verb_repetition",
-                "gradual_surrender",
-                "active_verbs"
-              ],
+              "techniques": ["verb_repetition", "gradual_surrender", "active_verbs"],
               "why_premium": "'Gnawed and gnawed' conveys obsessive checking through action repetition. 'Gave in' shows internal conflict resolution. Tight rhythm."
             },
             {
@@ -1890,11 +1753,7 @@
               "context": "Classroom tension, protagonist hyper-aware of crush",
               "text": "Terrified that she might catch me looking again, I focused all my energy into not glancing in her direction.",
               "word_count": 20,
-              "techniques": [
-                "exaggerated_effort",
-                "negative_action",
-                "tension_through_restraint"
-              ],
+              "techniques": ["exaggerated_effort", "negative_action", "tension_through_restraint"],
               "why_premium": "'Focused all my energy into NOT doing X' is stronger than 'tried not to look'. Makes avoidance active, not passive."
             },
             {
@@ -1903,25 +1762,8 @@
               "context": "Pre-confession anxiety, time perception shift",
               "text": "The clock that once ran agonizingly slowly now spun its hands at breakneck speed. It was so dizzying, I was scared I might just pass out.",
               "word_count": 28,
-              "techniques": [
-                "time_dilation",
-                "physiological_response",
-                "contrast_structure"
-              ],
+              "techniques": ["time_dilation", "physiological_response", "contrast_structure"],
               "why_premium": "Captures anxiety through time perception shift (slow → fast). 'Dizzying' bridges metaphor to physical sensation. Escalates to concrete fear (passing out)."
-            },
-            {
-              "id": "loveunseen_008",
-              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
-              "context": "Protagonist arrives at hospital after running; Fuyutsuki has just been taken for emergency treatment",
-              "text": "Fear seemed to have nailed my feet to the floor.",
-              "word_count": 11,
-              "techniques": [
-                "involuntary_freeze_metaphor",
-                "kinetic_verb_violence",
-                "passive_construction_as_helplessness"
-              ],
-              "why_premium": "'Nailed' is kinetic and violent — something external has immobilized him, not a choice. The passive framing ('seemed to have') adds horror: he is subject, not agent. Different from active restraint (adachi_003) — this is involuntary shutdown under emotional extremity."
             }
           ]
         },
@@ -1934,11 +1776,7 @@
               "context": "Friends discussing part-time job, playful refusal",
               "text": "\"I told you, I don't want you to visit!\" She turned her back to me, pouting. It reminded me of a little kid who didn't want their mom to visit them at school.",
               "word_count": 35,
-              "techniques": [
-                "physical_reaction",
-                "simile",
-                "narrator_observation"
-              ],
+              "techniques": ["physical_reaction", "simile", "narrator_observation"],
               "why_premium": "Dialogue + physical action + narrator comparison creates full scene. Simile ('like a little kid') adds affection without saying 'I found it cute'."
             },
             {
@@ -1947,11 +1785,7 @@
               "context": "Misunderstanding during intimate moment",
               "text": "\"Wait, what? Do I stink or something?\" That was news to me. I felt my self-esteem getting ready to plummet.",
               "word_count": 21,
-              "techniques": [
-                "dialogue_intrusion",
-                "exaggeration",
-                "self_deprecating_humor"
-              ],
+              "techniques": ["dialogue_intrusion", "exaggeration", "self_deprecating_humor"],
               "why_premium": "'Self-esteem getting ready to plummet' is comedic overstatement. Uses active verb structure (self-esteem as agent) for humor."
             },
             {
@@ -1960,11 +1794,7 @@
               "context": "Protagonist caught staring, awkward eye contact",
               "text": "She seemed surprised to find me peering at her, but it was too late to look away. So, instead, we exchanged silent 'What?' looks a dozen or so times.",
               "word_count": 31,
-              "techniques": [
-                "escalating_absurdity",
-                "quantified_action",
-                "mutual_embarrassment"
-              ],
+              "techniques": ["escalating_absurdity", "quantified_action", "mutual_embarrassment"],
               "why_premium": "'Dozen or so times' quantifies the awkwardness without being literal. 'Silent What? looks' is show-don't-tell for confusion."
             }
           ]
@@ -1978,11 +1808,7 @@
               "context": "Watching time pass during intimate moment",
               "text": "I looked back at the clock, even though I'd only just checked it. Somehow, I dreaded every tick of the second hand. Soon lunch would end, cleanup would begin…and then what?",
               "word_count": 34,
-              "techniques": [
-                "time_awareness",
-                "ellipsis_trailing",
-                "open_ended_anxiety"
-              ],
+              "techniques": ["time_awareness", "ellipsis_trailing", "open_ended_anxiety"],
               "why_premium": "Repeats clock-checking to show obsessive awareness. 'And then what?' leaves question hanging, mirroring character's uncertainty."
             },
             {
@@ -1991,11 +1817,7 @@
               "context": "Protagonist reflecting on relationship changes",
               "text": "I grabbed a lock of hair and ran it through my fingers; it slipped away so fast, it practically evaporated.",
               "word_count": 21,
-              "techniques": [
-                "tactile_metaphor",
-                "ephemeral_imagery",
-                "sensory_to_emotional"
-              ],
+              "techniques": ["tactile_metaphor", "ephemeral_imagery", "sensory_to_emotional"],
               "why_premium": "Physical sensation (hair slipping) becomes metaphor for transience. 'Evaporated' elevates simple action to wistful imagery."
             },
             {
@@ -2004,11 +1826,7 @@
               "context": "Movie poster triggers emotional reflection",
               "text": "I stared blankly at the poster, imagining our faces superimposed over theirs. With her there to guide me, I could go just about anywhere. Ugh, I'm such a terminal case.",
               "word_count": 33,
-              "techniques": [
-                "visual_trigger",
-                "fantasy_insertion",
-                "self_aware_deflation"
-              ],
+              "techniques": ["visual_trigger", "fantasy_insertion", "self_aware_deflation"],
               "why_premium": "External stimulus → internal fantasy → self-deprecating reality check. 'Terminal case' is humorous but also reveals emotional depth."
             },
             {
@@ -2017,11 +1835,7 @@
               "context": "Cold night, emotional distance metaphor",
               "text": "Just then, the icy wind brought me back to my senses, but that was probably for the best. The next thing I knew, all the warmth had evaporated, leaving behind only the bone-chilling cold and the faintest outline of Shimamura, distinct from the hazy darkness all around us.",
               "word_count": 51,
-              "techniques": [
-                "weather_as_emotion",
-                "synesthesia",
-                "visual_fade"
-              ],
+              "techniques": ["weather_as_emotion", "synesthesia", "visual_fade"],
               "why_premium": "Physical cold mirrors emotional distance. 'Faintest outline' is visual poetry. Long sentence suits contemplative mood."
             }
           ]
@@ -2035,11 +1849,7 @@
               "context": "Using friend as pillow, tactile focus",
               "text": "I squirmed slightly as gravity pulled her hair down onto my leg, tickling me. Meanwhile, Adachi stared blankly at my stomach area, blinking hard, as though she was trying to will away drowsiness.",
               "word_count": 35,
-              "techniques": [
-                "dual_perspective",
-                "micro_physical_details",
-                "simultaneous_actions"
-              ],
+              "techniques": ["dual_perspective", "micro_physical_details", "simultaneous_actions"],
               "why_premium": "Captures two simultaneous physical experiences (tickling vs drowsiness). 'Blinking hard' is concrete action for abstract tiredness."
             },
             {
@@ -2048,11 +1858,7 @@
               "context": "Hand on shoulder, size perception shift",
               "text": "Shimamura's hands always felt so big and warm whenever I held them, and yet whenever she grasped my shoulders, they felt small and frail. Was that because I was in the supportive role for a change?",
               "word_count": 38,
-              "techniques": [
-                "perspective_shift",
-                "tactile_contradiction",
-                "self_analysis"
-              ],
+              "techniques": ["perspective_shift", "tactile_contradiction", "self_analysis"],
               "why_premium": "Same hands feel different based on context. Philosophical question follows observation. Shows relationship dynamics through physical sensation."
             },
             {
@@ -2061,510 +1867,15 @@
               "context": "Head-patting scene, physiological response",
               "text": "First, I felt her fingers against my hair; then her big, warm palm cupped the back of my head. As her fingers combed through my hair, my heart pounded so hard, it made my gums throb.",
               "word_count": 39,
-              "techniques": [
-                "sequential_sensation",
-                "physiological_overflow",
-                "unexpected_detail"
-              ],
+              "techniques": ["sequential_sensation", "physiological_overflow", "unexpected_detail"],
               "why_premium": "'Gums throb' is unusual specific detail that makes emotion visceral. Sequential touch description builds intimacy slowly."
-            }
-          ]
-        },
-        "deep_introspection": {
-          "description": "Reluctant self-examination, guilt shown through hesitation, shame through inaction. Character realizes something unflattering about themselves and does not flinch from it. Ideal for internal conflict, moments of cowardice, self-disgust, the gap between who we are and who we want to be.",
-          "examples": [
-            {
-              "id": "loveunseen_001",
-              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
-              "context": "Protagonist freezes instead of picking up a blind girl's dropped cane; imagines how his friends would have acted without hesitation",
-              "text": "I hated myself for noticing these things and being upset by them.",
-              "word_count": 14,
-              "techniques": [
-                "self_disgust_as_statement",
-                "double_bind",
-                "brutal_brevity"
-              ],
-              "why_premium": "The sentence has no escape clause. \"Noticing\" and \"being upset\" are both condemned simultaneously — he hates the noticing AND hates that it upsets him. 14 words contain a complete psychological trap. No filter word, no \"I thought,\" no softening. Pure show-dont-tell of a character unable to forgive himself."
-            },
-            {
-              "id": "loveunseen_002",
-              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
-              "context": "Protagonist watches more socially confident friends act instinctively while he freezes",
-              "text": "I waited for someone else to step up, which made me feel like such a lowlife.",
-              "word_count": 17,
-              "techniques": [
-                "passive_inaction_as_shame",
-                "self_labeling",
-                "compressed_moral_failure"
-              ],
-              "why_premium": "\"Waited for someone else\" is the action — or the non-action. The shame arrives immediately with no buffer. \"Such a lowlife\" is blunt self-condemnation, not literary, which makes it more honest. He does not poeticize his failure. He names it."
-            },
-            {
-              "id": "loveunseen_003",
-              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
-              "context": "Protagonist catches himself rationalizing his emotional distance from Fuyutsuki",
-              "text": "Just telling myself that excuse made my heart ache.",
-              "word_count": 10,
-              "techniques": [
-                "meta_self_awareness",
-                "excuse_collapse",
-                "physiological_truth"
-              ],
-              "why_premium": "The word \"excuse\" is doing enormous work — he has already classified his own reasoning as an excuse before finishing the sentence. The physical ache confirms it. 10 words. The character has fully convicted himself before the reader can."
-            },
-            {
-              "id": "loveunseen_004",
-              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
-              "context": "Protagonist realizes he cannot reach across the gap between his world and Fuyutsuki's",
-              "text": "I could feel a transparent wall between us.",
-              "word_count": 9,
-              "techniques": [
-                "physical_metaphor_for_distance",
-                "transparent_not_opaque",
-                "understated_devastation"
-              ],
-              "why_premium": "\"Transparent\" is the critical word — he can see her clearly but cannot reach her. The wall is not opaque (indifference) but transparent (longing without access). 9 words that contain the entire arc of the novel's emotional stakes."
-            },
-            {
-              "id": "loveunseen_011",
-              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
-              "context": "Posthumous letter; protagonist writes about the exact moment he stopped resisting love",
-              "text": "That day I gave up on giving up on you.",
-              "word_count": 11,
-              "techniques": [
-                "double_negation_as_confession",
-                "recursive_surrender",
-                "narrative_hinge_sentence"
-              ],
-              "why_premium": "'Gave up on giving up' is grammatically recursive and emotionally crystalline — the double negation is not awkward, it is precise. He tried to disengage. He failed. That failure was the beginning. 11 words that name the exact hinge point of an entire relationship. Ideal for moments where a character retrospectively identifies when everything changed."
-            }
-          ]
-        },
-        "dramatized_romance": {
-          "description": "Emotion conveyed entirely through behavior, avoidance, or micro-physical action — never declared. Attraction shown through restraint: looking away, controlled breathing, deliberate non-touch. Ideal for slow-burn romance, first awareness of feelings, scenes where characters refuse to admit what they feel.",
-          "examples": [
-            {
-              "id": "loveunseen_005",
-              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
-              "context": "Protagonist's heart races at Fuyutsuki's smile; he immediately suppresses the feeling",
-              "text": "Her unexpected smile made my heart race. I didn't want to dwell on that feeling, though, so I turned away.",
-              "word_count": 22,
-              "techniques": [
-                "emotion_then_immediate_suppression",
-                "avoidance_as_confession",
-                "though_as_pivot"
-              ],
-              "why_premium": "The pivot word is \"though\" — it separates the involuntary response from the chosen response. \"Turned away\" is the entire romance condensed into one action. He does not say \"I liked her smile.\" He turns away from it. The reader understands everything the character refuses to."
-            },
-            {
-              "id": "loveunseen_006",
-              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
-              "context": "Fuyutsuki is suddenly close after he catches her on a crowded train; he holds his breath until their stop",
-              "text": "Fuyutsuki's face was now right in front of mine, and she blinked in surprise. \"Thank you for protecting me,\" she said with a smile, so close I could almost feel her breath. I held my own breath for as long as I could until we reached our station stop, trying not to breathe on her.",
-              "word_count": 52,
-              "techniques": [
-                "proximity_hyperawareness",
-                "breath_as_intimacy_marker",
-                "self_erasure_as_reverence"
-              ],
-              "why_premium": "\"Held my own breath... trying not to breathe on her\" — his restraint IS the tenderness. He is protecting her from his own presence. This is more romantic than any declaration because it shows a man trying to take up less space out of reverence. Desire expressed as self-negation."
-            },
-            {
-              "id": "loveunseen_007",
-              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
-              "context": "Moonlit walk after the party; he realizes Fuyutsuki cannot see what he is seeing",
-              "text": "The scattered lights of the apartment buildings looked like real stars. The huge moon peeked out through high-rise buildings, looking as if it were suspended in a star-filled sky. So this is what the city looks like at night, I thought—but then something else struck me. Fuyutsuki wouldn't be able to see the moon, would she?",
-              "word_count": 61,
-              "techniques": [
-                "wonder_then_gap",
-                "beauty_as_exclusion",
-                "question_ending_as_emotional_beat"
-              ],
-              "why_premium": "Structured as wonder then realization then devastation. He notices beauty, then realizes she cannot share it — that gap IS the romance. The final question is not rhetorical; it is the first moment he truly sees her situation. The moon becomes everything he wants to give her that he cannot."
-            },
-            {
-              "id": "loveunseen_009",
-              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
-              "context": "Sparkler scene; Fuyutsuki says this after he insists she will recover despite knowing her prognosis",
-              "text": "\"You always tell such kind lies, don't you, Kakeru?\"",
-              "word_count": 11,
-              "techniques": [
-                "confession_through_accusation",
-                "plausible_deniability",
-                "tenderness_as_challenge"
-              ],
-              "why_premium": "She is not accusing him of deception — she is telling him she knows he loves her, in language that lets both of them survive the admission. 'Kind lies' reframes dishonesty as devotion. The question mark is not a question. It is a declaration with deniability built in. The most sophisticated use of dialogue-as-confession in the corpus."
-            },
-            {
-              "id": "loveunseen_010",
-              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
-              "context": "Protagonist alone in hospital corridor after seeing Fuyutsuki's 5% survival statistic on the chart",
-              "text": "I took a deep breath—then an even deeper one—in an effort to hold back the tears.",
-              "word_count": 19,
-              "techniques": [
-                "two_step_breath",
-                "effort_as_emotional_marker",
-                "repetition_reveals_failure"
-              ],
-              "why_premium": "The first breath failed — that is what the second breath tells us. He never says 'I almost cried.' The repetition ('then an even deeper one') is the tell. 'In an effort to hold back' confirms he is near the edge without confirming whether he succeeded. The reader completes the picture. Perfect show-dont-tell for characters who refuse to break down."
-            }
-          ]
-        },
-        "endurance_as_devotion": {
-          "description": "Love shown through physical cost, micro-service, or impossible wishes — never declared. The character suffers, sacrifices, or performs a tiny act of care, and the emotional weight is entirely carried by the action's disproportionate intensity. Ideal for climactic crisis scenes, the moment a character realizes how deep their feelings go, or quiet scenes where a small gesture reveals everything.",
-          "examples": [
-            {
-              "id": "loveunseen_012",
-              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
-              "context": "Protagonist sprints to hospital after hearing Fuyutsuki has collapsed; internal monologue during the run",
-              "text": "I could taste blood. My lungs were aching. I didn't care, though—none of it mattered. I just wanted to see Fuyutsuki as soon as possible.",
-              "word_count": 27,
-              "techniques": [
-                "body_cost_as_love_proof",
-                "dismissal_of_pain",
-                "single_sentence_mission"
-              ],
-              "why_premium": "The physical suffering is named ('blood,' 'aching') and immediately dismissed ('none of it mattered'). The dismissal is the declaration. He does not say 'I love her.' He says her name and 'as soon as possible.' The urgency is in the grammar — no subordinate clauses, no reflection. Just forward motion. Use when a character's love must be shown through action under extremity rather than emotional language."
-            },
-            {
-              "id": "loveunseen_013",
-              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
-              "context": "Library scene; protagonist notices Fuyutsuki is running low on origami paper and places more next to her without a word",
-              "text": "It looked like she was about to run out of paper, so I silently placed more next to her. \"Thank you,\" she said. I was so elated I couldn't stop myself from talking to her.",
-              "word_count": 33,
-              "techniques": [
-                "micro_act_disproportionate_joy",
-                "silence_as_care",
-                "elation_from_minimal_acknowledgment"
-              ],
-              "why_premium": "The act is trivially small (placing paper). The acknowledgment is two words ('Thank you'). His response is elation so overwhelming he loses control of himself. The disproportionate emotional payload is the signature of early-stage love — every scrap of attention becomes enormous. Use when a character cannot yet admit their feelings but their joy at small reciprocities betrays them."
-            },
-            {
-              "id": "loveunseen_014",
-              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
-              "context": "Sparkler scene at night; protagonist holds sparkler next to Fuyutsuki's and makes a silent wish",
-              "text": "I hoped Fuyutsuki's sparkler would last longer than mine. I hoped she'd live longer than I did, even if just by a second. I wished that from the bottom of my heart.",
-              "word_count": 34,
-              "techniques": [
-                "object_as_wish",
-                "sparkler_to_lifetime_compression",
-                "triple_escalation"
-              ],
-              "why_premium": "Three sentences: sparkler duration → lifespan → heart confirmation. The compression is structurally perfect: the concrete object opens the thought, the impossible wish follows, the 'from the bottom of my heart' closes it without irony. He does not say 'I love you, please don't die.' He says it through a sparkler burning in the dark. The wish IS the confession."
-            }
-          ]
-        },
-        "kinetic_action_sequence": {
-          "description": "Detailed mecha/military action sequences — staccato sensor-filtered perception, physics rendered as threat, body cost as survival proof. Source: 86—Eighty-Six Vols 2–4 [Yen Press]. Use for combat translations requiring visceral immediacy without slowing scene momentum.",
-          "genre_fit": [
-            "military_sci_fi",
-            "mecha",
-            "isekai_war",
-            "shonen_action"
-          ],
-          "core_techniques": [
-            "body_as_sensor: Replace visual/radar output with tactile/auditory body-read (protagonist tracks invisible enemy via sound, vibration, intuition)",
-            "kinetic_verb_chain: Three or more action verbs in rapid succession with no connectors, separated only by commas (tumbled, evaded, deflected)",
-            "physics_as_threat: Render weapon physics (shock-wave radius, blade frequency, angle-of-impact) as the emotional payload, not the damage result",
-            "absence_as_presence: Describe what is NOT on radar/screen to amplify the horror of the enemy that is there",
-            "staccato_under_fire: During peak action, cap sentences at 8 words MAX. Save complex syntax for the breath between exchanges",
-            "survival_cost_as_proof: Post-battle body — hoarse voice, dry throat, canopy unopened for hours — is the only permitted self-congratulation"
-          ],
-          "examples": [
-            {
-              "id": "eighty6_001",
-              "source": "86—Eighty-Six, Vol. 4 [Yen Press]",
-              "context": "Shin engages an invisible Legion type; his radar and optical sensors return nothing. He tracks it solely through the para-RAID's quasi-neural 'voices'.",
-              "text": "There was nothing in front of him, according to the main screen's footage. Nothing on his radar screen, either, even if it was set to passive. But a sense separate from his usual five picked up on the artificial killing intent and urged him to pull his control stick sideways. Undertaker evaded by tumbling aside, and the moment it did, the ominous sound of wind swept through where it had stood just a moment ago. A single shard of glass on the floor sprang up, as if something had stepped over it.",
-              "word_count": 87,
-              "techniques": [
-                "body_as_sensor",
-                "absence_as_presence",
-                "environmental_displacement_as_proof"
-              ],
-              "why_premium": "The threat is proved by a shard of glass on the floor — not the protagonist's pain, not warning dialogue, not a camera cut. The radar says nothing; the glass says everything. 'A sense separate from his usual five' establishes the character's para-normal tracker without over-explaining it. Use when translating scenes where a protagonist must react to what cannot be seen or heard."
-            },
-            {
-              "id": "eighty6_002",
-              "source": "86—Eighty-Six, Vol. 4 [Yen Press]",
-              "context": "Shin's high-frequency blade contacts the enemy's opposing vibration frequency; both machines deflect off each other.",
-              "text": "The blade was capable of cutting through a Dinosauria's composite armor like butter, but in the next moment, its vibrations were interrupted by opposing vibrations, and a vector of the opposite direction forced both blades and the enemy fuselage to deflect off each other. The high-pitched screech of metal rose up, cutting through the blue air.",
-              "word_count": 52,
-              "techniques": [
-                "physics_as_threat",
-                "established_power_subverted",
-                "sound_as_scene_close"
-              ],
-              "why_premium": "The sentence structure mirrors the deflection: a long subordinate clause establishing capability ('capable of cutting like butter') slams into the adversative pivot ('but in the next moment') then collides with the opposing clause. The physics feel lived-in because the terminology is specific (vibrations, vector, fuselage) yet the scene closes on pure sound ('screech of metal… cutting through the blue air'). Teaching moment: match sentence architecture to the physical event."
-            },
-            {
-              "id": "eighty6_003",
-              "source": "86—Eighty-Six, Vol. 4 [Yen Press]",
-              "context": "Shin deduces the Eintagsfliege optical camouflage can be stripped by shockwave bloom. He fires a timed-fused HEAT round and the camouflage burns away.",
-              "text": "Eight-thousand-meter-per-second shock waves spread out spherically, with sizzling flames rushing after them. And as planned, the faintly wavering heat haze was torn open and exposed. The shock waves capable of easily bending iron plates were merely a by-product of producing the metal jet, but they tore off the scenery surrounding the enemy. Lapped at by tongues of black-orange flames, fragments of silver flaked off and burned away. It landed, wreathed in flaming silver shards.",
-              "word_count": 79,
-              "techniques": [
-                "kinetic_verb_chain",
-                "physics_as_threat",
-                "color_as_revelation"
-              ],
-              "why_premium": "The reveal is earned technically: first the shockwave statistics, then the by-product admission ('merely a by-product'), then the color spectacle (black-orange → silver shards). The prose doesn't say 'the camouflage broke.' It says the scenery was torn off, silver flaked and burned. Show the effect, not the outcome. The tonal shift from sterile physics ('8,000 m/s') to impressionistic image ('wreathed in flaming silver shards') is the signature of 86's action writing."
-            },
-            {
-              "id": "eighty6_004",
-              "source": "86—Eighty-Six, Vol. 4 [Yen Press]",
-              "context": "Shiden's Cyclops locks sight on what she believes are self-propelled mines, but Shin's order stops her. The figures step into the light — they have eyes.",
-              "text": "The figures emerged from the darkness, with staggering steps that made them appear wounded, just like the self-propelled mines that couldn't walk upright. But their silver colors stood out all too clearly. An Adularia's silver eyes stared at Cyclops. They stared at her. The Legion used their blatantly unfair technological advantage to tirelessly develop and stay one step ahead of humankind. But their programming prohibited them from making a weapon that was too similar to a human. Even the self-propelled mines, which were close in that regard, didn't have human faces. They lacked mouths, noses, and of course, eyes. Which meant that this…",
-              "word_count": 100,
-              "techniques": [
-                "absence_as_presence",
-                "horror_through_specification",
-                "trailing_sentence_as_realization"
-              ],
-              "why_premium": "The horror is constructed by listing what the thing should NOT have (no mouths, no noses, no eyes) — then leaving the trailing 'Which meant that this…' for the reader to complete. 'They stared at her' repeated twice, separated by one sentence, slows the clock. The ethical framing (Legion's programming prohibited human-like weapons) transforms the reveal into a logical horror, not a jump scare. Use when a scene requires the reader to outrun the character to the terrible conclusion."
-            },
-            {
-              "id": "eighty6_005",
-              "source": "86—Eighty-Six, Vol. 2 [Yen Press]",
-              "context": "The climactic Legion retreat after a sustained multi-day battle. Shin opens his canopy into the rain for the first time in hours.",
-              "text": "All sensation of time had long since abandoned him. The surroundings reflected in his optical screen were dyed red, and he had lost count of how many enemies he destroyed and how many remained. He bit into solid combat rations in the pause between one battle and the next and closed his eyes for brief spells of rest. The Legion surged forth without schemes or tactics, making it not a battle but a primeval clash. Raising his eyes, Shin suddenly realized it was raining. The Juggernaut's audio sensors picked up white noise and the sound of the faint rain pattering against its armor. It was the sound of peaceful silence, a rare occurrence on the tumultuous battlefield. And it took his exhausted consciousness a few seconds too long to realize why he could hear it.",
-              "word_count": 133,
-              "techniques": [
-                "survival_cost_as_proof",
-                "sensory_recession",
-                "delayed_realization_as_cost"
-              ],
-              "why_premium": "The protagonist doesn't celebrate winning. He realizes it's raining — and then realizes a beat too late why he can hear silence. That cognitive lag ('a few seconds too long') is the only permitted victory gesture: the machinery of mind running slower than the machinery of war. 'Not a battle but a primeval clash' reframes the entire sequence. Use this passage as the model for any post-battle wind-down: no cheering, no relief speech — only the sensory world returning and the character being late to notice it."
-            }
-          ]
-        },
-        "mystery_deduction": {
-          "description": "Detective-narrative deductive logic rendered through character voice — inference through silence, compassion through revelation, villain concession as evidence. Source: The Detective Is Already Dead Vols 1-4 [Yen Press]. Use for mystery-romcom hybrids where the protagonist solves through emotional intelligence, not forensics.",
-          "genre_fit": [
-            "mystery_romcom",
-            "supernatural_thriller",
-            "psychological_mystery",
-            "light_novel_mystery"
-          ],
-          "core_techniques": [
-            "deduction_as_therapy: The detective's revelation heals the subject rather than damning them — deduction is an act of care",
-            "strategic_concession: Detective admits partial defeat or ignorance as a trap to make the villain reveal their true motive",
-            "omission_as_proof: What the narrator deliberately does NOT investigate becomes the actual clue for the reader",
-            "retrospective_irony: Narrator narrates a 'normal' event; dramatic irony is that the reader now knows it was the turning point",
-            "lie_in_silence: Character's silence in response to an accusation is treated as confirmation — no dialogue needed"
-          ],
-          "examples": [
-            {
-              "id": "tanmoshi_001",
-              "source": "The Detective Is Already Dead, Vol. 1 [Yen Press]",
-              "context": "Siesta reveals that the hijacker Bat never intended to die — he staged the entire hijack to give himself an excuse to survive.",
-              "text": "'You were probably executing this hijack on instructions from someone else. In addition, you yourself were ordered to crash and die with the plane. Am I wrong?' '……' His silence indicated that she wasn't. 'But you don't want to. You're actually afraid to die, so you used us to give yourself an excuse that would let you survive. Correct?' A hijacker had been given orders to die by somebody else. He'd obeyed the order initially, but when it got down to the wire, he'd realized he valued his life. Thus, he'd come up with the idea of calling a detective and staging a deduction game.",
-              "word_count": 107,
-              "techniques": [
-                "deduction_as_compassion",
-                "lie_in_silence",
-                "retrospective_irony"
-              ],
-              "why_premium": "'His silence indicated that she wasn't' — the ellipsis carries the entire confession. Siesta's deduction doesn't feel aggressive; it's a gift. She gives Bat permission to admit he wanted to live. The paragraph that follows ('called a detective to stage a deduction game') reveals the hijacker's emotional logic through Kimizuka's narration post-hoc, so the reader feels clever for having it outlined after the silence confirmed it. Use for mystery scenes where the protagonist reads a villain's secret wish rather than their crime."
-            },
-            {
-              "id": "tanmoshi_002",
-              "source": "The Detective Is Already Dead, Vol. 1 [Yen Press]",
-              "context": "Siesta confronts Bat post-deduction; he asks how she knew, and she reveals she'd known everything before even boarding the flight.",
-              "text": "'How did you know all that?' Finally, having been soundly beaten by the ace detective, the villain of this story asked her why he'd lost. 'What gave it away? Was it really just because I backed down too fast, or—?' 'Haaah. That was a factor as well, but…' Sounding unenthused, Siesta turned around. 'I already knew about you.' '…What do you mean?' 'I knew you'd be on this plane today and that you were planning to hijack it. I know about your companions who ordered you to do it. Everything.' …Wait, what? Knowing all that, she'd boarded this flight anyway? Had she known how all this would play out from the very beginning? 'First-rate detectives resolve incidents before they even occur, you see. I was just a bit late, since I let myself fall asleep.'",
-              "word_count": 128,
-              "techniques": [
-                "strategic_concession",
-                "revelation_via_understatement",
-                "pre_resolution_omniscience"
-              ],
-              "why_premium": "The punchline is deadpan: 'I was just a bit late, since I let myself fall asleep.' The reveal of omniscience arrives after the villain has already capitulated and already asked his question — which means the greatest proof of the detective's power is not that she won, but that the win was always already over. Use as the model for 'the detective was ahead' reveals: the more casual the delivery, the more crushing the implication."
-            },
-            {
-              "id": "tanmoshi_003",
-              "source": "The Detective Is Already Dead, Vol. 2 [Yen Press]",
-              "context": "Siesta forces Kimizuka to face the truth that Alicia is Hel by reconstructing the chain of evidence he'd been refusing to follow.",
-              "text": "'I'd suspected that Hel, or Jack the Devil, was actually Alicia, and yet until the very, very end, I'd behaved as though I still had at least a tiny shred of belief in her.' 'No, I think those were genuine.' That was some small consolation. 'Alicia's encouragement really did help her.' Yeah. She'd said it with tears on her face. She'd hugged Alicia to her, and— '…!' I broke out in goose bumps all over, and a choked noise escaped me. 'Back then, Alicia had…'",
-              "word_count": 88,
-              "techniques": [
-                "omission_as_proof",
-                "goose_bump_as_realization",
-                "trailing_sentence_breaks_on_horror"
-              ],
-              "why_premium": "The realization is not stated — it interrupts. The body reacts ('goose bumps') before the thought completes ('Back then, Alicia had…'). The ellipsis at the end makes the reader finish the sentence themselves, and whatever they imagine is worse than what the narrator could say. Kimizuka's retroactive re-reading of a tender moment as manipulation is the exact technique for mystery reveals that recontextualize earlier 'innocent' scenes as evidence."
-            },
-            {
-              "id": "tanmoshi_004",
-              "source": "The Detective Is Already Dead, Vol. 2 [Yen Press]",
-              "context": "Aboard a cruise ship, Kimizuka reasons through why SPES is acting now — then deliberately suppresses the deduction to protect Natsunagi.",
-              "text": "That train of thought naturally led me to a certain deduction. '…Oh!' Natsunagi gave a small cry, as if she'd realized something. She might have come to the same conclusion through the process of elimination. In which case… 'I dunno. There's no telling what goes on in the minds of those lunatics.' Giving a faint smile, I punted Natsunagi's unease off the field. '…You think?' 'Yeah.' After all, this was just a deduction—no more than a theory. I was sure it wasn't the truth. What if SPES's true target wasn't Saikawa or me, but Natsunagi, who had Siesta's heart? No, that couldn't be it. It shouldn't be. It was wrong for Natsunagi's life to be destroyed over this.",
-              "word_count": 120,
-              "techniques": [
-                "suppressed_deduction",
-                "omission_as_protection",
-                "retrospective_irony"
-              ],
-              "why_premium": "The protagonist reaches the correct deduction, then actively chooses not to share it. The reader sees both the conclusion and the reason for hiding it. 'It shouldn't be. It was wrong for Natsunagi's life to be destroyed over this' — the self-correction isn't confusion, it's love dressed as doubt. Use for first-person mystery narrators who know more than they admit, where the gap between what they deduce and what they say reveals character."
-            },
-            {
-              "id": "tanmoshi_005",
-              "source": "The Detective Is Already Dead, Vol. 4 [Yen Press]",
-              "context": "Mia Whitlock (Oracle) explains why she has no hope and no ambition — she has already seen every future end badly.",
-              "text": "'Say a Tuner's role is to risk everything to fight the enemies of the world, until they eventually meet the end one would expect. They may avert one crisis, but the enemies will keep coming. The fight won't ever end. Until the world is destroyed, they'll just keep pretending to save it, using every trick in the book, while only the people who fill those positions change. Can you find any hope in a future like that?' Mia Whitlock's lilac eyes were right in front of me, wavering. This was her counterargument to the wish I'd brought her: 'Can the future be changed?' Her answer was: No matter which future you choose, it will end badly. With the end of the world. She wasn't exaggerating, though.",
-              "word_count": 115,
-              "techniques": [
-                "villain_as_tragic_realist",
-                "question_as_thesis",
-                "eye_color_as_emotional_register"
-              ],
-              "why_premium": "The Oracle's argument is framed as a question to the protagonist, but structurally it's a philosophical thesis. 'Can you find any hope in a future like that?' is not a genuine question — it's an invitation to disagree she expects to lose. 'Lilac eyes were right in front of me, wavering' shifts the camera from argument to face in one phrase, grounding abstract doom in a single vulnerable detail. Use for antagonist speeches that must feel genuinely correct before the protagonist refutes them."
-            }
-          ]
-        },
-        "psychological_duel": {
-          "description": "Mind-vs-mind confrontations where persuasion, emotion, and logic are weapons — Oracle fatalism vs action faith, alien-logic vs human-emotion taxonomy, justice vs love binary. Source: The Detective Is Already Dead Vols 1-4 [Yen Press]. Use for scenes where two belief systems collide and neither is simply wrong.",
-          "genre_fit": [
-            "psychological_thriller",
-            "mystery_romcom",
-            "supernatural_action",
-            "philosophical_LN"
-          ],
-          "core_techniques": [
-            "justice_vs_love_binary: Two characters represent different correct values (saving the world vs saving the people I love) with no easy resolution",
-            "alien_epistemology: Villain genuinely cannot understand human emotion and asks about it — their confusion is more unsettling than their menace",
-            "word_soul_power: Character gains ability from grief or love; the emotional origin is the power's activation condition",
-            "prophetic_surrender: A character who can see the future chooses to stop looking and act on faith instead",
-            "two_truths_collision: Both sides state their position clearly; the narrative refuses to judge"
-          ],
-          "examples": [
-            {
-              "id": "tanmoshi_006",
-              "source": "The Detective Is Already Dead, Vol. 4 [Yen Press]",
-              "context": "Kimizuka confronts Mia's fatalism by physically picking her up — the counterargument to prophecy is bodily action, not words.",
-              "text": "'Sorry, though. I may understand it, but I can't sympathize.' I scooped Mia up in what's known as the 'princess carry.' '……Huh?' In my arms, Mia blinked at me rapidly. What's the matter? You sound kinda silly. You realize you're breaking character, right? She can't actually have thought she'd convince me with that. 'I'm going to show you just how uncertain the future really is.' Right then—an alarm began to sound in the room, or maybe all through the building. Then the window Mia had just been leaning against shattered.",
-              "word_count": 82,
-              "techniques": [
-                "prophetic_surrender_inverted",
-                "physical_action_as_argument",
-                "comedy_as_philosophy"
-              ],
-              "why_premium": "The protagonist's rebuttal to a deterministic worldview is a princess carry. This is the core tone of the series: tragedy answered with absurd warmth. The universe punctuates his point immediately (alarm, shattered window) — reality rewards the refusal of fatalism. Use when a character needs to respond to an airtight logical argument through action rather than counter-logic: the body argues back when words cannot."
-            },
-            {
-              "id": "tanmoshi_007",
-              "source": "The Detective Is Already Dead, Vol. 4 [Yen Press]",
-              "context": "On a burning battlefield, Natsunagi catalogs all human emotions to the alien Seed, who admits he cannot understand any of them.",
-              "text": "'Alicia tried to protect Siesta and me, ignoring the danger to herself—that's friendship! Hel always stayed close to you and did her very best at everything—that's sadness! Yui thought of her parents, and her parents constantly put their only daughter first—that's love! Charlie inherited Siesta's last wish after she died and kept carrying out missions all on her own—that's dedication! Albert risked every facet of his own life to save his little sister—that's devotion! Siesta died, entrusting everything to Kimizuka, to me, and to her friends—that's passion! All of that— They're all human emotions. Having them is what makes us human!' … 'I see. I didn't understand that in the slightest. It's probably similar to the way humans can't perceive insect calls as intelligible speech.'",
-              "word_count": 129,
-              "techniques": [
-                "alien_epistemology",
-                "emotion_taxonomy_as_battle_speech",
-                "parallel_construction_climax"
-              ],
-              "why_premium": "Six emotions named, each anchored to a character and an action — the taxonomy becomes a eulogy for everyone who died. The villain's response ('similar to the way humans can't perceive insect calls') destroys the speech's emotional power without engaging it — the alien literally cannot hear it. The tragedy is that the speech is both correct and useless. Use this pattern for climactic character-defining monologues: the parallel construction (that's X! / that's Y!) builds to a thesis sentence, then the villain's flat response produces the devastation."
-            },
-            {
-              "id": "tanmoshi_008",
-              "source": "The Detective Is Already Dead, Vol. 3 [Yen Press]",
-              "context": "Natsunagi uses Hel's mind-control ability (gained by accepting Hel into herself) to stop Fuubi the Assassin mid-strike.",
-              "text": "'Fuubi Kase, you can't take a single step from that spot.' Fuubi stopped dead. '…!' She stood petrified, her eyes wide with astonishment. Just one more step—her knife had frozen just before it plunged into Natsunagi's chest. Natsunagi's red eyes were using the mind control. When she talked to Hel, then accepted her, she'd become able to use that ability. '…! This isn't…enough to—!' However, the Assassin wouldn't stop until she'd destroyed her target. 'Don't think you can stop me with an ability you just picked up!'",
-              "word_count": 89,
-              "techniques": [
-                "word_soul_power",
-                "ability_rooted_in_acceptance",
-                "dialogue_as_weapon"
-              ],
-              "why_premium": "The ability is granted by emotional acceptance, not training — Natsunagi didn't learn mind control, she earned it by choosing to understand the person who used it against her. 'You can't take a single step from that spot' is a sentence that functions as both dialogue and incantation. The technique lesson: power gained through compassion should be shown in the moment of its activation, with the origin explained immediately after so the reader feels the causal logic."
-            },
-            {
-              "id": "tanmoshi_009",
-              "source": "The Detective Is Already Dead, Vol. 3 [Yen Press]",
-              "context": "Fuubi the Assassin (utilitarian justice) confronts Natsunagi (personal love) in a final ideological standoff before combat.",
-              "text": "'Yui Saikawa: Your death will save the world. Charlotte Arisaka Anderson: If you kill Yui Saikawa, you'll save the world. Nagisa Natsunagi: If you were as strong as the former ace detective, you would save the world. So why don't you do it? What, you can't? Oh, well, I understand everything now.' … 'The detective was too right, and she died.' Justice didn't necessarily win. 'So I want to choose something I know might be wrong. Even if it isn't correct, even if justice doesn't win, even then—I want to choose a future where the people who are precious to me are smiling next to me.'",
-              "word_count": 108,
-              "techniques": [
-                "justice_vs_love_binary",
-                "two_truths_collision",
-                "thesis_delivered_mid_fight"
-              ],
-              "why_premium": "Fuubi's speech is correct: utilitarian logic is hard to refute. Natsunagi doesn't refute it — she admits it ('I think what you're saying is probably correct') and then rejects it anyway ('So I want to choose something I know might be wrong'). This is the series' central moral stance — love over justice even knowing love is less efficient. 'The detective was too right, and she died' is a single-sentence thesis that redefines the protagonist's entire journey. Use when two characters argue values: let both sides be right, then let one character knowingly choose the less correct side."
-            }
-          ]
-        },
-        "grief_romance": {
-          "description": "Romance expressed through loss, sacrifice, and inherited mission — love that can only be spoken through a dead woman's eyes or a future deliberately abandoned. Source: The Detective Is Already Dead Vols 1-4 [Yen Press]. Use for routes where survivors love each other through a dead third party, or where the depth of feeling is measured by what the character gives up.",
-          "genre_fit": [
-            "mystery_romcom",
-            "supernatural_romance",
-            "grief_drama",
-            "light_novel_romance"
-          ],
-          "core_techniques": [
-            "proxy_body_romance: Protagonist interacts with a living character who carries the dead beloved's heart; love is felt across impossible physical boundaries",
-            "future_forfeit_sacrifice: Character surrenders their own future (including survival) to ensure the protagonist gets his",
-            "inherited_mission_as_confession: Character's decision to carry on a dead person's work IS the confession — the mission = the love",
-            "echo_recognition: A repeated phrase or gesture from the past (spoken by the dead) surfaces in the present character, and the protagonist freezes",
-            "name_as_eulogy: Final paragraph names the character formally — first name, full name, title — as a closing prayer"
-          ],
-          "examples": [
-            {
-              "id": "tanmoshi_010",
-              "source": "The Detective Is Already Dead, Vol. 3 [Yen Press]",
-              "context": "Natsunagi (who carries Siesta's heart) extends her left hand to Kimizuka in a burning casino; a flashback to Siesta's original offer four years ago overlays the scene.",
-              "text": "'Kimi—be my assistant.' When I heard her say it, my mind jumped back four years. It was the same. Just like the time we'd met, at ten thousand meters. Right now, the girl standing there was Nagisa Natsunagi—but my eyes saw Siesta as she'd been on that day, four years ago, clearly and vividly. …In that case, this was never an actual choice. 'As you wish—ace detective.' I took Siesta's hand and gave her my very best smile. '…That expression is straight out of a horror movie.' 'Leave me alone!'",
-              "word_count": 91,
-              "techniques": [
-                "echo_recognition",
-                "proxy_body_romance",
-                "comedy_as_grief_valve"
-              ],
-              "why_premium": "'Right now, the girl standing there was Nagisa Natsunagi—but my eyes saw Siesta.' That one sentence admits something the protagonist has never said out loud: he is not in love with only one of them, maybe not clearly with either, but the gesture is muscle memory from a dead woman. The immediate comedy payoff ('That expression is straight out of a horror movie') prevents this from becoming melodrama while fully preserving the emotional devastation. Use for proxy-romance moments: acknowledge the double vision, let one character crack a joke."
-            },
-            {
-              "id": "tanmoshi_011",
-              "source": "The Detective Is Already Dead, Vol. 4 [Yen Press]",
-              "context": "Natsunagi learns from Mia that resurrecting Siesta means Natsunagi (the current bearer of Siesta's heart) will be displaced — she accepts this anyway.",
-              "text": "'Are you sure that's okay?' Out of nowhere, I felt as if a voice had echoed in my mind. It was the question I'd been asked two days ago, at the top of the highest clock tower in England, by a girl who could see the future. After she'd made Kimizuka leave and it was just the two of us, she told me about the distortion that would result if we overturned a predetermined future, attempting the taboo of resurrecting the dead. Just as there could only ever be one person in the world with the gifts of an Oracle, it was possible that the world would only allow one Ace Detective. So if we created a future where Siesta came back to life, I'd be— 'Yes, it's fine.' Back then, I hadn't been able to respond to the question immediately, but I had an answer now. 'I mean, it's true, isn't it?'",
-              "word_count": 127,
-              "techniques": [
-                "future_forfeit_sacrifice",
-                "interrupted_self_erasure",
-                "conviction_delivered_in_casual_register"
-              ],
-              "why_premium": "'So if we created a future where Siesta came back to life, I'd be—' — the self-erasure is cut off by an em-dash, and 'Yes, it's fine' answers it anyway. The character doesn't say 'I will disappear.' She says 'It's fine.' The understatement is the sacrifice. Then 'I mean, it's true, isn't it?' is the most heartbreaking sentence in the series — casual confirmation of her own death as a gift. Use when a character accepts their own destruction: the more casual their register, the heavier the weight."
-            },
-            {
-              "id": "tanmoshi_012",
-              "source": "The Detective Is Already Dead, Vol. 4 [Yen Press]",
-              "context": "Natsunagi makes her final charge against Seed impaled through the stomach, using word-soul as her last power, then crawls toward Kimizuka's unconscious body.",
-              "text": "'—I'm the proxy detective.' I'd decided as much a year ago. '…………!' The next moment, Seed's tentacle ran through my stomach. '………………gk, ah, ………kh!' Pain fiercer than anything I'd ever felt broke over me, and I almost blacked out. —Even so. 'Run, legs!' Using my word-soul power one more time, I gave myself a firm order. Run, run. The pain doesn't matter. Forget about everything except going forward. In the midst of the blazing flames, I crawled toward Kimizuka's prone body. There wasn't much oxygen. I'd lost too much blood. My grip on my consciousness was slipping, and I couldn't seem to get enough air. Even so, I stretched my hand, my fingertips, toward him. 'Tha…nk…'",
-              "word_count": 118,
-              "techniques": [
-                "word_soul_power",
-                "survival_cost_as_proof",
-                "interrupted_farewell"
-              ],
-              "why_premium": "'Run, legs!' is a word-soul command given to her own dying body — she is literally ordering herself to keep loving him. The ellipsis-filled vocalization of pain ('gk, ah, kh') replaces a paragraph of agony with authentic physical noise. 'Even so, I stretched my hand, my fingertips, toward him' — she doesn't reach him; she only reaches toward. The incomplete farewell ('Tha…nk…') is cut off not because she dies in narrative, but because love doesn't need the sentence to finish."
-            },
-            {
-              "id": "tanmoshi_013",
-              "source": "The Detective Is Already Dead, Vol. 4 [Yen Press]",
-              "context": "Natsunagi's final lines — she names herself formally, defines her role, and surrenders to the succession chain.",
-              "text": "Feeling just a little satisfied, I fell asleep. My name is Nagisa. Nagisa Natsunagi, proxy detective. My last wish kept the detective's mission from dying out, and it will be inherited by the next person to fight.",
-              "word_count": 37,
-              "techniques": [
-                "name_as_eulogy",
-                "inherited_mission_as_confession",
-                "satisfaction_as_closure"
-              ],
-              "why_premium": "Thirty-seven words. Full stop. The character names herself in three tiers (first name → full name → title), and the title IS her confession: she chose to become the detective to keep Siesta's love alive. 'Feeling just a little satisfied' is the only self-congratulation allowed — small, precise, earned. 'It will be inherited by the next person to fight' is not resignation; it is how she survives by passing forward. Use as the model for final-paragraph character closes: name the character, name their role, name what they leave behind."
             }
           ]
         }
       },
       "usage_guidelines": {
         "when_to_reference": [
-          "When translating scenes with similar emotional beats (confession anxiety, battlefield poetry, intimate silence, kinetic combat, deductive revelation, grief-love)",
+          "When translating scenes with similar emotional beats (confession anxiety, battlefield poetry, intimate silence)",
           "When source material uses abstract emotion words that need concrete rendering",
           "When calibrating prose rhythm for contemporary light novel audience",
           "When Stage 2 output feels too generic or 'AI-translated'"

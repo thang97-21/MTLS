@@ -11,6 +11,7 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple, Set
 from dataclasses import dataclass, field, asdict
+import re
 
 from .epub_extractor import EPUBExtractor, ExtractionResult
 from .metadata_parser import MetadataParser, BookMetadata
@@ -26,8 +27,10 @@ from .publisher_profiles.manager import get_profile_manager, PublisherProfile
 # Phase 1.55: Reference Validator
 try:
     from pipeline.post_processor import ReferenceValidator
+    from pipeline.post_processor.reference_context_compiler import compile_reference_payloads
     REFERENCE_VALIDATOR_AVAILABLE = True
 except ImportError:
+    compile_reference_payloads = None
     REFERENCE_VALIDATOR_AVAILABLE = False
 
 
@@ -174,6 +177,12 @@ class LibrarianAgent:
             "eyes welled up with tears",
             "seemed to [verb]"
         ]
+        filler_word_banlist = [
+            "quite",
+            "rather",
+            "indeed",
+            "it cannot be helped"
+        ]
 
         # Character profile template with keigo_switch
         def create_character_profile(name_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -252,7 +261,8 @@ class LibrarianAgent:
                     *first_person_distancing_banlist,
                     *nominalized_emotion_banlist,
                     *discourse_preface_banlist,
-                    *filter_phrase_banlist
+                    *filter_phrase_banlist,
+                    *filler_word_banlist
                 ],
                 "preferred_alternatives": {
                     "cannot": "can't",
@@ -277,7 +287,11 @@ class LibrarianAgent:
                     "to be honest": "Remove preface and state line directly unless voice-critical.",
                     "to tell you the truth": "Remove preface unless rhetorical contrast is structurally required.",
                     "eyes welled up with tears": "Use direct image: 'tears gathered in [name]'s eyes' / '[name]'s eyes stung'.",
-                    "seemed to [verb]": "Prefer direct action/observation over filter phrasing."
+                    "seemed to [verb]": "Prefer direct action/observation over filter phrasing.",
+                    "quite": "Use direct contemporary emphasis (e.g., 'pretty', 'really') or remove if unnecessary.",
+                    "rather": "Use modern casual emphasis (e.g., 'pretty', 'kind of') unless intentionally formal voice.",
+                    "indeed": "Use direct assertion ('yes', 'definitely') unless intentionally formal voice.",
+                    "it cannot be helped": "Use natural equivalent ('can't help it', 'no choice', 'nothing I can do')."
                 },
                 "target_metrics": {
                     "contraction_rate": ">95%",
@@ -315,6 +329,7 @@ class LibrarianAgent:
                 + nominalized_emotion_banlist
                 + discourse_preface_banlist
                 + filter_phrase_banlist
+                + filler_word_banlist
             ),
             "preferred_alternatives": {
                 "I couldn't help but [verb]": "Use direct action in first-person POV (e.g., 'I flinched', 'I laughed', 'I asked').",
@@ -323,18 +338,43 @@ class LibrarianAgent:
                 "to be honest": "Remove preface and state line directly unless voice-critical.",
                 "to tell you the truth": "Remove preface unless rhetorical contrast is structurally required.",
                 "eyes welled up with tears": "Use direct image: 'tears gathered in [name]'s eyes' / '[name]'s eyes stung'.",
-                "seemed to [verb]": "Prefer direct action/observation over filter phrasing."
+                "seemed to [verb]": "Prefer direct action/observation over filter phrasing.",
+                "quite": "Use direct contemporary emphasis (e.g., 'pretty', 'really') or remove if unnecessary.",
+                "rather": "Use modern casual emphasis (e.g., 'pretty', 'kind of') unless intentionally formal voice.",
+                "indeed": "Use direct assertion ('yes', 'definitely') unless intentionally formal voice.",
+                "it cannot be helped": "Use natural equivalent ('can't help it', 'no choice', 'nothing I can do')."
             },
             "consistency_rules": {
                 "first_person_distancing_ai_ism": "Treat 'couldn't help (but)' as a distancing AI-ism in 1st-person narration. Use direct actions/reactions instead of filtered phrasing.",
                 "nominalized_emotion_ai_ism": "Avoid 'a sense of [emotion]' in active narrative lines except idiomatic uses (humor/direction/purpose/belonging/urgency/duty/self).",
                 "preface_crutch_ai_ism": "Avoid discourse-preface crutches like 'to be honest' and 'to tell you the truth' in close 1st-person lines.",
-                "filter_verb_density": "Limit repeated 'seemed to' filters in contiguous narration; prefer direct assertions where confidence is high."
+                "filter_verb_density": "Limit repeated 'seemed to' filters in contiguous narration; prefer direct assertions where confidence is high.",
+                "filler_word_guardrail": "Avoid filler crutches ('quite', 'rather', 'indeed') in casual teen voice unless formal/British character context explicitly requires them."
             }
         }
+
+        relationship_progress = [
+            {
+                "enabled": False,
+                "arc_id": "slow_burn_main_pair",
+                "pair": ["[PROTAGONIST]", "[LOVE_INTEREST]"],
+                "stage": "guarded_formal",
+                "chapters": ["chapter_01", "chapter_02"],
+                "contraction_override": {
+                    "mode": "override_global_baseline",
+                    "scope": "romance-linked dialogue/internal monologue",
+                    "target_percent": 80,
+                    "dialogue_percent": 76,
+                    "narration_percent": 88,
+                    "notes": "Lower contraction density in early-distance stage; increase as intimacy progresses."
+                },
+                "notes": "[OPTIONAL] Enable and customize when the romance arc requires formality despite global casual target."
+            }
+        ]
         
         return {
             "character_profiles": character_profiles,
+            "relationship_progress": relationship_progress,
             "localization_notes": localization_notes,
             "translation_guidelines": translation_guidelines,
             "chapters": chapters_meta,
@@ -347,7 +387,8 @@ class LibrarianAgent:
         epub_path: Path,
         volume_id: Optional[str] = None,
         source_lang: str = "ja",
-        target_lang: str = "en"
+        target_lang: str = "en",
+        validate_references: bool = False,
     ) -> Manifest:
         """
         Process source EPUB through full extraction pipeline.
@@ -549,16 +590,18 @@ class LibrarianAgent:
         # Copy images to assets
         assets_dir = work_dir / structure["assets"]
         
-        # First, copy spine-based kuchie with proper sequential naming
+        # First, copy spine-based kuchie with proper sequential naming.
+        # Keep them under assets/kuchie to match downstream builder expectations.
         kuchie_output_paths = []
         kuchie_filename_mapping = {}
+        kuchie_assets_dir = work_dir / structure["kuchie"]
+        kuchie_assets_dir.mkdir(parents=True, exist_ok=True)
         for kuchie_meta in spine_kuchie:
             # Source: resolve image_path relative to content_dir
             src_image = extraction.content_dir / kuchie_meta['image_path']
             
-            # Destination: assets/kuchie-NNN.ext
-            dst_image = assets_dir / kuchie_meta['file']
-            dst_image.parent.mkdir(parents=True, exist_ok=True)
+            # Destination: assets/kuchie/kuchie-NNN.ext
+            dst_image = kuchie_assets_dir / kuchie_meta['file']
             
             if src_image.exists():
                 import shutil
@@ -625,10 +668,13 @@ class LibrarianAgent:
         if filtered_illustrations:
             print(f"     Hard-filtered {filtered_illustrations} excluded inline image references")
 
-        # Phase 1.55: Validate real-world references in source chapters.
+        # Phase 1.55: Validate real-world references in source chapters (optional, off by default).
         # Keep this after asset copy so a slow/failed validator does not block asset extraction.
-        print("\n[PHASE 1.55] Validating real-world references...")
-        self._validate_references_in_chapters(chapters, source_dir)
+        if validate_references:
+            print("\n[PHASE 1.55] Validating real-world references...")
+            self._validate_references_in_chapters(chapters, source_dir)
+        else:
+            print("\n[PHASE 1.55] Reference validation skipped (use --ref-validate to enable)")
 
         # Update illustration references in markdown files
         if filename_mapping:
@@ -1297,9 +1343,7 @@ class LibrarianAgent:
             return True
 
         # Template-aware fallback check (e.g., "Chapter {n}").
-        template = (fallback_template or "Chapter {n}").strip()
-        regex = re.escape(template)
-        regex = regex.replace(r'\{n\}', r'\d+').replace(r'\{num\}', r'\d+')
+        regex = re.escape(fallback_template).replace(r'\{n\}', r'\d+').replace(r'\{num\}', r'\d+')
         if re.match(rf'^{regex}$', normalized, re.IGNORECASE):
             return True
 
@@ -1797,9 +1841,6 @@ class LibrarianAgent:
         if first_toc_index is None or first_toc_index == 0:
             return []
         
-        # Get exclude patterns from config
-        exclude_patterns = config["exclude_patterns"]
-        
         # Check files before first TOC entry
         pre_toc_content = []
         for filename in spine_order[:first_toc_index]:
@@ -1810,7 +1851,7 @@ class LibrarianAgent:
                 continue
             
             # Skip patterns from config (fmatter, kuchie, etc.)
-            if any(pattern in lower_name for pattern in exclude_patterns):
+            if any(pattern in lower_name for pattern in config["exclude_patterns"]):
                 continue
             
             # Check if file has actual text content
@@ -2110,12 +2151,19 @@ class LibrarianAgent:
         if not filename_mapping:
             return
 
-        # Update cover filename if mapped
+        # Update cover filename if mapped.
+        # Guardrail: keep explicit cover.* names from being remapped to kuchie-*.
+        # Spine kuchie extraction can include original cover assets for traceability,
+        # but that must not overwrite canonical manifest cover when cover.jpg exists.
         if "cover" in manifest.assets and manifest.assets["cover"]:
-            manifest.assets["cover"] = filename_mapping.get(
-                manifest.assets["cover"], 
-                manifest.assets["cover"]
-            )
+            current_cover = manifest.assets["cover"]
+            mapped_cover = filename_mapping.get(current_cover, current_cover)
+            if (
+                re.search(r"cover", str(current_cover), re.IGNORECASE)
+                and re.match(r"^kuchie-\d{3}", str(mapped_cover), re.IGNORECASE)
+            ):
+                mapped_cover = current_cover
+            manifest.assets["cover"] = mapped_cover
 
         # Update global assets
         # Kuchie now contains metadata dicts, so update the 'file' field
@@ -2772,9 +2820,32 @@ class LibrarianAgent:
             # Create .context folder for validation reports (not in JP source folder)
             context_dir = source_dir.parent / '.context'
             context_dir.mkdir(parents=True, exist_ok=True)
+            # Clean legacy per-chapter reference reports so output remains unified-only.
+            for legacy in context_dir.glob("*.references.json"):
+                try:
+                    legacy.unlink()
+                except Exception:
+                    pass
+            for legacy in context_dir.glob("CHAPTER_*.json"):
+                name = legacy.name
+                if "_SUMMARY.json" in name or "_VOLUME_CONTEXT.json" in name:
+                    continue
+                try:
+                    payload = json.loads(legacy.read_text(encoding="utf-8"))
+                except Exception:
+                    continue
+                if (
+                    isinstance(payload, dict)
+                    and {"file_path", "total_entities_detected", "entities"}.issubset(payload.keys())
+                ):
+                    try:
+                        legacy.unlink()
+                    except Exception:
+                        pass
 
             total_entities = 0
             total_obfuscated = 0
+            chapter_reports: List[Tuple[str, Dict[str, Any]]] = []
 
             for chapter in chapters:
                 # Read chapter markdown file
@@ -2785,6 +2856,7 @@ class LibrarianAgent:
 
                 # Validate references
                 report = validator.validate_file(chapter_path)
+                chapter_reports.append((chapter_path.name, report.to_dict()))
 
                 if report.total_entities_detected > 0:
                     print(f"       {chapter.filename}: {report.total_entities_detected} entities "
@@ -2799,14 +2871,21 @@ class LibrarianAgent:
                     total_entities += report.total_entities_detected
                     total_obfuscated += report.obfuscated_entities
 
-                    # Save JSON-only validation report to .context folder (not JP source folder)
-                    report_filename = chapter_path.stem + '.references'
-                    report_path = context_dir / report_filename
-                    validator.generate_report(report, report_path, json_only=True)
-
             if total_entities > 0:
                 print(f"     Total: {total_entities} real-world references detected "
                       f"({total_obfuscated} need correction)")
+                if compile_reference_payloads:
+                    output_path = context_dir / "reference_registry.json"
+                    compiled = compile_reference_payloads(
+                        chapter_reports,
+                        output_path=output_path,
+                        min_confidence=0.70,
+                    )
+                    print(
+                        f"     Unified reference registry: {output_path.name} "
+                        f"({compiled.get('unique_entities', 0)} unique entities, "
+                        f"{compiled.get('unique_deobfuscation_terms', 0)} deobfuscation mappings)"
+                    )
             else:
                 print("     No real-world references detected")
 
@@ -2815,6 +2894,75 @@ class LibrarianAgent:
             # Don't fail the entire pipeline if reference validation fails
             import traceback
             traceback.print_exc()
+
+    def _find_cover_from_spine_kuchie(self, spine_kuchie: List[Dict[str, Any]]) -> Optional[str]:
+        """
+        Identify cover candidate from spine-derived kuchie metadata.
+
+        Only returns a value when explicit cover markers are present.
+        If no explicit marker is found, caller should apply orientation fallback.
+        """
+        if not spine_kuchie:
+            return None
+
+        explicit_markers = ("cover", "hyoushi", "表紙")
+        for item in spine_kuchie:
+            original = str(item.get("original", "") or "")
+            if any(marker.lower() in original.lower() for marker in explicit_markers):
+                filename = str(item.get("file", "") or "").strip()
+                if filename and "allcover" not in filename.lower():
+                    return filename
+
+        return None
+
+    def _select_cover_asset_filename(
+        self,
+        image_catalog: Dict[str, List],
+        spine: Spine,
+        spine_kuchie: List[Dict[str, Any]],
+    ) -> Optional[str]:
+        """
+        Resolve manifest cover with spine-aware priority and orientation fallback.
+
+        Order:
+        1) Explicit cover extracted from EPUB metadata/patterns.
+        2) Cover identified directly from spine-derived kuchie originals.
+        3) Kuchie fallback by source reading orientation:
+           - LTR source -> first kuchie
+           - RTL source -> last kuchie
+        """
+        explicit_cover = None
+        cover_candidates = []
+        for item in image_catalog.get("cover", []) or []:
+            filename = getattr(item, "filename", None)
+            if not filename:
+                continue
+            normalized = str(filename).strip()
+            if not normalized:
+                continue
+            if "allcover" in normalized.lower():
+                continue
+            cover_candidates.append(normalized)
+
+        # Strict preference: canonical cover.jpg when available.
+        for candidate in cover_candidates:
+            if candidate.lower() == "cover.jpg":
+                explicit_cover = "cover.jpg"
+                break
+        if explicit_cover:
+            return explicit_cover
+
+        spine_cover = self._find_cover_from_spine_kuchie(spine_kuchie)
+        if spine_cover:
+            return spine_cover
+
+        if not spine_kuchie:
+            return None
+
+        page_progression = (spine.page_progression or "ltr").lower()
+        if page_progression == "rtl":
+            return spine_kuchie[-1].get("file")
+        return spine_kuchie[0].get("file")
 
     def _build_manifest(
         self,
@@ -2878,9 +3026,14 @@ class LibrarianAgent:
         illustration_assets = [img.filename for img in image_catalog["illustrations"]]
         # Preserve order while removing duplicates.
         illustration_assets = list(dict.fromkeys(illustration_assets))
+        cover_asset = self._select_cover_asset_filename(
+            image_catalog=image_catalog,
+            spine=spine,
+            spine_kuchie=spine_kuchie,
+        )
 
         assets = {
-            "cover": image_catalog["cover"][0].filename if image_catalog["cover"] else None,
+            "cover": cover_asset,
             "kuchie": spine_kuchie,  # Use spine-based kuchie with full metadata
             "illustrations": illustration_assets,
         }
@@ -3000,7 +3153,8 @@ def run_librarian(
     volume_id: Optional[str] = None,
     work_base: Optional[Path] = None,
     source_lang: str = "ja",
-    target_lang: str = "en"
+    target_lang: str = "en",
+    validate_references: bool = False,
 ) -> Manifest:
     """
     Main entry point for Librarian agent.
@@ -3011,12 +3165,13 @@ def run_librarian(
         work_base: Optional custom working directory
         source_lang: Source language code
         target_lang: Target language code
+        validate_references: Run Phase 1.55 real-world reference validator (default: False)
 
     Returns:
         Manifest object with extraction results
     """
     agent = LibrarianAgent(work_base)
-    return agent.process_epub(epub_path, volume_id, source_lang, target_lang)
+    return agent.process_epub(epub_path, volume_id, source_lang, target_lang, validate_references=validate_references)
 
 
 # CLI interface
@@ -3034,8 +3189,10 @@ if __name__ == "__main__":
     parser.add_argument("--volume-id", "-v", type=str, help="Custom volume ID")
     parser.add_argument("--work-dir", "-w", type=Path, help="Working directory")
     parser.add_argument("--source-lang", "-s", type=str, default="ja", help="Source language code")
-    parser.add_argument("--target-lang", "-t", type=str, default=default_target, 
+    parser.add_argument("--target-lang", "-t", type=str, default=default_target,
                         help=f"Target language code (default: {default_target} from config.yaml)")
+    parser.add_argument("--ref-validate", dest="ref_validate", action="store_true", default=False,
+                        help="Run Phase 1.55 real-world reference validator after extraction (default: off)")
 
     args = parser.parse_args()
 
@@ -3044,7 +3201,8 @@ if __name__ == "__main__":
         volume_id=args.volume_id,
         work_base=args.work_dir,
         source_lang=args.source_lang,
-        target_lang=args.target_lang
+        target_lang=args.target_lang,
+        validate_references=args.ref_validate,
     )
 
     print(f"\nManifest saved to: {manifest.volume_id}/manifest.json")

@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "last_updated": "2026-02-14T15:51:16.415991+00:00",
+  "last_updated": "2026-02-23T05:59:26.464587+00:00",
   "series": {
     "madan_no_ou_to_vanadis": {
       "bible_file": "madan_no_ou_to_vanadis.json",
@@ -126,7 +126,8 @@
         "1294",
         "17fb",
         "003e",
-        "02f6"
+        "02f6",
+        "1d63"
       ],
       "entry_count": 13,
       "last_updated": "2026-02-09T08:16:46Z"
@@ -166,7 +167,8 @@
       ],
       "volumes": [
         "07a4",
-        "2704"
+        "2704",
+        "209f"
       ],
       "entry_count": 13,
       "last_updated": "2026-02-09T08:04:39Z"
@@ -367,6 +369,78 @@
       ],
       "entry_count": 19,
       "last_updated": "2026-02-13T08:21:23.082462+00:00"
+    },
+    "series_1787f0a55b": {
+      "bible_file": "series_1787f0a55b.json",
+      "match_patterns": [
+        "年上幼馴染と再会したら、姉妹で俺の取り合いが始まった　どっちがいいか、試してみる？",
+        "年上幼馴染と再会したら、姉妹で俺の取り合いが始まった　どっちがいいか、試してみる？"
+      ],
+      "volumes": [
+        "1aea"
+      ],
+      "entry_count": 10,
+      "last_updated": "2026-02-20T14:12:57.744983+00:00"
+    },
+    "series_e9f7aec0fa": {
+      "bible_file": "series_e9f7aec0fa.json",
+      "match_patterns": [
+        "マスカレード・コンフィデンス　詐欺師は少女と仮面仕掛けの旅をする 【電子特典付き】",
+        "マスカレード・コンフィデンス 詐欺師は少女と仮面仕掛けの旅をする 【電子特典付き】 (MF文庫J) -- 滝浪 酒利"
+      ],
+      "volumes": [
+        "00f6"
+      ],
+      "entry_count": 20,
+      "last_updated": "2026-02-20T16:38:03.373076+00:00"
+    },
+    "series_f1ed45cba9": {
+      "bible_file": "series_f1ed45cba9.json",
+      "match_patterns": [
+        "ちっちゃくてデカくて可愛い七瀬さんを勘違い元カレから奪って幸せにする",
+        "ちっちゃくてデカくて可愛い七瀬さんを勘違い元カレから奪って幸せにする",
+        "ちっちゃくてデカくて可愛い七瀬さんを勘違い元カレから奪って幸せにする ３"
+      ],
+      "volumes": [
+        "1e60"
+      ],
+      "entry_count": 24,
+      "last_updated": "2026-02-21T07:28:53.955075+00:00"
+    },
+    "series_60e58e9396": {
+      "bible_file": "series_60e58e9396.json",
+      "match_patterns": [
+        "誰にも懐かない飛び級天才幼女が、俺にだけ甘えてくる理由",
+        "誰にも懐かない飛び級天才幼女が、俺にだけ甘えてくる理由 -- 八神鏡"
+      ],
+      "volumes": [
+        "16eb"
+      ],
+      "entry_count": 6,
+      "last_updated": "2026-02-21T14:01:11.715597+00:00"
+    },
+    "series_34375a5bcc": {
+      "bible_file": "series_34375a5bcc.json",
+      "match_patterns": [
+        "お姉さん派の俺がなぜちっちゃい君を好きになったのか？【電子特典付き】"
+      ],
+      "volumes": [
+        "231c"
+      ],
+      "entry_count": 17,
+      "last_updated": "2026-02-21T14:39:11.182639+00:00"
+    },
+    "series_80cae5c12e": {
+      "bible_file": "series_80cae5c12e.json",
+      "match_patterns": [
+        "お世話した王女様、ずっとくっついてくる【電子特典付き】",
+        "お世話した王女様、ずっとくっついてくる【電子特典付き】"
+      ],
+      "volumes": [
+        "069f"
+      ],
+      "entry_count": 4,
+      "last_updated": "2026-02-23T05:58:18.591306+00:00"
     }
   }
 }

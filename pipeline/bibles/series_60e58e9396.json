@@ -1,0 +1,86 @@
+{
+  "bible_version": "1.0",
+  "series_id": "series_60e58e9396",
+  "series_title": {
+    "ja": "誰にも懐かない飛び級天才幼女が、俺にだけ甘えてくる理由",
+    "en": "誰にも懐かない飛び級天才幼女が、俺にだけ甘えてくる理由",
+    "romaji": ""
+  },
+  "created_at": "2026-02-21T14:01:11.713102+00:00",
+  "last_updated": "2026-02-21T14:01:11.715601+00:00",
+  "volumes_registered": [
+    {
+      "volume_id": "16eb",
+      "title": "誰にも懐かない飛び級天才幼女が、俺にだけ甘えてくる理由",
+      "index": 1
+    }
+  ],
+  "world_setting": {
+    "type": "modern_japan_high_school_romance",
+    "label": "Contemporary Japanese high school setting with elements of slice-of-life and budding romance, focusing on the unique relationship between an ordinary high school boy and a genius child prodigy.",
+    "honorifics": {
+      "mode": "localize",
+      "policy": "Japanese honorifics should be localized where natural, retaining the nuance of respect, familiarity, or distance. For example, '-san' can be removed or implied by context, '-kun' can be translated to 'first name' or 'first name-kun' if the nuance is critical, '-chan' to 'first name' or 'little first name'. Explicit honorifics like 'sensei' or 'koucho-sensei' should be retained or translated to 'teacher' or 'principal' respectively. The goal is natural English flow while preserving character relationships."
+    },
+    "name_order": {
+      "default": "family_given",
+      "policy": "Use Family Given order for Japanese names by default; preserve canonical spelling. Use Given Family only for explicit non-Japanese exceptions.",
+      "source": "world_setting_inference:japan"
+    },
+    "exceptions": []
+  },
+  "characters": {
+    "大空陽平": {
+      "canonical_en": "Oozora Youhei",
+      "source": "manifest_profile_seed",
+      "short_name": "Youhei-kun"
+    },
+    "星宮ひめ": {
+      "canonical_en": "Hoshimiya Hime",
+      "source": "manifest_profile_seed",
+      "short_name": "Hime-chan"
+    },
+    "星宮聖": {
+      "canonical_en": "Hoshimiya Hijiri",
+      "source": "manifest_profile_seed",
+      "short_name": "Onee-chan"
+    },
+    "Oozora Youhei": {
+      "short_name": "Youhei-kun",
+      "category": "Protagonist",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Average height, typical high school boy build. Often seen in a standard school uniform (grey dress shirt, navy slacks) or simple casual attire. His expression is usually neutral or slightly thoughtful, often showing surprise or embarrassment when Hime acts affectionately. Posture is generally relaxed, but can become stiff when flustered."
+      },
+      "notes": "Ordinary, kind, considerate, a bit of a softie, observant, easily flustered, humble."
+    },
+    "Hoshimiya Hime": {
+      "short_name": "Hime-chan",
+      "category": "Love interest (initially detached, becomes deeply affectionate and dependent on him), desires him to be her brother-in-law.",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Very small and delicate frame, long straight silvery hair often styled simply, large round crimson eyes that can appear detached or sparkle with joy. Her default expression is often blank or calm, but transforms into a soft, happy smile when pleased. She frequently holds her hands to her cheeks when embarrassed or happy. Often seen in pristine white dresses or a neat school uniform, emphasizing her 'princess-like' aura."
+      },
+      "notes": "Genius, highly intelligent, calm, mature for her age, detached, observant, surprisingly innocent, easily won over by kindness (especially snacks), very affectionate and 'spoiled' by Youhei, can be mischievous and direct in her affections."
+    },
+    "Hoshimiya Hijiri": {
+      "short_name": "Onee-chan",
+      "category": "Hoshimiya Hime's older sister, school beauty, potential love interest (Hime tries to set them up).",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Tall, graceful figure with gently wavy brown hair. Her expressions are often soft, friendly, and can be easily flustered or show a playful pout. Her posture is generally relaxed and fluid. She is frequently seen in loose, flowing white dresses or a school uniform, often accessorized with a simple brown shoulder pouch."
+      },
+      "notes": "Beautiful, popular, kind, caring (especially for Hime), a bit clumsy, lazy/disorganized (especially with studies), can be childish or ditzy, observant of Hime's feelings."
+    }
+  },
+  "geography": {
+    "countries": {},
+    "regions": {},
+    "cities": {}
+  },
+  "weapons_artifacts": {},
+  "organizations": {},
+  "cultural_terms": {},
+  "mythology": {},
+  "translation_rules": {}
+}

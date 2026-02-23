@@ -7,7 +7,7 @@ Handles manifest entries, spine order, and navigation documents.
 
 import re
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 
 from .config import get_epub_version, DISCARD_XHTML_FILES, get_fonts_to_embed, get_spine_direction
 
@@ -54,7 +54,7 @@ class MetadataUpdater:
 
         # Update book title if provided
         if book_title:
-            content = MetadataUpdater._update_book_title(content, book_title)
+            content = MetadataUpdater._update_book_title(content, book_title, target_lang)
 
         # Add font manifest entries
         content = MetadataUpdater._add_font_manifest_entries(content)
@@ -120,8 +120,23 @@ class MetadataUpdater:
         return content
 
     @staticmethod
-    def _update_book_title(content: str, title: str) -> str:
-        """Update book title in OPF file."""
+    def _get_fallback_book_title(metadata: Dict[str, Any], target_lang: str) -> str:
+        """
+        Retrieve the fallback book title from metadata.
+        """
+        return (
+            metadata.get(f"title_{target_lang}")
+            or metadata.get("title_en")
+            or metadata.get("official_localization", {}).get("volume_title_en")
+            or "Untitled Volume"
+        )
+
+    @staticmethod
+    def _update_book_title(content: str, metadata: Dict[str, Any], target_lang: str) -> str:
+        """
+        Update book title in OPF file using fallback logic.
+        """
+        title = MetadataUpdater._get_fallback_book_title(metadata, target_lang)
         title_pattern = r'<dc:title[^>]*>[^<]*</dc:title>'
         replacement = f'<dc:title id="title">{title}</dc:title>'
         content = re.sub(title_pattern, replacement, content, count=1)

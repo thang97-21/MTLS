@@ -27,6 +27,7 @@ class GeminiResponse:
 
 class GeminiClient:
     _CACHE_DISPLAY_NAME_MAX_LEN = 128
+    _DEFAULT_HTTP_TIMEOUT_SECONDS = 600.0
 
     def __init__(
         self,
@@ -57,6 +58,7 @@ class GeminiClient:
         
         # Thinking mode configuration
         self.thinking_mode_config = self._load_thinking_config()
+        self._http_timeout_ms = self._load_http_timeout_ms()
         self._cache_created_at = None
         self._cache_ttl_minutes = 120  # Default 2 hour TTL
         self._cached_model = None  # Track which model the cache was created for
@@ -75,30 +77,116 @@ class GeminiClient:
         except:
             return {'enabled': False}
     
-    def _get_thinking_config(self) -> Optional[Any]:
-        """Get ThinkingConfig for Gemini API if thinking mode is enabled."""
+    # Models that support extended thinking. gemini-2.5-flash does NOT support it.
+    _THINKING_SUPPORTED_MODELS = (
+        "gemini-3",
+        "gemini-2.5-pro",
+    )
+
+    def _get_thinking_config(self, target_model: str = None) -> Optional[Any]:
+        """Get ThinkingConfig for Gemini API if thinking mode is enabled.
+
+        Args:
+            target_model: The actual model being used for this call. If not provided,
+                          falls back to self.model. Thinking is skipped entirely for
+                          models that don't support it (e.g. gemini-2.5-flash).
+        """
         if not self.thinking_mode_config.get('enabled', False):
             return None
-        
+
+        model_name = (target_model or self.model).lower()
+
+        # Only apply thinking config for models that actually support it.
+        if not any(tag in model_name for tag in self._THINKING_SUPPORTED_MODELS):
+            logger.debug(f"Thinking mode skipped: model '{model_name}' does not support ThinkingConfig")
+            return None
+
         try:
             thinking_level = self.thinking_mode_config.get('thinking_level', 'medium')
-            
-            # Gemini 3 uses thinking_level, Gemini 2.5 uses thinking_budget
-            if 'gemini-3' in self.model.lower():
+
+            # Gemini 3 uses thinking_level; Gemini 2.5 Pro uses thinking_budget.
+            if 'gemini-3' in model_name:
                 return types.ThinkingConfig(
                     include_thoughts=True,
                     thinking_level=thinking_level  # minimal, low, medium, high
                 )
             else:
-                # Gemini 2.5 - use thinking_budget instead
+                # Gemini 2.5 Pro - use thinking_budget instead
                 # -1 = dynamic (default), 0 = disabled, >0 = specific token budget
                 return types.ThinkingConfig(
                     include_thoughts=True,
-                    thinking_budget=-1  # Dynamic thinking for Gemini 2.5
+                    thinking_budget=-1  # Dynamic thinking for Gemini 2.5 Pro
                 )
         except Exception as e:
             logger.debug(f"ThinkingConfig not available: {e}")
             return None
+
+    def _load_http_timeout_ms(self) -> Optional[int]:
+        """
+        Load Gemini HTTP timeout from config.
+
+        Config key:
+            gemini.http_timeout_seconds (<=0 disables timeout)
+        """
+        timeout_seconds: Any = self._DEFAULT_HTTP_TIMEOUT_SECONDS
+        try:
+            from pipeline.config import get_config_section
+
+            gemini_config = get_config_section("gemini") or {}
+            if isinstance(gemini_config, dict):
+                timeout_seconds = gemini_config.get(
+                    "http_timeout_seconds",
+                    self._DEFAULT_HTTP_TIMEOUT_SECONDS,
+                )
+        except Exception as e:
+            logger.debug("Failed reading gemini.http_timeout_seconds: %s", e)
+
+        try:
+            timeout_seconds = float(timeout_seconds)
+        except (TypeError, ValueError):
+            logger.warning(
+                "Invalid gemini.http_timeout_seconds=%r. Falling back to %.1fs",
+                timeout_seconds,
+                self._DEFAULT_HTTP_TIMEOUT_SECONDS,
+            )
+            timeout_seconds = self._DEFAULT_HTTP_TIMEOUT_SECONDS
+
+        if timeout_seconds <= 0:
+            logger.warning(
+                "Gemini HTTP timeout disabled (gemini.http_timeout_seconds=%s). "
+                "Requests may block indefinitely.",
+                timeout_seconds,
+            )
+            return None
+
+        timeout_ms = max(1000, int(timeout_seconds * 1000))
+        logger.info("Gemini HTTP timeout enabled: %.1fs", timeout_seconds)
+        return timeout_ms
+
+    def _build_http_options(self) -> Optional[Any]:
+        """Build HttpOptions for request-level timeout when available."""
+        if self._http_timeout_ms is None:
+            return None
+        if not hasattr(types, "HttpOptions"):
+            logger.debug(
+                "google.genai.types.HttpOptions unavailable; request timeout cannot be enforced."
+            )
+            return None
+        return types.HttpOptions(timeout=self._http_timeout_ms)
+
+    @staticmethod
+    def _is_timeout_error(error: Exception) -> bool:
+        """Best-effort detection for timeout/deadline failures across SDK layers."""
+        text = str(error).lower()
+        class_name = error.__class__.__name__.lower()
+        timeout_markers = (
+            "timeout",
+            "timed out",
+            "deadline",
+            "readtimeout",
+            "connecttimeout",
+        )
+        return any(marker in text or marker in class_name for marker in timeout_markers)
 
     def set_rate_limit(self, requests_per_minute: int):
         """Update rate limit delay."""
@@ -388,6 +476,7 @@ class GeminiClient:
                 types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE"),
                 types.SafetySetting(category="HARM_CATEGORY_CIVIC_INTEGRITY", threshold="BLOCK_NONE")
             ]
+        http_options = self._build_http_options()
 
         try:
             # Context Caching Logic
@@ -432,6 +521,8 @@ class GeminiClient:
                     safety_settings=safety_settings,
                     automatic_function_calling=None  # Disable AFC to prevent loops
                 )
+                if http_options is not None:
+                    config_kwargs["http_options"] = http_options
                 # NOTE: tools/tool_config cannot be passed with cached_content.
                 # They must be provided at cache creation time.
                 if tools:
@@ -442,7 +533,7 @@ class GeminiClient:
                 config = types.GenerateContentConfig(**config_kwargs)
                 
                 # Add thinking config if enabled (works with cached content too)
-                thinking_config = self._get_thinking_config()
+                thinking_config = self._get_thinking_config(target_model)
                 if thinking_config:
                     config.thinking_config = thinking_config
                     logger.debug(f"Thinking mode enabled with cached content (budget: -1)")
@@ -459,12 +550,14 @@ class GeminiClient:
                     safety_settings=safety_settings,
                     automatic_function_calling=None  # Disable AFC to prevent loops
                 )
+                if http_options is not None:
+                    config_kwargs["http_options"] = http_options
                 if tools:
                     config_kwargs["tools"] = tools
                 config = types.GenerateContentConfig(**config_kwargs)
                 
                 # Add thinking config if enabled
-                thinking_config = self._get_thinking_config()
+                thinking_config = self._get_thinking_config(target_model)
                 if thinking_config:
                     config.thinking_config = thinking_config
                     logger.debug(f"Thinking mode enabled (budget: -1 dynamic)")
@@ -521,6 +614,8 @@ class GeminiClient:
             if not response.text:
                 finish_reason = "UNKNOWN"
                 safety_ratings = []
+                prompt_block_reason = ""
+                prompt_feedback_safety = []
                 
                 if response.candidates and len(response.candidates) > 0:
                     candidate = response.candidates[0]
@@ -534,12 +629,42 @@ class GeminiClient:
                             for rating in candidate.safety_ratings
                             if rating.probability.name != "NEGLIGIBLE"
                         ]
+
+                # Extract prompt-level safety block metadata when candidates are empty
+                prompt_feedback = getattr(response, "prompt_feedback", None)
+                if prompt_feedback is not None:
+                    block_reason = getattr(prompt_feedback, "block_reason", None)
+                    if block_reason:
+                        prompt_block_reason = str(block_reason)
+                    pf_ratings = getattr(prompt_feedback, "safety_ratings", None)
+                    if pf_ratings:
+                        prompt_feedback_safety = [
+                            f"{rating.category.name}={rating.probability.name}"
+                            for rating in pf_ratings
+                            if getattr(rating, "probability", None) and rating.probability.name != "NEGLIGIBLE"
+                        ]
                 
                 # Log detailed empty response info
                 if safety_ratings:
                     logger.warning(f"Empty response from Gemini. Reason: {finish_reason}, Safety: {', '.join(safety_ratings)}")
+                elif prompt_block_reason or prompt_feedback_safety:
+                    details = []
+                    if prompt_block_reason:
+                        details.append(f"PromptBlock={prompt_block_reason}")
+                    if prompt_feedback_safety:
+                        details.append(f"PromptSafety={', '.join(prompt_feedback_safety)}")
+                    logger.warning(
+                        "Empty response from Gemini. Reason: %s, Candidates: %s, %s",
+                        finish_reason,
+                        len(response.candidates) if response.candidates else 0,
+                        "; ".join(details),
+                    )
                 else:
                     logger.warning(f"Empty response from Gemini. Reason: {finish_reason}, Candidates: {len(response.candidates) if response.candidates else 0}")
+
+                # Preserve prompt-level block reason so callers can route retries.
+                if prompt_block_reason:
+                    finish_reason = f"PROMPT_BLOCK:{prompt_block_reason}"
                 
                 return GeminiResponse(
                     content="",
@@ -562,5 +687,21 @@ class GeminiClient:
             )
 
         except Exception as e:
-            logger.error(f"Gemini API error: {str(e)}")
+            if self._is_timeout_error(e):
+                timeout_seconds = (
+                    self._http_timeout_ms / 1000.0 if self._http_timeout_ms else None
+                )
+                if timeout_seconds is not None:
+                    logger.warning(
+                        "Gemini request timeout after %.1fs. Retrying via backoff. Error: %s",
+                        timeout_seconds,
+                        e,
+                    )
+                else:
+                    logger.warning(
+                        "Gemini request timeout. Retrying via backoff. Error: %s",
+                        e,
+                    )
+            else:
+                logger.error(f"Gemini API error: {str(e)}")
             raise

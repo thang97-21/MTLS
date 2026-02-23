@@ -16,7 +16,11 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, asdict, field
 
 from pipeline.common.gemini_client import GeminiClient
-from pipeline.translator.config import get_gemini_config, get_translation_config, get_model_name, get_fallback_model_name
+from pipeline.common.anthropic_client import AnthropicClient
+from pipeline.translator.config import (
+    get_gemini_config, get_anthropic_config, get_translator_provider,
+    get_translation_config, get_model_name, get_fallback_model_name,
+)
 from pipeline.translator.prompt_loader import PromptLoader
 from pipeline.translator.context_manager import ContextManager
 from pipeline.translator.chapter_processor import ChapterProcessor, TranslationResult
@@ -54,6 +58,18 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger("TranslatorAgent")
+
+# Silence chatty HTTP-level loggers — they flood the log with per-request
+# TCP/TLS handshake details and raw JSON parsing traces that are rarely useful.
+for _noisy_logger in (
+    "httpcore.connection",
+    "httpcore.http11",
+    "httpcore.http2",
+    "anthropic._base_client",
+    "anthropic.resources",
+    "httpx",
+):
+    logging.getLogger(_noisy_logger).setLevel(logging.WARNING)
 
 class TranslatorAgent:
     _CHAPTER_ID_PATTERN = re.compile(r"chapter[_\-](\d+)", re.IGNORECASE)
@@ -103,6 +119,7 @@ class TranslatorAgent:
 
         self.manifest = self._load_manifest()
         self.translation_config = get_translation_config()
+        self._genre = self.manifest.get("genre", "")
 
         massive_cfg = self.translation_config.get("massive_chapter", {})
         self.volume_cache_enabled = massive_cfg.get("enable_volume_cache", True)
@@ -128,23 +145,55 @@ class TranslatorAgent:
         else:
             self.continuity_pack = None
 
-        # Initialize components with model from config
-        model_name = get_model_name()
-        logger.info(f"Using model: {model_name}")
+        # Initialize translator LLM client — provider-routed
+        provider = get_translator_provider()
+        logger.info(f"Translator provider: {provider.upper()}")
 
-        # Get caching config
-        gemini_config = get_gemini_config()
-        caching_config = gemini_config.get("caching", {})
-        enable_caching = caching_config.get("enabled", True)
-        cache_ttl = caching_config.get("ttl_minutes", 120)
-
-        if enable_caching:
-            logger.info(f"✓ Context caching enabled (TTL: {cache_ttl} minutes)")
+        if provider == "anthropic":
+            anthropic_cfg = get_anthropic_config()
+            model_name = anthropic_cfg.get("model", "claude-sonnet-4-6")
+            caching_cfg = anthropic_cfg.get("caching", {})
+            enable_caching = caching_cfg.get("enabled", True)
+            cache_ttl_minutes = caching_cfg.get("ttl_minutes", 5)  # default 5m (free refresh)
+            fast_mode_cfg = anthropic_cfg.get("fast_mode", {})
+            enable_fast_mode = fast_mode_cfg.get("enabled", False)
+            fast_mode_fallback = fast_mode_cfg.get("fallback_on_rate_limit", True)
+            logger.info(f"Using model: {model_name}")
+            if enable_caching:
+                ttl_label = "5m" if cache_ttl_minutes <= 5 else "1h"
+                logger.info(f"✓ Anthropic prompt caching enabled (ephemeral, TTL={ttl_label})")
+            if enable_fast_mode:
+                logger.info("✓ Opus fast mode enabled (up to 2.5x OTPS, beta)")
+            self.client = AnthropicClient(
+                model=model_name,
+                enable_caching=enable_caching,
+                fast_mode=enable_fast_mode,
+                fast_mode_fallback=fast_mode_fallback,
+            )
+            self.client.set_cache_ttl(cache_ttl_minutes)
+            # Sub-agents (summarizer, etc.) always use Gemini — keep a dedicated client
+            gemini_config = get_gemini_config()
+            self._gemini_subagent_client = GeminiClient(
+                model=gemini_config.get("fallback_model", "gemini-2.5-flash"),
+                enable_caching=False,
+            )
         else:
-            logger.info("Context caching disabled")
+            model_name = get_model_name()
+            logger.info(f"Using model: {model_name}")
+            gemini_config = get_gemini_config()
+            caching_config = gemini_config.get("caching", {})
+            enable_caching = caching_config.get("enabled", True)
+            cache_ttl = caching_config.get("ttl_minutes", 120)
+            if enable_caching:
+                logger.info(f"✓ Context caching enabled (TTL: {cache_ttl} minutes)")
+            else:
+                logger.info("Context caching disabled")
+            self.client = GeminiClient(model=model_name, enable_caching=enable_caching)
+            self.client.set_cache_ttl(cache_ttl)
+            self._gemini_subagent_client = self.client  # same client for all agents
 
-        self.client = GeminiClient(model=model_name, enable_caching=enable_caching)
-        self.client.set_cache_ttl(cache_ttl)
+        # Active model name — used by cache/prewarm helpers (provider-agnostic)
+        self._active_model_name = model_name
 
         # Initialize PromptLoader with target language
         self.prompt_loader = PromptLoader(target_language=self.target_language)
@@ -335,8 +384,9 @@ class TranslatorAgent:
                 or gemini_config.get("fallback_model")
                 or "gemini-2.5-flash"
             )
+            # Sub-agent: always Gemini regardless of translator_provider
             self.chapter_summarizer = ChapterSummarizationAgent(
-                gemini_client=self.client,
+                gemini_client=self._gemini_subagent_client,
                 work_dir=self.work_dir,
                 target_language=self.target_language,
                 model=summarizer_model,
@@ -969,11 +1019,11 @@ class TranslatorAgent:
         """Pre-warm context cache with system instruction before translation starts."""
         try:
             # Build system instruction (same as what translation will use)
-            system_instruction = self.prompt_loader.build_system_instruction()
-            
-            # Get target model
-            model_name = get_model_name()
-            
+            system_instruction = self.prompt_loader.build_system_instruction(genre=self._genre)
+
+            # Use active model name (provider-agnostic)
+            model_name = self._active_model_name
+
             # Create cache
             success = self.client.warm_cache(system_instruction, model_name)
             
@@ -1046,7 +1096,7 @@ class TranslatorAgent:
             "=== END REFERENCE CORPUS GUARDRAIL ===\n"
         )
         full_volume_text = f"{cache_guardrail}\n\n" + "\n\n---\n\n".join(chapter_blocks)
-        system_instruction = self.prompt_loader.build_system_instruction()
+        system_instruction = self.prompt_loader.build_system_instruction(genre=self._genre)
 
         try:
             target_model = model_name or get_model_name()
@@ -1157,28 +1207,41 @@ class TranslatorAgent:
         self.manifest["pipeline_state"]["translator"]["started_at"] = datetime.now().isoformat()
         self._save_manifest()
 
-        # Create single full-volume cache for this run (fallback to internal prewarm)
+        # Cache strategy — provider-dependent:
+        #   Gemini:    full-LN corpus cache (1M context, named CachedContent resource)
+        #   Anthropic: system-instruction-only cache (200K context limit; JP corpus
+        #              excluded to avoid exceeding the limit — continuity is handled
+        #              by per-chapter context summaries instead)
         if self.client.enable_caching:
-            self.volume_cache_name = self._create_volume_cache(target_chapters, model_name=get_model_name())
-            if self.volume_cache_name:
-                logger.info(f"[CACHE] Volume cache ready for run: {self.volume_cache_name}")
-                if self._volume_cache_stats:
-                    logger.info(
-                        f"[CACHE] Run verification: "
-                        f"cached {self._volume_cache_stats.get('cached_chapters', 0)}/"
-                        f"{self._volume_cache_stats.get('target_chapters', 0)} chapter sources"
-                    )
+            from pipeline.translator.config import get_translator_provider
+            if get_translator_provider() == "anthropic":
                 logger.info(
-                    "[CACHE VERIFY] Full-LN JP corpus + system instruction are bundled "
-                    "in the active external cache for chapter translation."
+                    "[CACHE] Anthropic provider: using system-instruction-only cache "
+                    "(full-LN corpus excluded — 200K context limit; continuity via summaries)"
                 )
-            else:
-                logger.info("Pre-warming context cache (volume cache unavailable)...")
                 self._prewarm_cache()
-                logger.info(
-                    "[CACHE VERIFY] Falling back to prompt-only internal cache "
-                    "(no full-LN external cache)."
-                )
+                logger.info("[CACHE VERIFY] System instruction cached. JP corpus handled per-chapter via context summaries.")
+            else:
+                self.volume_cache_name = self._create_volume_cache(target_chapters, model_name=self._active_model_name)
+                if self.volume_cache_name:
+                    logger.info(f"[CACHE] Volume cache ready for run: {self.volume_cache_name}")
+                    if self._volume_cache_stats:
+                        logger.info(
+                            f"[CACHE] Run verification: "
+                            f"cached {self._volume_cache_stats.get('cached_chapters', 0)}/"
+                            f"{self._volume_cache_stats.get('target_chapters', 0)} chapter sources"
+                        )
+                    logger.info(
+                        "[CACHE VERIFY] Full-LN JP corpus + system instruction are bundled "
+                        "in the active external cache for chapter translation."
+                    )
+                else:
+                    logger.info("Pre-warming context cache (volume cache unavailable)...")
+                    self._prewarm_cache()
+                    logger.info(
+                        "[CACHE VERIFY] Falling back to prompt-only internal cache "
+                        "(no full-LN external cache)."
+                    )
         
         success_count = 0
         
@@ -1258,7 +1321,14 @@ class TranslatorAgent:
                 elif effective_cache_name:
                     logger.info("[CACHE VERIFY] Chapter translation will use cached prompt context.")
                 else:
-                    logger.warning("[CACHE VERIFY] Chapter translation running without cache.")
+                    # For Anthropic provider, cache is inline (not a named resource).
+                    # effective_cache_name is always None for Anthropic — this is expected,
+                    # not a cache miss. The actual cache injection happens inside AnthropicClient.generate().
+                    from pipeline.translator.config import get_translator_provider
+                    if get_translator_provider() == "anthropic":
+                        logger.info("[CACHE VERIFY] Anthropic inline cache active (system blocks injected per-chapter).")
+                    else:
+                        logger.warning("[CACHE VERIFY] Chapter translation running without cache.")
 
             scene_plan = self._load_scene_plan_context(chapter)
             result = self.processor.translate_chapter(
@@ -1274,7 +1344,11 @@ class TranslatorAgent:
 
             # Fallback to configured fallback model on failure (safety blocks, rate limits, etc)
             if not result.success and not chapter_model:
-                fallback_model = get_fallback_model_name()
+                # Use provider-correct fallback model
+                if get_translator_provider() == "anthropic":
+                    fallback_model = get_anthropic_config().get("fallback_model", "claude-haiku-4-5-20251001")
+                else:
+                    fallback_model = get_fallback_model_name()
                 logger.warning(f"Translation failed, retrying with fallback model ({fallback_model})...")
 
                 # Clear cache since we're switching models (cache is model-specific)

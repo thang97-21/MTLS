@@ -109,8 +109,18 @@ class SchemaManipulator:
         "all_other_characters": {
             "priority": "SHORT, CONCISE, CONTEMPORARY GRAMMAR",
             "narrator_voice": "",
-            "forbidden_patterns": [],
-            "preferred_alternatives": {},
+            "forbidden_patterns": [
+                "quite",
+                "rather",
+                "indeed",
+                "it cannot be helped"
+            ],
+            "preferred_alternatives": {
+                "quite": "pretty / really / drop if unnecessary",
+                "rather": "pretty / kind of (unless formal voice is intentional)",
+                "indeed": "yes / definitely / direct assertion",
+                "it cannot be helped": "can't help it / no choice / nothing I can do"
+            },
             "target_metrics": {
                 "contraction_rate": ">95%",
                 "ai_ism_density": "<0.3 per 1000 words",
@@ -133,6 +143,25 @@ class SchemaManipulator:
         "dialogue_guidelines": {},
         "volume_specific_notes": {}
     }
+
+    RELATIONSHIP_PROGRESS_TEMPLATE = [
+        {
+            "enabled": False,
+            "arc_id": "slow_burn_main_pair",
+            "pair": ["[PROTAGONIST]", "[LOVE_INTEREST]"],
+            "stage": "guarded_formal",
+            "chapters": ["chapter_01", "chapter_02"],
+            "contraction_override": {
+                "mode": "override_global_baseline",
+                "scope": "romance-linked dialogue/internal monologue",
+                "target_percent": 80,
+                "dialogue_percent": 76,
+                "narration_percent": 88,
+                "notes": "Lower contractions early; increase as intimacy develops."
+            },
+            "notes": "Set enabled=true only when this arc should override default contraction expectations."
+        }
+    ]
 
     def __init__(self, volume_id: str):
         self.volume_id = volume_id
@@ -260,6 +289,10 @@ class SchemaManipulator:
                     other = loc_notes['all_other_characters']
                     print(f"   • Forbidden patterns: {len(other.get('forbidden_patterns', []))}")
                     print(f"   • Target contraction rate: {other.get('target_metrics', {}).get('contraction_rate', 'N/A')}")
+
+            rel_progress = self.metadata_en.get('relationship_progress', [])
+            if isinstance(rel_progress, list):
+                print(f"   • Relationship progress entries: {len(rel_progress)}")
         
         elif variant == "enhanced_v2.1":
             chars = self.metadata_en.get('characters', [])
@@ -555,6 +588,7 @@ class SchemaManipulator:
     def init_enhanced_schema(self) -> None:
         """Initialize a new enhanced V2 schema structure."""
         self.metadata_en['character_profiles'] = {}
+        self.metadata_en['relationship_progress'] = copy.deepcopy(self.RELATIONSHIP_PROGRESS_TEMPLATE)
         self.metadata_en['localization_notes'] = copy.deepcopy(self.LOCALIZATION_TEMPLATE)
         self.metadata_en['chapters'] = {}
         

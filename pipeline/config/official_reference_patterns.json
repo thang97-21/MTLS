@@ -1,0 +1,55 @@
+{
+  "metadata": {
+    "total_volumes": 50,
+    "extraction_date": "2026-02-18",
+    "publishers": [
+      "Seven Seas",
+      "Yen Press"
+    ],
+    "source": "Official_Repo professional translations"
+  },
+  "dialogue_patterns": {
+    "avg_length": 20247,
+    "length_std": 0,
+    "sample_count": 1
+  },
+  "narration_patterns": {
+    "avg_length": 17.83248362600131,
+    "length_std": 2.0929142431246928,
+    "sample_count": 50
+  },
+  "tense_benchmarks": {
+    "narration_past_ratio": 0.7223857194740232,
+    "past_ratio_std": 0.04755247876826006
+  },
+  "ai_ism_verification": {
+    "couldnt_help_but": {
+      "total_count": 0,
+      "avg_per_volume": 0.0
+    },
+    "a_sense_of": {
+      "total_count": 61,
+      "avg_per_volume": 1.22
+    },
+    "heavy_with": {
+      "total_count": 3,
+      "avg_per_volume": 0.06
+    },
+    "drilling_into": {
+      "total_count": 0,
+      "avg_per_volume": 0.0
+    },
+    "locked_in_volley": {
+      "total_count": 0,
+      "avg_per_volume": 0.0
+    },
+    "welled_up": {
+      "total_count": 22,
+      "avg_per_volume": 0.44
+    },
+    "fleeting_swept_away": {
+      "total_count": 0,
+      "avg_per_volume": 0.0
+    }
+  }
+}

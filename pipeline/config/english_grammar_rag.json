@@ -4150,6 +4150,140 @@
         "structure_particles — negatives: basic case particles, simple copula",
         "concession_contrast — negatives: additive, sequential, causal"
       ]
+    },
+    "pov_mechanics": {
+      "description": "JP→EN structural patterns for POV identity, physiological emotion, camera sequencing, and world vocabulary neutrality. Cross-reference: english_grammar_validation_t1.json v1.5 pov_mechanics_violations (negative detection) + literacy_techniques.json v2.0 narrative_techniques subtechniques (technique definitions). Source: Masquerade Confidence Ch.1 [MF Bunko J] review (2026-02-21).",
+      "linked_validation": "english_grammar_validation_t1.json > validation_categories.pov_mechanics_violations",
+      "linked_techniques": "literacy_techniques.json > narrative_techniques.first_person.subtechniques (persona_shift_pov, physiological_purgation) + narrative_techniques.third_person.subtechniques (voyeur_camera_sequence, world_vocabulary_neutrality)",
+      "patterns": [
+        {
+          "id": "scare_quote_persona_pronoun",
+          "japanese_structure": "「彼」/「彼女」 used as scare-quoted pronoun for a performed identity (not the narrator's true self)",
+          "japanese_indicators": [
+            "「彼」の顔",
+            "「彼女」の声",
+            "「彼」が言った"
+          ],
+          "english_pattern": "Preserve scare quotes verbatim: '\"his\" face' / '\"her\" voice' — do NOT normalize to plain possessive pronoun",
+          "examples": [
+            {
+              "jp": "「彼」の顔が剥がれていく",
+              "literal": "his face peeled away",
+              "natural": "\"his\" face peeled away",
+              "source": "Masquerade Confidence Ch.1 [MF Bunko J]",
+              "context": "Con-artist discarding a performed persona — scare quotes signal 'Arthur' was always a costume, not a person"
+            }
+          ],
+          "usage_rules": [
+            "Check if preceding paragraphs established the character as performing an alias/role",
+            "If yes, mirror JP scare-quotes exactly in EN",
+            "The POV shift from '\"he\"' to 'I' is the scene's entire dramatic payload — never smooth it"
+          ],
+          "priority": "high"
+        },
+        {
+          "id": "physiological_emotion_anchor",
+          "japanese_structure": "肺腑から / 胸の裡 / 胃の底 + emotional purgation verb (排出する、吐き出す、流し出す)",
+          "japanese_indicators": [
+            "肺腑から",
+            "胸の裡",
+            "胃の底から",
+            "排出するかのように",
+            "吐き出していく"
+          ],
+          "english_pattern": "Translate via body-organ precision + physical sensation noun — NEVER name the emotion directly",
+          "examples": [
+            {
+              "jp": "胸の裡でくすぶる妻への愛情を、全て排出するかのように",
+              "literal": "as if expelling all the love smoldering in his chest",
+              "natural": "draining out whatever warmth had been kept there / pulling the breath all the way from his gut",
+              "source": "Masquerade Confidence Ch.1 [MF Bunko J]",
+              "context": "Con-artist exiting the husband persona — must feel clinical/cold, not melodramatic"
+            },
+            {
+              "jp": "肺腑から息という息を静かに吐き出していく",
+              "literal": "quietly exhaling every breath from his lungs",
+              "natural": "He exhaled slowly, pulling the breath all the way from his gut",
+              "source": "Masquerade Confidence Ch.1 [MF Bunko J]",
+              "context": "Physiological action precedes the purgation — must be rendered as body mechanics, not emotion report"
+            }
+          ],
+          "usage_rules": [
+            "BANNED: 'purging his love', 'expelling his affection', 'releasing her grief'",
+            "PREFERRED: 'draining whatever warmth...', 'emptying his chest of its last heat', 'pulling it out from his gut'",
+            "When emotion must be implied, use physical sensation nouns: heat, warmth, weight, pressure — not love, grief, guilt"
+          ],
+          "priority": "high"
+        },
+        {
+          "id": "voyeur_double_shot_sequence",
+          "japanese_structure": "Sentence 1: Subject A + perception verb + object/scene. Sentence 2: そんなAを / Aの横顔を + Subject B + observation verb",
+          "japanese_indicators": [
+            "そんな妻の横顔を",
+            "そんな彼女を眺めながら",
+            "うっとりと眺めていた / 見つめていた (A's gaze)",
+            "満足げに眺めつつ (B watching A)"
+          ],
+          "english_pattern": "Preserve as two separate sentences. Shot 1: A's gaze + object. Shot 2: B observing A. NEVER collapse into 'B watched A [verb] the [object]'",
+          "examples": [
+            {
+              "jp": "新妻の瞳がうっとりと眺めていた。そんな妻の横顔を満足げに眺めつつ、「彼」は…",
+              "literal": "He watched his wife gaze dreamily at the dinner table.",
+              "natural": "She gazed dreamily at the white-linen dinner table — the silver candelabras were a perfect touch. He watched his wife's profile from across the room, deeply satisfied.",
+              "source": "Masquerade Confidence Ch.1 [MF Bunko J]",
+              "context": "Con-artist establishing surveillance gaze over new wife — the double-shot carries the predator-prey subtext"
+            }
+          ],
+          "usage_rules": [
+            "BANNED COLLAPSE: 'B watched A gaze at X' — merges two shots into one flat statement",
+            "Shot 1 must end before B appears. B's sentence begins with the object of Shot 1 ('his wife's profile') not a merge verb",
+            "Trigger: JP sentence 2 starts with そんな[A]を or [A]の[body part]を"
+          ],
+          "priority": "high"
+        },
+        {
+          "id": "fantasy_world_vocabulary_neutral",
+          "japanese_structure": "軍役 / 内戦 / 戦友 / 名家 / 使用人 used in non-realistic alt-history/fantasy world",
+          "japanese_indicators": [
+            "軍役",
+            "内戦",
+            "戦友",
+            "退役",
+            "名家の子女",
+            "使用人"
+          ],
+          "english_pattern": "Use period-neutral equivalents — avoid real-world-era-anchoring vocabulary (no 'trenches', 'samurai', 'Victorian', 'feudal serf')",
+          "examples": [
+            {
+              "jp": "数年間の泥臭い軍役",
+              "literal": "years in the trenches",
+              "natural": "years of brutal military service / years in the field / years on campaign",
+              "source": "Masquerade Confidence Ch.1 [MF Bunko J] — set in fictional Republic of Colonials, not WWI",
+              "context": "Novel's world is a fictional post-revolution republic — 'trenches' anchors to WWI and breaks immersion"
+            },
+            {
+              "jp": "戦友との絆",
+              "literal": "camaraderie in the trenches / trench mates",
+              "natural": "the bonds forged with fellow soldiers / camaraderie built under fire",
+              "source": "Masquerade Confidence Ch.1 [MF Bunko J]",
+              "context": "Same: war-vocabulary must stay fictional-era-neutral"
+            },
+            {
+              "jp": "使用人",
+              "literal": "servants",
+              "natural": "household staff / retainers / staff",
+              "context": "In aristocratic fantasy, 'servants' is acceptable; 'serfs' or 'Victorian footmen' are not unless setting demands it"
+            }
+          ],
+          "usage_rules": [
+            "Check manifest.json genre/setting tags before choosing military vocabulary",
+            "If setting = steampunk / alternate-history / fantasy → use neutral military/social vocabulary",
+            "If setting = historical fiction → period-specific terms are correct",
+            "BANNED in non-historical settings: trenches, the front (WWII), samurai, daimyo, Victorian, Edwardian, the Great War"
+          ],
+          "priority": "medium"
+        }
+      ]
     }
   },
   "integration_points": {

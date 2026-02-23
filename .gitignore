@@ -21,6 +21,7 @@ pipeline/.env
 pipeline/WORK/
 pipeline/INPUT/
 pipeline/OUTPUT/
+Official_Repo/
 
 # Development workspaces (internal testing/experimentation)
 bleu_workspace/

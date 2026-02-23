@@ -1,0 +1,639 @@
+{
+  "bible_version": "1.0",
+  "series_id": "series_e9f7aec0fa",
+  "series_title": {
+    "ja": "マスカレード・コンフィデンス　詐欺師は少女と仮面仕掛けの旅をする 【電子特典付き】",
+    "en": "マスカレード・コンフィデンス　詐欺師は少女と仮面仕掛けの旅をする 【電子特典付き】",
+    "romaji": ""
+  },
+  "created_at": "2026-02-20T16:38:03.370930+00:00",
+  "last_updated": "2026-02-20T16:39:29.766128+00:00",
+  "volumes_registered": [
+    {
+      "volume_id": "00f6",
+      "title": "マスカレード・コンフィデンス　詐欺師は少女と仮面仕掛けの旅をする 【電子特典付き】",
+      "index": 2
+    }
+  ],
+  "world_setting": {
+    "type": "steampunk_fantasy",
+    "label": "A post-revolution republic with advanced technology (steam engines) and supernatural abilities (Regalia), where a con artist and a soul-reading girl embark on a journey.",
+    "honorifics": {
+      "mode": "localize",
+      "policy": "Honorifics are generally localized to convey equivalent social dynamics and respect levels in English. Exceptions may be made for specific cultural terms or character-defining speech patterns, which will be noted in individual character profiles or cultural terms."
+    },
+    "name_order": {
+      "default": "family_given",
+      "policy": "Use Family Given order for Japanese names by default; preserve canonical spelling. Use Given Family only for explicit non-Japanese exceptions.",
+      "exceptions": [
+        "Linus Krueger",
+        "Chronica",
+        "Evelyn Habelhabal",
+        "Patrizia Uschkeen",
+        "Aria",
+        "Johann",
+        "Arthur Tickborne",
+        "Elzaria Lorelei",
+        "Willem",
+        "John Law",
+        "Eiselred Grachiel",
+        "Sherry Gordon"
+      ]
+    },
+    "exceptions": []
+  },
+  "characters": {
+    "ライナス＝クルーガー": {
+      "canonical_en": "Linus Krueger",
+      "source": "manifest_profile_seed",
+      "short_name": "Linus",
+      "category": "Self (protagonist)",
+      "affiliation": "Republic of Colonials",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {
+          "Chronica": "casual/teasing",
+          "Elzaria Lorelei (as Arthur)": "affectionate/charming",
+          "Willem": "professional/persuasive",
+          "Eiselred Grachiel": "antagonistic/provocative",
+          "Evelyn Habelhabal": "blunt/exasperated",
+          "Patrizia Uschkeen": "exasperated/slightly amused",
+          "Johann": "respectful/familiar"
+        },
+        "emotional_shifts": {
+          "anger": "more direct, less filtered",
+          "concern": "softer, more protective"
+        },
+        "notes": "Maintains a casual, contemporary voice, but can shift to formal or charming registers when playing a role. His true voice is often cynical but reveals underlying care for those he travels with."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Adaptable appearance due to his con artist nature; often seen in tailored, unassuming clothing when in a persona; sometimes wears fashion glasses. His default expression is likely observant and slightly wary. His posture is often relaxed but ready, reflecting his quick wit and evasive nature."
+      },
+      "notes": "Cunning, pragmatic, resourceful, adaptable, cynical, observant, protective (especially of Chronica), driven by money and self-interest, but with a hidden sense of justice.",
+      "volume_events": {
+        "00f6": {
+          "relationship_to_protagonist": "Self (protagonist)",
+          "relationship_to_others": "Mentor/Older brother figure to Chronica; former 'husband' to Elzaria Lorelei (as Arthur Tickborne); 'business partner' to Willem; 'legal expert' persona (John Law); target of Eiselred Grachiel; ally to Johann, Evelyn, and Patrizia.",
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {
+              "Chronica": "casual/teasing",
+              "Elzaria Lorelei (as Arthur)": "affectionate/charming",
+              "Willem": "professional/persuasive",
+              "Eiselred Grachiel": "antagonistic/provocative",
+              "Evelyn Habelhabal": "blunt/exasperated",
+              "Patrizia Uschkeen": "exasperated/slightly amused",
+              "Johann": "respectful/familiar"
+            },
+            "emotional_shifts": {
+              "anger": "more direct, less filtered",
+              "concern": "softer, more protective",
+              "vulnerability": "hesitant, raw, unmasked"
+            },
+            "notes": "Maintains a casual, contemporary voice, but can shift to formal or charming registers when playing a role. His true voice is often cynical but reveals underlying care for those he travels with."
+          },
+          "character_arc": "Initially driven by revenge and reclaiming wealth, gradually develops a protective bond with Chronica, confronting his own past and identity along the journey."
+        }
+      }
+    },
+    "クロニカ": {
+      "canonical_en": "Chronica",
+      "source": "manifest_profile_seed",
+      "short_name": "Chronica",
+      "category": "Travel companion, 'master' (she forces Linus to travel with her), love interest (implied).",
+      "affiliation": "Republic of Colonials (remnant noble)",
+      "visual_identity_non_color": {
+        "identity_summary": "Small stature, long hair that shifts from a dark hue to silvery-white, distinct heterochromia (one emerald green eye, one amethyst eye), often wears a frilly black skirt or a white sleeveless shirt with a wide-brimmed white hat. Her expression can range from innocent curiosity to unsettling perceptiveness. She often carries a thick diary."
+      },
+      "notes": "Mysterious, innocent-seeming but manipulative, perceptive, curious, enjoys good food and beautiful scenery, has a hidden strength and purpose.",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {
+          "Linus Krueger": "demanding/teasing/affectionate",
+          "Evelyn Habelhabal": "friendly/curious",
+          "Patrizia Uschkeen": "friendly/sympathetic"
+        },
+        "emotional_shifts": {
+          "excitement": "more animated, higher pitch",
+          "seriousness": "calmer, more direct"
+        },
+        "notes": "Her speech is generally light and often playful, but she can deliver serious or profound statements with an unsettling directness, especially when discussing her abilities or past."
+      },
+      "volume_events": {
+        "00f6": {
+          "relationship_to_protagonist": "Travel companion, 'master' (she forces Linus to travel with her), love interest (implied).",
+          "relationship_to_others": "Target of the Knights; has a mysterious past related to the 'King' and Regalia.",
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {
+              "Linus Krueger": "demanding/teasing/affectionate",
+              "Evelyn Habelhabal": "friendly/curious",
+              "Patrizia Uschkeen": "friendly/sympathetic"
+            },
+            "emotional_shifts": {
+              "excitement": "more animated, higher pitch",
+              "seriousness": "calmer, more direct",
+              "vulnerability": "trembling voice, often accompanied by tears or a strained smile"
+            },
+            "notes": "Her speech is generally light and often playful, but she can deliver serious or profound statements with an unsettling directness, especially when discussing her abilities or past."
+          },
+          "character_arc": "Seeks to reach the sea and uncover her past/purpose, which is tied to the 'King' and the Regalia. Develops a bond with Linus, learning to trust and rely on him."
+        }
+      }
+    },
+    "イヴリーン＝ハベルハバル": {
+      "canonical_en": "Evelyn Habelhabal",
+      "source": "manifest_profile_seed",
+      "short_name": "Evelyn",
+      "category": "Antagonist turned reluctant ally/escort. Works for the government.",
+      "affiliation": "Republic of Colonials",
+      "keigo": {
+        "narration": "formal",
+        "internal_thoughts": "formal",
+        "speaking_to": {
+          "Linus Krueger": "formal/exasperated",
+          "Chronica": "formal/instructive",
+          "Aria": "deferential"
+        },
+        "emotional_shifts": {
+          "anger": "more direct, sharp tone",
+          "frustration": "sighs, terse remarks"
+        },
+        "notes": "Maintains a formal, almost robotic tone, reflecting her military background and stoic personality. Rarely shows overt emotion."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Black hair, wears a traditional black and white maid uniform. Her posture is rigid and formal, and her expression is typically stoic and unreadable. She often wields hatchets in combat."
+      },
+      "notes": "Cold, stoic, professional, highly skilled, somewhat exasperated by Linus and Chronica, but ultimately follows her mission.",
+      "volume_events": {
+        "00f6": {
+          "relationship_to_protagonist": "Antagonist turned reluctant ally/escort. Works for the government.",
+          "relationship_to_others": "Disciple of Aria; former member of the 'Black Brooms' assassination squad; tasked with protecting/monitoring Chronica.",
+          "keigo_switch": {
+            "narration": "formal",
+            "internal_thoughts": "formal",
+            "speaking_to": {
+              "Linus Krueger": "formal/exasperated",
+              "Chronica": "formal/instructive",
+              "Aria": "deferential"
+            },
+            "emotional_shifts": {
+              "anger": "more direct, sharp tone",
+              "frustration": "sighs, terse remarks"
+            },
+            "notes": "Maintains a formal, almost robotic tone, reflecting her military background and stoic personality. Rarely shows overt emotion."
+          },
+          "character_arc": "Initially an antagonist sent to capture Chronica, she becomes a reluctant protector/escort due to orders, slowly developing a more complex relationship with the protagonists."
+        }
+      }
+    },
+    "パトリツィア＝ウシュケーン": {
+      "canonical_en": "Patrizia Uschkeen",
+      "source": "manifest_profile_seed",
+      "short_name": "Patty",
+      "category": "Initial antagonist, later ally/travel companion.",
+      "affiliation": "Republic of Colonials (Southern Four Great Ducal Houses)",
+      "keigo": {
+        "narration": "formal",
+        "internal_thoughts": "formal",
+        "speaking_to": {
+          "Linus Krueger": "flirtatious/demanding",
+          "Chronica": "friendly/charming",
+          "Evelyn Habelhabal": "antagonistic/provocative"
+        },
+        "emotional_shifts": {
+          "excitement": "very expressive, loud",
+          "distress": "panicked, dramatic"
+        },
+        "notes": "Her speech is characterized by its dramatic flair and often exaggerated politeness, reflecting her noble upbringing and theatrical personality."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Golden, flowing hair, often wears elaborate dresses or elegant attire, giving her a regal and somewhat dramatic silhouette. Her expressions are often lively and exaggerated, reflecting her theatrical personality. She projects an air of confidence, sometimes bordering on arrogance."
+      },
+      "notes": "Flamboyant, dramatic, somewhat naive but determined, easily flustered, has a strong sense of pride and a romanticized view of life.",
+      "volume_events": {
+        "00f6": {
+          "relationship_to_protagonist": "Initial antagonist, later ally/travel companion.",
+          "relationship_to_others": "Daughter of a wealthy noble family; new member of the Knights; 'fiancée' of Linus (as part of a scam).",
+          "keigo_switch": {
+            "narration": "formal",
+            "internal_thoughts": "formal",
+            "speaking_to": {
+              "Linus Krueger": "flirtatious/demanding",
+              "Chronica": "friendly/charming",
+              "Evelyn Habelhabal": "antagonistic/provocative"
+            },
+            "emotional_shifts": {
+              "excitement": "very expressive, loud",
+              "distress": "panicked, dramatic"
+            },
+            "notes": "Her speech is characterized by its dramatic flair and often exaggerated politeness, reflecting her noble upbringing and theatrical personality."
+          },
+          "character_arc": "Introduced as a Knight pursuing Chronica, she is defeated by Linus and Evelyn, then becomes an unexpected ally, joining their journey."
+        }
+      }
+    },
+    "アリア": {
+      "canonical_en": "Aria",
+      "source": "manifest_profile_seed",
+      "short_name": "Aria",
+      "category": "Indirect ally, Evelyn's master.",
+      "affiliation": "Republic of Colonials",
+      "visual_identity_non_color": {
+        "identity_summary": "Long crimson hair, typically wears a maid uniform. Her appearance can shift from elderly to youthful due to her abilities. Her posture is graceful and powerful, and her expression is often knowing or subtly amused."
+      },
+      "notes": "Powerful, enigmatic, somewhat playful, highly skilled in combat, has a strong sense of duty and loyalty.",
+      "keigo": {
+        "narration": "formal",
+        "internal_thoughts": "formal",
+        "speaking_to": {
+          "Evelyn Habelhabal": "instructive/teasing",
+          "Linus Krueger": "polite/observant"
+        },
+        "emotional_shifts": {},
+        "notes": "Her speech is refined and poised, even when engaging in combat or teasing her disciple. She maintains an air of control."
+      },
+      "volume_events": {
+        "00f6": {
+          "relationship_to_protagonist": "Indirect ally, Evelyn's master.",
+          "relationship_to_others": "Master of Evelyn Habelhabal; former leader/strongest member of the 'Black Brooms' assassination squad; owner of a restaurant.",
+          "keigo_switch": {
+            "narration": "formal",
+            "internal_thoughts": "formal",
+            "speaking_to": {
+              "Evelyn Habelhabal": "instructive/teasing",
+              "Linus Krueger": "polite/observant"
+            },
+            "emotional_shifts": {},
+            "notes": "Her speech is refined and poised, even when engaging in combat or teasing her disciple. She maintains an air of control."
+          },
+          "character_arc": "Revealed as Evelyn's powerful master, she aids the protagonists against Sherry Gordon, then returns to her restaurant."
+        }
+      }
+    },
+    "ヨハン": {
+      "canonical_en": "Johann",
+      "source": "manifest_profile_seed",
+      "short_name": "Johann",
+      "category": "Ally, provides aid and information.",
+      "affiliation": "Republic of Colonials",
+      "visual_identity_non_color": {
+        "identity_summary": "Large, muscular physique, often seen carrying a steel steam engine and gatling guns on his back. His expression is typically stern or determined, and his posture is powerful and unyielding."
+      },
+      "notes": "Gruff, pragmatic, loyal, physically imposing, but with a hidden softer side.",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {
+          "Linus Krueger": "gruff/instructive",
+          "Chronica": "protective"
+        },
+        "emotional_shifts": {},
+        "notes": "His speech is straightforward and unadorned, reflecting his no-nonsense attitude and military background."
+      },
+      "volume_events": {
+        "00f6": {
+          "relationship_to_protagonist": "Ally, provides aid and information.",
+          "relationship_to_others": "Linus's older brother figure/mentor; former military.",
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {
+              "Linus Krueger": "gruff/instructive",
+              "Chronica": "protective"
+            },
+            "emotional_shifts": {},
+            "notes": "His speech is straightforward and unadorned, reflecting his no-nonsense attitude and military background."
+          },
+          "character_arc": "Introduced as a former military figure who aids Linus, providing a powerful combat presence."
+        }
+      }
+    },
+    "アーサー＝ティクボーン": {
+      "canonical_en": "Arthur Tickborne",
+      "source": "manifest_profile_seed",
+      "short_name": "Arthur",
+      "category": "Linus Krueger's initial persona.",
+      "affiliation": "Republic of Colonials",
+      "keigo": {
+        "narration": "formal",
+        "internal_thoughts": "formal",
+        "speaking_to": {
+          "Elzaria Lorelei": "affectionate/charming"
+        },
+        "emotional_shifts": {},
+        "notes": "A polished and endearing speaking style, designed to win trust and affection."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Refined and well-groomed, typically wearing formal attire. His expression is often gentle and reassuring, and his posture is confident and open, designed to inspire trust."
+      },
+      "notes": "Charming, diligent, seemingly loving, successful investor.",
+      "volume_events": {
+        "00f6": {
+          "relationship_to_protagonist": "Linus Krueger's initial persona.",
+          "relationship_to_others": "Husband to Elzaria Lorelei.",
+          "keigo_switch": {
+            "narration": "formal",
+            "internal_thoughts": "formal",
+            "speaking_to": {
+              "Elzaria Lorelei": "affectionate/charming"
+            },
+            "emotional_shifts": {},
+            "notes": "A polished and endearing speaking style, designed to win trust and affection."
+          },
+          "character_arc": "A temporary persona used by Linus for a scam."
+        }
+      }
+    },
+    "エルザリア＝ローレライ": {
+      "canonical_en": "Elzaria Lorelei",
+      "source": "manifest_profile_seed",
+      "short_name": "Elza",
+      "category": "Wife of Arthur Tickborne (Linus's persona).",
+      "affiliation": "Republic of Colonials (rural noble family)",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {
+          "Arthur Tickborne": "affectionate/trusting"
+        },
+        "emotional_shifts": {},
+        "notes": "Her speech reflects her sheltered upbringing and trusting nature, becoming more candid when she feels safe and loved."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Long, flowing flaxen hair. Her clothing is likely modest but of good quality, reflecting her noble background. Her expression is often gentle and somewhat naive, and her posture is demure."
+      },
+      "notes": "Naive, romantic, easily charmed, somewhat sheltered.",
+      "volume_events": {
+        "00f6": {
+          "relationship_to_protagonist": "Wife of Arthur Tickborne (Linus's persona).",
+          "relationship_to_others": "Daughter of a rural noble family.",
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {
+              "Arthur Tickborne": "affectionate/trusting"
+            },
+            "emotional_shifts": {},
+            "notes": "Her speech reflects her sheltered upbringing and trusting nature, becoming more candid when she feels safe and loved."
+          },
+          "character_arc": "Victim of Linus's initial scam, her fate after the scam is not detailed."
+        }
+      }
+    },
+    "ウィレム": {
+      "canonical_en": "Willem",
+      "source": "manifest_profile_seed",
+      "short_name": "Willem",
+      "category": "Business contact (target of a scam).",
+      "affiliation": "Republic of Colonials",
+      "visual_identity_non_color": {
+        "identity_summary": "Portly figure, typically dressed in a suit, often seen with a cigar. His expression is usually shrewd and calculating, and his posture is relaxed but commanding."
+      },
+      "notes": "Shrewd, cautious, enjoys cigars.",
+      "keigo": {
+        "narration": "formal",
+        "internal_thoughts": "formal",
+        "speaking_to": {
+          "John Law": "business-like"
+        },
+        "emotional_shifts": {},
+        "notes": "His speech is typical of a businessman, focused on profit and risk."
+      },
+      "volume_events": {
+        "00f6": {
+          "relationship_to_protagonist": "Business contact (target of a scam).",
+          "relationship_to_others": "Wealthy, fat gentleman.",
+          "keigo_switch": {
+            "narration": "formal",
+            "internal_thoughts": "formal",
+            "speaking_to": {
+              "John Law": "business-like"
+            },
+            "emotional_shifts": {},
+            "notes": "His speech is typical of a businessman, focused on profit and risk."
+          },
+          "character_arc": "Target of Linus's scam, illustrating Linus's methods."
+        }
+      }
+    },
+    "ジョン＝ロウ": {
+      "canonical_en": "John Law",
+      "source": "manifest_profile_seed",
+      "short_name": "John",
+      "category": "Linus Krueger's persona.",
+      "affiliation": "Republic of Colonials",
+      "keigo": {
+        "narration": "formal",
+        "internal_thoughts": "formal",
+        "speaking_to": {
+          "Willem": "professional/persuasive"
+        },
+        "emotional_shifts": {},
+        "notes": "A confident and articulate speaking style, fitting for a legal professional."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Wears fashion glasses, presenting a scholarly or professional appearance. His attire is likely business-appropriate, and his expression is confident and intelligent."
+      },
+      "notes": "Professional, persuasive, confident.",
+      "volume_events": {
+        "00f6": {
+          "relationship_to_protagonist": "Linus Krueger's persona.",
+          "relationship_to_others": "Legal expert.",
+          "keigo_switch": {
+            "narration": "formal",
+            "internal_thoughts": "formal",
+            "speaking_to": {
+              "Willem": "professional/persuasive"
+            },
+            "emotional_shifts": {},
+            "notes": "A confident and articulate speaking style, fitting for a legal professional."
+          },
+          "character_arc": "A temporary persona used by Linus for a scam."
+        }
+      }
+    },
+    "アイゼルレッド＝グラキエル": {
+      "canonical_en": "Eiselred Grachiel",
+      "source": "manifest_profile_seed",
+      "short_name": "Grachiel",
+      "category": "Antagonist, member of the Knights.",
+      "affiliation": "Republic of Colonials (noble)",
+      "keigo": {
+        "narration": "formal",
+        "internal_thoughts": "formal",
+        "speaking_to": {
+          "Linus Krueger": "condescending/threatening",
+          "Chronica": "contemptuous"
+        },
+        "emotional_shifts": {
+          "anger": "more guttural, violent"
+        },
+        "notes": "His speech is characterized by its formal, almost archaic tone, combined with a deep, unsettling menace, reflecting his aristocratic background and sadistic nature."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Pathologically thin physique, wears a long coat, has tawny hair and round black eyes. His expression is often sinister and contemptuous, and his posture is typically hunched or unnaturally still, conveying a predatory aura."
+      },
+      "notes": "Cruel, arrogant, sadistic, believes in noble supremacy, enjoys inflicting pain.",
+      "volume_events": {
+        "00f6": {
+          "relationship_to_protagonist": "Antagonist, member of the Knights.",
+          "relationship_to_others": "Knights Guardian Second Rank.",
+          "keigo_switch": {
+            "narration": "formal",
+            "internal_thoughts": "formal",
+            "speaking_to": {
+              "Linus Krueger": "condescending/threatening",
+              "Chronica": "contemptuous"
+            },
+            "emotional_shifts": {
+              "anger": "more guttural, violent"
+            },
+            "notes": "His speech is characterized by its formal, almost archaic tone, combined with a deep, unsettling menace, reflecting his aristocratic background and sadistic nature."
+          },
+          "character_arc": "An early antagonist who attacks Linus and Chronica on the train, demonstrating the threat of the Knights."
+        }
+      }
+    },
+    "シェリー＝ゴードン": {
+      "canonical_en": "Sherry Gordon",
+      "source": "manifest_profile_seed",
+      "short_name": "Gordon",
+      "category": "Antagonist, wealthy businessman.",
+      "affiliation": "Republic of Colonials",
+      "keigo": {
+        "narration": "formal",
+        "internal_thoughts": "formal",
+        "speaking_to": {
+          "Linus Krueger": "manipulative/questioning"
+        },
+        "emotional_shifts": {},
+        "notes": "His speech is overtly polite and theatrical, masking his true intentions and manipulative nature."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Likely a well-dressed, imposing figure, given his status as a wealthy businessman and party host. His expressions are probably smooth and calculating, and his posture one of authority."
+      },
+      "notes": "Deceptive, manipulative, self-serving, seemingly charming.",
+      "volume_events": {
+        "00f6": {
+          "relationship_to_protagonist": "Antagonist, wealthy businessman.",
+          "relationship_to_others": "Organizer of a dinner party.",
+          "keigo_switch": {
+            "narration": "formal",
+            "internal_thoughts": "formal",
+            "speaking_to": {
+              "Linus Krueger": "manipulative/questioning"
+            },
+            "emotional_shifts": {},
+            "notes": "His speech is overtly polite and theatrical, masking his true intentions and manipulative nature."
+          },
+          "character_arc": "An antagonist who attempts to use Chronica for his own ends, defeated by Aria."
+        }
+      }
+    },
+    "Linus Krueger": {
+      "short_name": "Linus",
+      "category": "Self (protagonist)",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Adaptable appearance due to his con artist nature; often seen in tailored, unassuming clothing when in a persona; sometimes wears fashion glasses. His default expression is likely observant and slightly wary. His posture is often relaxed but ready, reflecting his quick wit and evasive nature."
+      },
+      "notes": "Cunning, pragmatic, resourceful, adaptable, cynical, observant, protective (especially of Chronica), driven by money and self-interest, but with a hidden sense of justice.",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {},
+        "emotional_shifts": {},
+        "notes": "[TO BE FILLED - context-dependent register notes]"
+      },
+      "volume_events": {
+        "00f6": {
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {},
+            "emotional_shifts": {},
+            "notes": "[TO BE FILLED - context-dependent register notes]"
+          }
+        }
+      }
+    },
+    "Evelyn Habelhabal": {
+      "short_name": "Evelyn",
+      "category": "Antagonist turned reluctant ally/escort. Works for the government.",
+      "affiliation": "Republic of Colonials",
+      "visual_identity_non_color": {
+        "identity_summary": "Black hair, wears a traditional black and white maid uniform. Her posture is rigid and formal, and her expression is typically stoic and unreadable. She often wields hatchets in combat."
+      },
+      "notes": "Cold, stoic, professional, highly skilled, somewhat exasperated by Linus and Chronica, but ultimately follows her mission."
+    },
+    "Patrizia Uschkeen": {
+      "short_name": "Patty",
+      "category": "Initial antagonist, later ally/travel companion.",
+      "affiliation": "Republic of Colonials (Southern Four Great Ducal Houses)",
+      "visual_identity_non_color": {
+        "identity_summary": "Golden, flowing hair, often wears elaborate dresses or elegant attire, giving her a regal and somewhat dramatic silhouette. Her expressions are often lively and exaggerated, reflecting her theatrical personality. She projects an air of confidence, sometimes bordering on arrogance."
+      },
+      "notes": "Flamboyant, dramatic, somewhat naive but determined, easily flustered, has a strong sense of pride and a romanticized view of life."
+    },
+    "Arthur Tickborne": {
+      "short_name": "Arthur",
+      "category": "Linus Krueger's initial persona.",
+      "affiliation": "Republic of Colonials",
+      "visual_identity_non_color": {
+        "identity_summary": "Refined and well-groomed, typically wearing formal attire. His expression is often gentle and reassuring, and his posture is confident and open, designed to inspire trust."
+      },
+      "notes": "Charming, diligent, seemingly loving, successful investor."
+    },
+    "Elzaria Lorelei": {
+      "short_name": "Elza",
+      "category": "Wife of Arthur Tickborne (Linus's persona).",
+      "affiliation": "Republic of Colonials (rural noble family)",
+      "visual_identity_non_color": {
+        "identity_summary": "Long, flowing flaxen hair. Her clothing is likely modest but of good quality, reflecting her noble background. Her expression is often gentle and somewhat naive, and her posture is demure."
+      },
+      "notes": "Naive, romantic, easily charmed, somewhat sheltered."
+    },
+    "John Law": {
+      "short_name": "John",
+      "category": "Linus Krueger's persona.",
+      "affiliation": "Republic of Colonials",
+      "visual_identity_non_color": {
+        "identity_summary": "Wears fashion glasses, presenting a scholarly or professional appearance. His attire is likely business-appropriate, and his expression is confident and intelligent."
+      },
+      "notes": "Professional, persuasive, confident."
+    },
+    "Eiselred Grachiel": {
+      "short_name": "Grachiel",
+      "category": "Antagonist, member of the Knights.",
+      "affiliation": "Republic of Colonials (noble)",
+      "visual_identity_non_color": {
+        "identity_summary": "Pathologically thin physique, wears a long coat, has tawny hair and round black eyes. His expression is often sinister and contemptuous, and his posture is typically hunched or unnaturally still, conveying a predatory aura."
+      },
+      "notes": "Cruel, arrogant, sadistic, believes in noble supremacy, enjoys inflicting pain."
+    },
+    "Sherry Gordon": {
+      "short_name": "Gordon",
+      "category": "Antagonist, wealthy businessman.",
+      "affiliation": "Republic of Colonials",
+      "visual_identity_non_color": {
+        "identity_summary": "Likely a well-dressed, imposing figure, given his status as a wealthy businessman and party host. His expressions are probably smooth and calculating, and his posture one of authority."
+      },
+      "notes": "Deceptive, manipulative, self-serving, seemingly charming."
+    }
+  },
+  "geography": {
+    "countries": {},
+    "regions": {},
+    "cities": {}
+  },
+  "weapons_artifacts": {},
+  "organizations": {},
+  "cultural_terms": {},
+  "mythology": {},
+  "translation_rules": {}
+}

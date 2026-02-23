@@ -1,0 +1,729 @@
+{
+  "bible_version": "1.0",
+  "series_id": "series_f1ed45cba9",
+  "series_title": {
+    "ja": "ちっちゃくてデカくて可愛い七瀬さんを勘違い元カレから奪って幸せにする",
+    "en": "ちっちゃくてデカくて可愛い七瀬さんを勘違い元カレから奪って幸せにする",
+    "romaji": ""
+  },
+  "created_at": "2026-02-21T07:28:53.952653+00:00",
+  "last_updated": "2026-02-21T07:30:06.331474+00:00",
+  "volumes_registered": [
+    {
+      "volume_id": "1e60",
+      "title": "ちっちゃくてデカくて可愛い七瀬さんを勘違い元カレから奪って幸せにする　３",
+      "index": 3
+    }
+  ],
+  "world_setting": {
+    "type": "modern_japan",
+    "label": "Contemporary Japan with focus on high school life and romance.",
+    "honorifics": {
+      "mode": "retain",
+      "policy": "Retain Japanese honorifics (e.g., -san, -kun, -senpai) to preserve cultural context and character relationships. Add brief explanations in localization notes if necessary."
+    },
+    "name_order": {
+      "default": "family_given",
+      "policy": "Use Family Given order for Japanese names by default; preserve canonical spelling. Use Given Family only for explicit non-Japanese exceptions."
+    },
+    "exceptions": []
+  },
+  "characters": {
+    "雄介": {
+      "canonical_en": "Ogami Yuusuke",
+      "source": "manifest_profile_seed",
+      "short_name": "Yuusuke-kun",
+      "category": "Self (protagonist)",
+      "affiliation": "Japanese",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {
+          "Nanase Hiyori": "polite-casual",
+          "Family (parents)": "polite",
+          "Family (younger brothers)": "casual",
+          "Classmates/Friends": "casual"
+        },
+        "emotional_shifts": {
+          "protective": "firm",
+          "flustered": "stuttering/hesitant"
+        },
+        "notes": "Maintains a polite-casual tone with Hiyori, but becomes more direct and firm when protecting her or his family. Easily flustered by Hiyori's teasing."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Tall, lean build of a high school student; often seen with a slightly worried or thoughtful expression, but smiles genuinely when with Hiyori; wears school uniform or casual clothes."
+      },
+      "notes": "Caring, supportive, observant, slightly anxious, easily flustered, responsible, protective",
+      "volume_events": {
+        "1e60": {
+          "relationship_to_protagonist": "Self (protagonist)",
+          "relationship_to_others": "Nanase Hiyori (girlfriend), Ogami Taiga (younger brother), Ogami Masato (younger brother), Ogami Marie (mother), Nanase Gorou (Hiyori's father), Nanase Mutsumi (Hiyori's mother), Kouma Yoshihide (Hiyori's ex-boyfriend/stalker), Shimura Nina (Yoshihide's affair partner/stalker), Hachimura Reika (classmate/friend), Kumakawa (classmate/friend), Yusa (classmate/friend), Gakuto (classmate)",
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {
+              "Nanase Hiyori": "polite-casual",
+              "Family (parents)": "polite",
+              "Family (younger brothers)": "casual",
+              "Classmates/Friends": "casual"
+            },
+            "emotional_shifts": {
+              "protective": "firm",
+              "flustered": "stuttering/hesitant"
+            },
+            "notes": "Maintains a polite-casual tone with Hiyori, but becomes more direct and firm when protecting her or his family. Easily flustered by Hiyori's teasing."
+          },
+          "character_arc": "Develops a deeper, more committed relationship with Hiyori while navigating the challenges of her stalkers and his family life."
+        }
+      }
+    },
+    "七瀬": {
+      "canonical_en": "Nanase Hiyori",
+      "source": "manifest_profile_seed",
+      "short_name": "Hiyori-san",
+      "category": "Girlfriend (main heroine)",
+      "affiliation": "Japanese",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {
+          "Ogami Yuusuke": "polite-casual",
+          "Ogami Marie": "polite (Okaasan)",
+          "Ogami brothers": "polite-casual",
+          "Friends": "casual"
+        },
+        "emotional_shifts": {
+          "playful": "teasing",
+          "anxious": "hesitant",
+          "grateful": "earnest"
+        },
+        "notes": "Uses polite forms with Yuusuke and his family, but adopts a more casual and teasing tone as she gets comfortable. Addresses Yuusuke's mother as 'Okaasan'."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Petite stature with a notably curvy figure; often has a bright, somewhat childlike expression, but can show vulnerability; sometimes wears her hair in small pigtails (おさげヘア); favors cute, often frilly or orange-colored clothing like a bikini."
+      },
+      "notes": "Cute, cheerful, outwardly bright, but initially carries anxiety and trauma from her past relationship. Tries to be considerate and helpful.",
+      "volume_events": {
+        "1e60": {
+          "relationship_to_protagonist": "Girlfriend (main heroine)",
+          "relationship_to_others": "Ogami Yuusuke (boyfriend), Nanase Gorou (father), Nanase Mutsumi (mother), Kouma Yoshihide (ex-boyfriend/stalker), Shimura Nina (Yoshihide's affair partner/stalker), Hachimura Reika (classmate/friend), Ogami family (cohabitants)",
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {
+              "Ogami Yuusuke": "polite-casual",
+              "Ogami Marie": "polite (Okaasan)",
+              "Ogami brothers": "polite-casual",
+              "Friends": "casual"
+            },
+            "emotional_shifts": {
+              "playful": "teasing",
+              "anxious": "hesitant",
+              "grateful": "earnest"
+            },
+            "notes": "Uses polite forms with Yuusuke and his family, but adopts a more casual and teasing tone as she gets comfortable. Addresses Yuusuke's mother as 'Okaasan'."
+          },
+          "character_arc": "Overcomes past trauma and anxiety through Yuusuke's support, growing more confident and deeply in love."
+        }
+      }
+    },
+    "大我": {
+      "canonical_en": "Ogami Taiga",
+      "source": "manifest_profile_seed",
+      "short_name": "Taiga",
+      "category": "Younger brother",
+      "affiliation": "Japanese",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {
+          "Ogami Yuusuke": "casual (sometimes 'Aniki' when serious)",
+          "Ogami Marie": "casual",
+          "Nanase Hiyori": "polite-casual (Gishisan)",
+          "Friends": "casual"
+        },
+        "emotional_shifts": {
+          "serious": "more formal/respectful to Yuusuke",
+          "scared": "whining/pleading"
+        },
+        "notes": "Typically casual, but can be serious or use 'Aniki' for Yuusuke in urgent situations. Uses 'Gishisan' (義姉さん) for Hiyori, showing respect and affection."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Energetic, active build; often seen with a playful or teasing expression, especially towards his older brother; wears middle school uniform or sportswear."
+      },
+      "notes": "Energetic, athletic, direct, teasing, protective of Hiyori.",
+      "volume_events": {
+        "1e60": {
+          "relationship_to_protagonist": "Younger brother",
+          "relationship_to_others": "Ogami Yuusuke (older brother), Ogami Masato (brother), Ogami Marie (mother), Nanase Hiyori (sister-in-law figure), Judo club friends",
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {
+              "Ogami Yuusuke": "casual (sometimes 'Aniki' when serious)",
+              "Ogami Marie": "casual",
+              "Nanase Hiyori": "polite-casual (Gishisan)",
+              "Friends": "casual"
+            },
+            "emotional_shifts": {
+              "serious": "more formal/respectful to Yuusuke",
+              "scared": "whining/pleading"
+            },
+            "notes": "Typically casual, but can be serious or use 'Aniki' for Yuusuke in urgent situations. Uses 'Gishisan' (義姉さん) for Hiyori, showing respect and affection."
+          },
+          "character_arc": "Supports his older brother and Hiyori, matures slightly through shared experiences."
+        }
+      }
+    },
+    "雅人": {
+      "canonical_en": "Ogami Masato",
+      "source": "manifest_profile_seed",
+      "short_name": "Masato",
+      "category": "Younger brother",
+      "affiliation": "Japanese",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {
+          "Ogami Yuusuke": "casual",
+          "Ogami Marie": "casual",
+          "Nanase Hiyori": "polite-casual (Gishisan)"
+        },
+        "emotional_shifts": {
+          "scared": "whining/pleading",
+          "teasing": "sarcastic"
+        },
+        "notes": "Similar to Taiga, uses 'Gishisan' for Hiyori and is generally casual. More prone to comedic exaggeration."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Relaxed posture; often has a sleepy or nonchalant expression, prone to dramatic reactions when teased or scared; wears middle school uniform or casual lounging clothes."
+      },
+      "notes": "Laid-back, lazy, teasing, prone to dramatic reactions, protective of Hiyori.",
+      "volume_events": {
+        "1e60": {
+          "relationship_to_protagonist": "Younger brother",
+          "relationship_to_others": "Ogami Yuusuke (older brother), Ogami Taiga (brother), Ogami Marie (mother), Nanase Hiyori (sister-in-law figure)",
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {
+              "Ogami Yuusuke": "casual",
+              "Ogami Marie": "casual",
+              "Nanase Hiyori": "polite-casual (Gishisan)"
+            },
+            "emotional_shifts": {
+              "scared": "whining/pleading",
+              "teasing": "sarcastic"
+            },
+            "notes": "Similar to Taiga, uses 'Gishisan' for Hiyori and is generally casual. More prone to comedic exaggeration."
+          },
+          "character_arc": "Provides comedic relief and supports the main couple in his own way."
+        }
+      }
+    },
+    "真理恵": {
+      "canonical_en": "Ogami Marie",
+      "source": "manifest_profile_seed",
+      "short_name": "Okaasan (Mother)",
+      "category": "Mother",
+      "affiliation": "Japanese",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {
+          "Family": "casual/affectionate",
+          "Nanase Hiyori": "warm/encouraging (motherly tone)"
+        },
+        "emotional_shifts": {
+          "teasing": "playful",
+          "sad": "dramatic"
+        },
+        "notes": "Acts as a warm, welcoming mother figure to Hiyori, encouraging her to call her 'Okaasan'."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Mature, caring demeanor; likely wears practical but stylish clothing; often has a warm, welcoming smile, sometimes with a dramatic flair."
+      },
+      "notes": "Supportive, warm, welcoming, a bit dramatic and teasing, caring.",
+      "volume_events": {
+        "1e60": {
+          "relationship_to_protagonist": "Mother",
+          "relationship_to_others": "Ogami Yuusuke (son), Ogami Taiga (son), Ogami Masato (son), Nanase Hiyori (daughter-in-law figure), Nanase Gorou (Hiyori's father), Nanase Mutsumi (Hiyori's mother)",
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {
+              "Family": "casual/affectionate",
+              "Nanase Hiyori": "warm/encouraging (motherly tone)"
+            },
+            "emotional_shifts": {
+              "teasing": "playful",
+              "sad": "dramatic"
+            },
+            "notes": "Acts as a warm, welcoming mother figure to Hiyori, encouraging her to call her 'Okaasan'."
+          },
+          "character_arc": "Facilitates Hiyori's comfort and integration into the Ogami family."
+        }
+      }
+    },
+    "睦美": {
+      "canonical_en": "Nanase Mutsumi",
+      "source": "manifest_profile_seed",
+      "short_name": "Mutsumi-san (Hiyori's mother)",
+      "category": "Hiyori's mother",
+      "affiliation": "Japanese",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {
+          "Family": "casual/supportive",
+          "Ogami Yuusuke": "polite/grateful"
+        },
+        "emotional_shifts": {},
+        "notes": "Speaks politely and gratefully to Yuusuke for taking care of Hiyori."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Mature, gentle expression; likely carries herself with a sense of quiet strength and concern for her daughter; wears practical, everyday attire."
+      },
+      "notes": "Concerned, kind, supportive of Hiyori's relationship with Yuusuke, practical.",
+      "volume_events": {
+        "1e60": {
+          "relationship_to_protagonist": "Hiyori's mother",
+          "relationship_to_others": "Nanase Hiyori (daughter), Nanase Gorou (husband), Ogami Yuusuke (Hiyori's boyfriend)",
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {
+              "Family": "casual/supportive",
+              "Ogami Yuusuke": "polite/grateful"
+            },
+            "emotional_shifts": {},
+            "notes": "Speaks politely and gratefully to Yuusuke for taking care of Hiyori."
+          },
+          "character_arc": "Works with Gorou to ensure Hiyori's safety and happiness."
+        }
+      }
+    },
+    "吾郎": {
+      "canonical_en": "Nanase Gorou",
+      "source": "manifest_profile_seed",
+      "short_name": "Gorou-san (Hiyori's father)",
+      "category": "Hiyori's father",
+      "affiliation": "Japanese",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {
+          "Family": "casual/protective",
+          "Ogami Yuusuke": "formal/polite (initially stern, then grateful)"
+        },
+        "emotional_shifts": {
+          "protective": "stern/threatening",
+          "grateful": "earnest",
+          "flustered": "stuttering/apologetic"
+        },
+        "notes": "Initially confronts Yuusuke with a golf club, then becomes very polite and apologetic. Expresses deep trust and gratitude towards Yuusuke."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Initially stern and protective expression, but softens considerably; often seen with a slightly formal or traditional posture; might carry a golf club when on guard."
+      },
+      "notes": "Initially overprotective and suspicious, but quickly becomes trusting and grateful. Deeply loves his daughter. Can be a bit dramatic/comical.",
+      "volume_events": {
+        "1e60": {
+          "relationship_to_protagonist": "Hiyori's father",
+          "relationship_to_others": "Nanase Hiyori (daughter), Nanase Mutsumi (wife), Ogami Yuusuke (Hiyori's boyfriend)",
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {
+              "Family": "casual/protective",
+              "Ogami Yuusuke": "formal/polite (initially stern, then grateful)"
+            },
+            "emotional_shifts": {
+              "protective": "stern/threatening",
+              "grateful": "earnest",
+              "flustered": "stuttering/apologetic"
+            },
+            "notes": "Initially confronts Yuusuke with a golf club, then becomes very polite and apologetic. Expresses deep trust and gratitude towards Yuusuke."
+          },
+          "character_arc": "Overcomes his initial protectiveness to fully trust Yuusuke with Hiyori's happiness and safety."
+        }
+      }
+    },
+    "江間仁秀": {
+      "canonical_en": "Kouma Yoshihide",
+      "source": "manifest_profile_seed",
+      "short_name": "Yoshihide",
+      "category": "Hiyori's ex-boyfriend, stalker",
+      "affiliation": "Japanese",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {},
+        "emotional_shifts": {},
+        "notes": "Not enough direct dialogue to infer specific keigo shifts, but likely became more aggressive/demanding as his mental state deteriorated."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "(Implied) Once attractive and athletic, now likely disheveled or withdrawn due to his downfall; expression likely one of obsession or confusion."
+      },
+      "notes": "Delusional, self-centered, possessive, became unstable and stalker-like after being dumped. Initially arrogant.",
+      "volume_events": {
+        "1e60": {
+          "relationship_to_protagonist": "Hiyori's ex-boyfriend, stalker",
+          "relationship_to_others": "Nanase Hiyori (ex-girlfriend), Shimura Nina (affair partner), Ogami Yuusuke (rival)",
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {},
+            "emotional_shifts": {},
+            "notes": "Not enough direct dialogue to infer specific keigo shifts, but likely became more aggressive/demanding as his mental state deteriorated."
+          },
+          "character_arc": "His downfall and descent into stalking due to his own actions, leading to karma."
+        }
+      }
+    },
+    "紫村二奈": {
+      "canonical_en": "Shimura Nina",
+      "source": "manifest_profile_seed",
+      "short_name": "Nina",
+      "category": "Yoshihide's affair partner, orchestrator of Hiyori's breakup, now a stalker herself",
+      "affiliation": "Japanese",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {
+          "Friends": "casual/superficial",
+          "Rivals/Victims": "dismissive/mocking",
+          "Family (sister)": "antagonistic/rude"
+        },
+        "emotional_shifts": {
+          "arrogant": "smug",
+          "fearful": "panicked/demanding",
+          "angry": "aggressive"
+        },
+        "notes": "Maintains a superficial casualness with her 'friends' but is dismissive or openly hostile to those she dislikes. Her tone becomes increasingly frantic as she experiences stalking."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Attractive, fashionable appearance, often with a smug or calculating expression, later shifts to fear and paranoia; maintains a 'popular girl' facade; likely wears trendy high school fashion."
+      },
+      "notes": "Manipulative, cunning, self-serving, arrogant, enjoys others' misfortune, later becomes paranoid and fearful due to being stalked.",
+      "volume_events": {
+        "1e60": {
+          "relationship_to_protagonist": "Yoshihide's affair partner, orchestrator of Hiyori's breakup, now a stalker herself",
+          "relationship_to_others": "Kouma Yoshihide (ex-boyfriend/victim of manipulation), Nanase Hiyori (rival/victim), Shimura's older sister (sister), Hachimura Reika (classmate)",
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {
+              "Friends": "casual/superficial",
+              "Rivals/Victims": "dismissive/mocking",
+              "Family (sister)": "antagonistic/rude"
+            },
+            "emotional_shifts": {
+              "arrogant": "smug",
+              "fearful": "panicked/demanding",
+              "angry": "aggressive"
+            },
+            "notes": "Maintains a superficial casualness with her 'friends' but is dismissive or openly hostile to those she dislikes. Her tone becomes increasingly frantic as she experiences stalking."
+          },
+          "character_arc": "Experiences a reversal of fortune as she becomes a victim of stalking, mirroring her past actions, leading to paranoia and isolation."
+        }
+      }
+    },
+    "鉢村玲香": {
+      "canonical_en": "Hachimura Reika",
+      "source": "manifest_profile_seed",
+      "short_name": "Reika",
+      "category": "Hiyori's classmate and friend",
+      "affiliation": "Japanese",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {
+          "Friends": "casual/direct",
+          "Shimura Nina": "confrontational/defensive"
+        },
+        "emotional_shifts": {
+          "protective": "firm",
+          "annoyed": "blunt"
+        },
+        "notes": "Speaks directly and firmly, especially when defending Hiyori or confronting Nina."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Energetic and assertive posture; often has a direct, no-nonsense expression, but can be playful with friends; wears a sushi restaurant uniform during work."
+      },
+      "notes": "Direct, strong-willed, protective, works part-time at a sushi restaurant.",
+      "volume_events": {
+        "1e60": {
+          "relationship_to_protagonist": "Hiyori's classmate and friend",
+          "relationship_to_others": "Nanase Hiyori (friend), Shimura Nina (classmate/antagonist), Ogami Yuusuke (classmate)",
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {
+              "Friends": "casual/direct",
+              "Shimura Nina": "confrontational/defensive"
+            },
+            "emotional_shifts": {
+              "protective": "firm",
+              "annoyed": "blunt"
+            },
+            "notes": "Speaks directly and firmly, especially when defending Hiyori or confronting Nina."
+          },
+          "character_arc": "Supports Hiyori through her troubles and confronts Nina."
+        }
+      }
+    },
+    "熊川": {
+      "canonical_en": "Kumakawa",
+      "source": "manifest_profile_seed",
+      "short_name": "Kumakawa-san",
+      "category": "Classmate, friend of Yuusuke and Hiyori",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Playful or teasing expression; likely has a friendly, approachable demeanor; wears school uniform or casual attire."
+      },
+      "notes": "Observant, teasing, friendly.",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {
+          "Classmates/Friends": "casual/teasing"
+        },
+        "emotional_shifts": {
+          "teasing": "playful"
+        },
+        "notes": "Enjoys teasing Yuusuke and Hiyori about their relationship."
+      },
+      "volume_events": {
+        "1e60": {
+          "relationship_to_protagonist": "Classmate, friend of Yuusuke and Hiyori",
+          "relationship_to_others": "Ogami Yuusuke (classmate/friend), Nanase Hiyori (classmate/friend), Hachimura Reika (classmate/friend)",
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {
+              "Classmates/Friends": "casual/teasing"
+            },
+            "emotional_shifts": {
+              "teasing": "playful"
+            },
+            "notes": "Enjoys teasing Yuusuke and Hiyori about their relationship."
+          },
+          "character_arc": "Provides support and comedic interaction for the main couple."
+        }
+      }
+    },
+    "遊佐": {
+      "canonical_en": "Yusa",
+      "source": "manifest_profile_seed",
+      "short_name": "Yusa-kun",
+      "category": "Classmate, friend of Yuusuke and Hiyori",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Active, outgoing posture; often seen with an enthusiastic or curious expression; wears school uniform or casual attire."
+      },
+      "notes": "Active, outgoing, supportive.",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {
+          "Classmates/Friends": "casual/enthusiastic"
+        },
+        "emotional_shifts": {},
+        "notes": "Generally enthusiastic and active."
+      },
+      "volume_events": {
+        "1e60": {
+          "relationship_to_protagonist": "Classmate, friend of Yuusuke and Hiyori",
+          "relationship_to_others": "Ogami Yuusuke (classmate/friend), Nanase Hiyori (classmate/friend), Gakuto (classmate)",
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {
+              "Classmates/Friends": "casual/enthusiastic"
+            },
+            "emotional_shifts": {},
+            "notes": "Generally enthusiastic and active."
+          },
+          "character_arc": "Helps organize class activities and provides friendly interaction."
+        }
+      }
+    },
+    "楽人": {
+      "canonical_en": "Gakuto",
+      "source": "manifest_profile_seed",
+      "short_name": "Gakuto",
+      "category": "Classmate, basketball club captain",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Athletic build; likely has a responsible and supportive expression, especially towards club members."
+      },
+      "notes": "Responsible, caring (especially towards club members like Nina).",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {
+          "Club members": "supportive/authoritative",
+          "Classmates": "casual"
+        },
+        "emotional_shifts": {},
+        "notes": "As a captain, he takes a supportive role towards his club members."
+      },
+      "volume_events": {
+        "1e60": {
+          "relationship_to_protagonist": "Classmate, basketball club captain",
+          "relationship_to_others": "Ogami Yuusuke (classmate), Shimura Nina (club member)",
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {
+              "Club members": "supportive/authoritative",
+              "Classmates": "casual"
+            },
+            "emotional_shifts": {},
+            "notes": "As a captain, he takes a supportive role towards his club members."
+          },
+          "character_arc": "Shows concern for Nina despite her actions, highlighting his good nature."
+        }
+      }
+    },
+    "Ogami Yuusuke": {
+      "short_name": "Nina's Older Sister",
+      "category": "Shimura Nina's older sister",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Calm, observant demeanor, often with a subtle, knowing smirk that suggests she sees through Nina's manipulations; likely dressed casually but neatly."
+      },
+      "notes": "Observant, critical of Nina's manipulative nature, sees through her facade, somewhat cold but truthful.",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {
+          "Shimura Nina": "casual/contemptuous"
+        },
+        "emotional_shifts": {
+          "mocking": "sarcastic"
+        },
+        "notes": "Speaks to Nina with a clear understanding of her manipulative personality, often with a mocking tone."
+      },
+      "volume_events": {
+        "1e60": {
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {
+              "Shimura Nina": "casual/contemptuous"
+            },
+            "emotional_shifts": {
+              "mocking": "sarcastic"
+            },
+            "notes": "Speaks to Nina with a clear understanding of her manipulative personality, often with a mocking tone."
+          },
+          "relationship_to_protagonist": "Shimura Nina's older sister",
+          "relationship_to_others": "Shimura Nina (younger sister)",
+          "character_arc": "Acts as a foil to Nina, delivering harsh truths about her character and the consequences of her actions."
+        }
+      }
+    },
+    "Nanase Hiyori": {
+      "short_name": "Hiyori-san",
+      "category": "Girlfriend (main heroine)",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Petite stature with a notably curvy figure; often has a bright, somewhat childlike expression, but can show vulnerability; sometimes wears her hair in small pigtails (おさげヘア); favors cute, often frilly or orange-colored clothing like a bikini."
+      },
+      "notes": "Cute, cheerful, outwardly bright, but initially carries anxiety and trauma from her past relationship. Tries to be considerate and helpful."
+    },
+    "Ogami Taiga": {
+      "short_name": "Taiga",
+      "category": "Younger brother",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Energetic, active build; often seen with a playful or teasing expression, especially towards his older brother; wears middle school uniform or sportswear."
+      },
+      "notes": "Energetic, athletic, direct, teasing, protective of Hiyori."
+    },
+    "Ogami Masato": {
+      "short_name": "Masato",
+      "category": "Younger brother",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Relaxed posture; often has a sleepy or nonchalant expression, prone to dramatic reactions when teased or scared; wears middle school uniform or casual lounging clothes."
+      },
+      "notes": "Laid-back, lazy, teasing, prone to dramatic reactions, protective of Hiyori."
+    },
+    "Ogami Marie": {
+      "short_name": "Okaasan (Mother)",
+      "category": "Mother",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Mature, caring demeanor; likely wears practical but stylish clothing; often has a warm, welcoming smile, sometimes with a dramatic flair."
+      },
+      "notes": "Supportive, warm, welcoming, a bit dramatic and teasing, caring."
+    },
+    "Nanase Mutsumi": {
+      "short_name": "Mutsumi-san (Hiyori's mother)",
+      "category": "Hiyori's mother",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Mature, gentle expression; likely carries herself with a sense of quiet strength and concern for her daughter; wears practical, everyday attire."
+      },
+      "notes": "Concerned, kind, supportive of Hiyori's relationship with Yuusuke, practical."
+    },
+    "Nanase Gorou": {
+      "short_name": "Gorou-san (Hiyori's father)",
+      "category": "Hiyori's father",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Initially stern and protective expression, but softens considerably; often seen with a slightly formal or traditional posture; might carry a golf club when on guard."
+      },
+      "notes": "Initially overprotective and suspicious, but quickly becomes trusting and grateful. Deeply loves his daughter. Can be a bit dramatic/comical."
+    },
+    "Kouma Yoshihide": {
+      "short_name": "Yoshihide",
+      "category": "Hiyori's ex-boyfriend, stalker",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "(Implied) Once attractive and athletic, now likely disheveled or withdrawn due to his downfall; expression likely one of obsession or confusion."
+      },
+      "notes": "Delusional, self-centered, possessive, became unstable and stalker-like after being dumped. Initially arrogant."
+    },
+    "Shimura Nina": {
+      "short_name": "Nina",
+      "category": "Yoshihide's affair partner, orchestrator of Hiyori's breakup, now a stalker herself",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Attractive, fashionable appearance, often with a smug or calculating expression, later shifts to fear and paranoia; maintains a 'popular girl' facade; likely wears trendy high school fashion."
+      },
+      "notes": "Manipulative, cunning, self-serving, arrogant, enjoys others' misfortune, later becomes paranoid and fearful due to being stalked."
+    },
+    "Hachimura Reika": {
+      "short_name": "Reika",
+      "category": "Hiyori's classmate and friend",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Energetic and assertive posture; often has a direct, no-nonsense expression, but can be playful with friends; wears a sushi restaurant uniform during work."
+      },
+      "notes": "Direct, strong-willed, protective, works part-time at a sushi restaurant."
+    },
+    "Shimura's Older Sister": {
+      "short_name": "Nina's Older Sister",
+      "category": "Shimura Nina's older sister",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Calm, observant demeanor, often with a subtle, knowing smirk that suggests she sees through Nina's manipulations; likely dressed casually but neatly."
+      },
+      "notes": "Observant, critical of Nina's manipulative nature, sees through her facade, somewhat cold but truthful."
+    }
+  },
+  "geography": {
+    "countries": {},
+    "regions": {},
+    "cities": {}
+  },
+  "weapons_artifacts": {},
+  "organizations": {},
+  "cultural_terms": {},
+  "mythology": {},
+  "translation_rules": {}
+}

@@ -105,6 +105,8 @@ Metadata Schema Auto-Transform:
     phase1_parser = subparsers.add_parser('phase1', parents=[parent_parser], help='Run Phase 1: Librarian (EPUB Extraction)')
     phase1_parser.add_argument('epub_path', type=str, help='Path to Japanese EPUB file')
     phase1_parser.add_argument('--id', dest='volume_id', type=str, required=False, help='Custom volume ID (auto-generated if not provided)')
+    phase1_parser.add_argument('--ref-validate', dest='ref_validate', action='store_true', default=False,
+                               help='Run Phase 1.55 real-world reference validator after extraction (default: off)')
 
     # Phase 1.5
     phase1_5_parser = subparsers.add_parser(
@@ -216,12 +218,13 @@ Metadata Schema Auto-Transform:
     phase2_parser.add_argument(
         '--phase1-55-mode',
         choices=['ask', 'skip', 'overwrite', 'auto'],
-        default='ask',
+        default='skip',
         help=(
             'Standalone Phase 2 behavior for Phase 1.55: '
-            'ask (prompt), skip (cache-only prep, no metadata overwrite), '
-            'overwrite (run and update metadata), '
-            'auto (run only if cache is missing)'
+            'skip (default; cache-only prep, no metadata overwrite), '
+            'overwrite (run full Phase 1.55 and update metadata), '
+            'auto (run only if cache is missing), '
+            'ask (interactive prompt)'
         ),
     )
     phase2_parser.add_argument(

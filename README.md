@@ -4,7 +4,7 @@
 
 Version 5.2 | Production Ready | February 2026
 
-> Multi-Language Support: English & Vietnamese | Multimodal Vision + Vector Search | Hierarchical Identity Lock + Dynamic Thinking | Smart Chunking + Volume Cache | Glossary Lock + Truncation Guardrails
+> Multi-Language Support: English & Vietnamese | Claude 4.6 Translator + Adaptive Thinking | Multimodal Vision + Vector Search | Hierarchical Identity Lock + Dynamic Thinking | Smart Chunking + Provider-Aware Cache | Glossary Lock + Truncation Guardrails
 
 ---
 
@@ -74,16 +74,16 @@ flowchart TB
     VCACHE["visual_cache.json\nper-illustration analysis\n+ Art Director's Notes"]
     PLANS["PLANS/chapter_*_scene_plan.json\nStage 1 scene scaffold"]
 
-    subgraph P17["PHASE 1.7 — SCENE PLANNER · Stage 1 Rhythm Planning"]
+    subgraph P17["PHASE 1.7 — SCENE PLANNER · Deeper Stage 1 Rhythm Planning"]
         direction TB
         P17A["ScenePlannerAgent\nplanner/agent.py"]
-        P17S1["Narrative beat segmentation\nsetup/escalation/reveal/landing"]
-        P17S2["Normalize to config enums\ndialogue_register + target_rhythm"]
+        P17S1["Narrative beat segmentation\nsetup/escalation/punchline/pivot/illustration_anchor"]
+        P17S2["Normalize to config enums\ndialogue_register + target_rhythm\nculture_bleed risk flags"]
         P17S3["Write per-chapter plan\nmanifest.scene_plan_file"]
         P17A --> P17S1 --> P17S2 --> P17S3
     end
 
-    subgraph P2["PHASE 2 — TRANSLATOR (Stage 2) · Gemini 2.5 Pro · 3-Tier RAG"]
+    subgraph P2["PHASE 2 — TRANSLATOR (Stage 2) · Claude Opus/Sonnet 4.6 · 3-Tier RAG"]
         direction TB
         P2A["TranslatorAgent\nagent.py · 1515 lines\n16-step initialization"]
         P2CP["ChapterProcessor\nchapter_processor.py\nStage 2 scaffold + per-chapter translate"]
@@ -230,7 +230,7 @@ flowchart TB
 
 ## Overview
 
-MTL Studio is a complete automated pipeline for translating Japanese Light Novel EPUBs to professional multi-language editions. The system leverages Google Gemini AI (2.5 Pro/Flash) with retrieval-augmented generation (RAG) to produce publication-quality translations with consistent character voices, proper typography, and accurate terminology.
+MTL Studio is a complete automated pipeline for translating Japanese Light Novel EPUBs to professional multi-language editions. The translator path is provider-routed and now defaults to Anthropic Claude Opus 4.6 (fallback: Claude Sonnet 4.6) for high-quality English output, while Gemini powers metadata, retrieval, multimodal analysis, and sub-agents with retrieval-augmented generation (RAG).
 
 ### V5.2: Three-Pillar Intelligence
 
@@ -242,7 +242,7 @@ V5.2 (February 2026) introduces a **Three-Pillar Translation Architecture** that
 | **Vector Search** | Gemini Embedding 001 (3072D) + ChromaDB | Semantic grammar matching — 70+ JP regex → 204 EN natural phrasing patterns |
 | **Multimodal Vision** | Gemini 3 Vision family (dynamic low/medium/high routing + hierarchical identity lock) | Illustration analysis → Art Director's Notes for visually-informed prose calibration |
 
-**Key innovations**: Hash-based visual cache invalidation, hierarchical visual identity lock (scene-local primary + full-LN fallback), dynamic per-illustration thinking routing, batch embedding optimization (1 API call for N patterns), auto-rebuild logic for empty ChromaDB, schema auto-update via Gemini 2.5 Flash, and sliding-window context for Sino-Vietnamese disambiguation.
+**Key innovations**: Hash-based visual cache invalidation, hierarchical visual identity lock (scene-local primary + full-LN fallback), dynamic per-illustration thinking routing, Claude 4.6 thinking with hard budget caps, Anthropic inline cache-only instruction blocks, deeper culture-bleed-aware scene planning to prevent over-localization, batch embedding optimization (1 API call for N patterns), auto-rebuild logic for empty ChromaDB, schema auto-update via Gemini 2.5 Flash, and sliding-window context for Sino-Vietnamese disambiguation.
 
 ### Core Capabilities
 
@@ -259,6 +259,9 @@ V5.2 (February 2026) introduces a **Three-Pillar Translation Architecture** that
 - **Gemini Embedding semantic matching**: `gemini-embedding-001` (3072D) maps Japanese structures to natural target phrasing using confidence-gated ChromaDB retrieval.
 - **Multimodal Art Director layer**: Gemini 3 Vision pre-analyzes illustrations (Phase 1.6) into `visual_cache.json`, enforces hierarchical identity lock, and injects non-spoiler style directives during Phase 2.
 - **Context-aware style calibration**: Emotional deltas, composition, and narrative directives influence lexical choices without introducing off-canon events.
+- **Claude Sonnet/Opus 4.6 translator path**: Stage 2 runs with Opus 4.6 as primary translator and Sonnet 4.6 as fallback for quality + resilience (adaptive thinking on Opus; hard-capped thinking mode on Sonnet fallback).
+- **Adaptive/hard-capped thinking discipline**: Anthropic thinking mode is budget-capped (`thinking_budget`) to preserve output headroom and avoid scratchpad token waste.
+- **Cache-only instruction optimization**: Anthropic provider uses inline ephemeral `cache_control` system blocks (5m/1h TTL) for strong cost-to-performance on repeated chapter calls.
 
 #### 3) Language and Localization Systems
 
@@ -300,7 +303,7 @@ V5.2 (February 2026) introduces a **Three-Pillar Translation Architecture** that
 - **Smart Chunking for oversized chapters**: Massive source files are split at scene/paragraph boundaries and translated in resumable chunk units.
 - **Malformed-TOC recovery**: When TOC is missing/malformed and content collapses into one spine block, Librarian auto-splits by original text-page boundaries and records split metadata.
 - **Raw-structure rebuild parity**: Builder detects text-page boundary split strategy and auto-merges translated output back into the original one-content raw structure before EPUB packaging.
-- **Volume-level Gemini cache**: Entire JP volume can be cached once and reused across chapter calls for stronger cross-chapter consistency.
+- **Provider-aware caching**: Gemini path can use full-volume cache; Anthropic path uses system-instruction inline cache blocks optimized for chapter-level reuse.
 - **Manifest glossary lock**: Character/name romanizations from manifest metadata are enforced during translation output validation.
 - **Truncation guardrails**: Post-translation validation detects likely mid-sentence/mid-word cutoffs before final packaging.
 - **Chunk merge + dedupe**: Chunk outputs are merged with scene-break deduplication and boundary overlap cleanup.
@@ -1725,11 +1728,12 @@ Additional Phase 1 artifacts:
 
 ### Phase 1.7: Scene Planner (Stage 1)
 
-**Purpose**: Pre-plan chapter beat flow and sentence rhythm so translation starts from a controlled scene scaffold.
+**Purpose**: Pre-plan chapter beat flow and sentence rhythm with deeper scene analysis so translation starts from a controlled scaffold and avoids over-localization drift.
 
 **Responsibilities**:
-- Segment each chapter into scene beats (`setup`, `escalation`, `reveal`, `landing`, etc.)
+- Segment each chapter into scene beats (`setup`, `escalation`, `punchline`, `pivot`, `illustration_anchor`)
 - Assign `dialogue_register` and `target_rhythm` per beat
+- Emit `culture_bleed_*` risk annotations (source phrase, warning, forbidden substitutions) for high-risk localization traps
 - Normalize free-form planner outputs to `planning_config.json` enums/keys
 - Record chapter-level plan pointers in manifest for deterministic Stage 2 loading
 
@@ -1739,7 +1743,7 @@ Additional Phase 1 artifacts:
 
 ### Phase 2: Translator (Stage 2)
 
-**Purpose**: Translate JP chapters to EN/VN using Gemini 2.5 Pro with RAG, Vector Search, Multimodal Context, and Stage 2 scene-rhythm guidance
+**Purpose**: Translate JP chapters to EN/VN using provider-routed Stage 2 translation (Claude Opus 4.6 primary, Claude Sonnet 4.6 fallback; Gemini available for Google provider mode) with RAG, Vector Search, Multimodal Context, and Stage 2 scene-rhythm guidance
 
 **Translation Flow**:
 ```
@@ -1787,9 +1791,9 @@ Additional Phase 1 artifacts:
               └──────────┬──────────┘
                          ▼
               ┌─────────────────────┐
-              │  Gemini 2.5 Pro     │
-              │  (cached context    │
-              │   486KB, TTL 120m)  │
+              │  Claude Opus 4.6    │
+              │  adaptive thinking  │
+              │  + inline cache     │
               └──────────┬──────────┘
                          ▼
               ┌─────────────────────┐
@@ -1801,13 +1805,15 @@ Additional Phase 1 artifacts:
 **Key Features**:
 - Context-aware translation with 2-chapter lookback
 - **Stage 2 scene scaffold injection**: Loads `PLANS/chapter_*_scene_plan.json` and injects beat/rhythm controls into chapter prompts
+- **Deeper anti-over-localization guidance**: Stage 1 `culture_bleed_*` flags are injected into scene beats to block emotion-driven mistranslation substitutions
 - **Source-of-truth precedence**: JP raw text always wins over scaffold and multimodal notes
 - **Multimodal precedence policy**: Visual notes are descriptive only and cannot override textual facts
 - **Standalone self-heal**: `phase2` auto-runs `phase1.7` if selected chapters are missing plan files
 - **Vector Search**: Grammar pattern detection → semantic embedding → confidence-based injection
 - **Multimodal**: Art Director's Notes injected for chapters with `[ILLUSTRATION:]` markers
 - **Smart Chunking (massive chapters)**: byte/char-threshold split + resumable chunk translation
-- **Volume-level cache**: one cache for the full volume to stabilize cross-chapter context
+- **Anthropic translator optimization**: hard thinking budget cap + inline cache-only system instruction blocks for better cost-to-performance
+- **Provider-aware cache behavior**: Gemini can use full-volume cache; Anthropic uses system-only inline cache and chapter summaries for continuity
 - **Chapter Summarization Agent**: writes `.context/CHAPTER_XX_SUMMARY.json` and updates `.context/chapter_summaries.json` after each translated chapter
 - **Volume context aggregation**: Chapter summaries + character/glossary context are aggregated into `CHAPTER_XX_VOLUME_CONTEXT.json` for downstream chapter prompting
 - **Glossary Lock**: manifest-based canonical name enforcement during output validation
@@ -1818,7 +1824,7 @@ Additional Phase 1 artifacts:
 - Character name consistency enforcement from manifest profiles
 - Batch embedding optimization (single API call for all detected patterns per chapter)
 - Safety block handling with fallback strategies
-- Context caching (486KB cached context with 120-minute TTL)
+- Context caching is provider-aware (Gemini external cache; Anthropic inline cache blocks)
 
 ### Phase 3: Critics
 
@@ -1990,7 +1996,8 @@ builder:
 ### Prerequisites
 
 - Python 3.10 or higher
-- Google Gemini API key
+- Google Gemini API key (metadata, multimodal, sub-agents)
+- Anthropic API key (default Stage 2 translator path)
 - 10GB+ disk space for processing
 
 ### Automated Setup
@@ -2023,10 +2030,8 @@ pip install -r pipeline/requirements.txt
 Create `pipeline/.env`:
 
 ```bash
-# Required
+# Required for default translator_provider=anthropic
 GEMINI_API_KEY=your-gemini-api-key
-
-# Optional (for Claude integration)
 ANTHROPIC_API_KEY=your-anthropic-api-key
 ```
 
@@ -2193,7 +2198,7 @@ python mtl.py config --toggle-multimodal
 | `--chapters` | Specific chapters to translate (comma-separated) |
 | `--force` | Force re-translation of completed chapters |
 | `--language` | Target language (en/vn) |
-| `--model` | Gemini model to use |
+| `--model` | Translator model override (provider-specific) |
 | `--show` | Display current configuration |
 | `--toggle-smart-chunking` | Toggle Smart Chunking for massive chapters |
 | `--toggle-multimodal` | Toggle default multimodal visual context mode |
@@ -2231,24 +2236,39 @@ project:
       language_code: vi
 
 gemini:
-  model: gemini-2.5-pro
-  fallback_model: gemini-2.5-flash
+  model: gemini-3.1-pro-preview
+  fallback_model: gemini-2.5-pro
   generation:
     temperature: 0.6
     top_p: 0.95
     top_k: 40
     max_output_tokens: 65535
-    thinking_level: medium
+  thinking_mode:
+    enabled: true
+    thinking_budget: -1
+
+translator_provider: anthropic
+
+anthropic:
+  model: claude-opus-4-6
+  fallback_model: claude-sonnet-4-6
+  generation:
+    temperature: 1.0
+    max_output_tokens: 64000
+  thinking_mode:
+    enabled: true
+    thinking_budget: 4096  # hard cap to protect output budget
+  caching:
+    enabled: true
+    ttl_minutes: 5         # inline cache-only system blocks (ephemeral)
 
 translation:
   enable_multimodal: true
   massive_chapter:
-    enable_smart_chunking: true
+    enable_smart_chunking: false
     enable_volume_cache: true
     chunk_threshold_chars: 60000
     chunk_threshold_bytes: 120000
-    target_chunk_chars: 45000
-    volume_cache_ttl_seconds: 7200
   quality:
     contraction_rate_min: 0.8
     max_ai_isms_per_chapter: 5
@@ -2287,9 +2307,10 @@ directories:
 
 | Model | Use Case | Performance |
 |-------|----------|-------------|
-| gemini-2.5-pro | Primary translation | Highest quality |
-| gemini-2.5-flash | Fallback | Fast, reliable |
-| gemini-2.0-flash-exp | Compatibility fallback | Experimental |
+| claude-opus-4-6 | Primary EN translation | Highest quality + adaptive thinking |
+| claude-sonnet-4-6 | Translator fallback | Lower cost, high quality, hard-capped thinking mode |
+| gemini-3.1-pro-preview | Google translator mode / sub-agents | Broad capability |
+| gemini-2.5-pro | Google fallback | Stable fallback |
 
 ---
 
@@ -3332,7 +3353,7 @@ See LICENSE.txt for licensing information.
 
 **Core System**:
 - Pipeline Architecture: MTL Studio Development Team
-- AI Engine: Google Gemini (Pro/Flash)
+- AI Engine: Anthropic Claude 4.6 (translator path) + Google Gemini (metadata/retrieval/multimodal/sub-agents)
 - Typography: smartypants library
 - EPUB Handling: ebooklib, BeautifulSoup
 
@@ -3346,9 +3367,12 @@ See LICENSE.txt for licensing information.
 
 ### Version 5.2 (February 2026)
 - **Three-Pillar Translation Architecture**: Unified RAG + Vector Search + Multimodal Vision workflow
+- **Claude Sonnet/Opus 4.6 Translator Path**: Stage 2 now supports Claude Opus 4.6 with Sonnet 4.6 fallback for high-quality English translation output
+- **Anthropic Cost-to-Performance Optimization**: Hard thinking budget cap + inline cache-only system instruction blocks for lower repeated-chapter cost
+- **Deeper Scene Planner**: Stage 1 now emits `culture_bleed_*` risk annotations to reduce over-localization and preserve source phrasing intent
 - **Gemini Embedding Vector Search**: Semantic grammar matching pipeline with confidence-gated injection and auto-rebuild
 - **Phase 1.6 Multimodal Processor**: Hierarchical Identity Lock + Dynamic Thinking Routing for Art Director analysis, with hash-based visual cache invalidation
-- **Massive LN Reliability Layer**: Smart Chunking + volume-level cache + resumable chunk JSON workflow
+- **Massive LN Reliability Layer**: Smart Chunking + provider-aware caching + resumable chunk JSON workflow
 - **Schema Agent Automation**: Phase 1.5 now auto-runs schema enrichment through Gemini 2.5 Flash and merges into manifest/metadata before chapter translation
 - **Output Safety Guardrails**: Truncation validator + manifest glossary lock + cross-chapter name drift auditing
 - **Config/TUI Enhancements**: Smart Chunking and Multimodal toggles in settings + `mtl.py config --toggle-smart-chunking` / `--toggle-multimodal`

@@ -193,6 +193,13 @@ class CachedVolumeContextManager:
             self._cache_unavailable_reason = "gemini_client is not initialized"
             return False
 
+        # AnthropicClient uses inline cache_control on the system prompt, not named
+        # CachedContent resources. Volume context goes inline in the user prompt for
+        # Anthropic — attempting create_cache() here emits a warning and returns None.
+        if type(self.gemini_client).__name__ == "AnthropicClient":
+            self._cache_unavailable_reason = "Anthropic provider: volume context caching not supported (inline only)"
+            return False
+
         if not getattr(self.gemini_client, "enable_caching", False):
             self._cache_unavailable_reason = "Gemini caching disabled in client config"
             return False

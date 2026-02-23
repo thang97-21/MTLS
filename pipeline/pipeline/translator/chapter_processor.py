@@ -26,6 +26,9 @@ from pipeline.translator.chunk_merger import ChunkMerger
 from pipeline.translator.glossary_lock import GlossaryLock
 from pipeline.translator.volume_context_integration import VolumeContextIntegration
 from pipeline.post_processor.vn_cjk_cleaner import VietnameseCJKCleaner
+from pipeline.post_processor.reference_context_compiler import compile_reference_reports
+# Stage3RefinementAgent disabled (2026-02-19): Sentence splitting creates awkward splits
+# from pipeline.post_processor.stage3_refinement_agent import Stage3RefinementAgent
 from pipeline.config import PIPELINE_ROOT
 from modules.gap_integration import GapIntegrationEngine
 # RTASCalculator disabled (2026-02-10): Direct manifest reading instead
@@ -51,6 +54,7 @@ class TranslationResult:
     warnings: List[str] = None
     error: Optional[str] = None
     context_update: Optional[Dict[str, Any]] = None
+    stage3_metrics: Optional[Dict[str, Any]] = None  # Stage 3 refinement stats (2026-02-18)
 
 class ChapterProcessor:
     def __init__(
@@ -65,7 +69,9 @@ class ChapterProcessor:
         self.prompt_loader = prompt_loader
         self.context_manager = context_manager
         self.target_language = target_language
-        self.model_name = get_model_name()
+        # Derive model name from the active client so Anthropic provider doesn't
+        # fall back to the Gemini config value.
+        self.model_name = getattr(gemini_client, "model", None) or get_model_name()
         self.gen_params = get_generation_params()
         self.safety_settings = get_safety_settings()
 
@@ -80,7 +86,24 @@ class ChapterProcessor:
         # Post-processing over-correction damages natural prose quality. Trust the model.
         self._anti_ai_ism_agent = None
         self.enable_anti_ai_ism = False  # PERMANENTLY DISABLED - model quality is excellent
-        
+
+        # Initialize Stage 3 Refinement Agent (2026-02-18)
+        # Handles: hard cap sentence splitting, tense consistency, literary flow analysis
+        # DISABLED 2026-02-19: Sentence splitting creates awkward splits, raw output preferred
+        self._stage3_agent = None
+        self.enable_stage3 = False  # DISABLED - raw model output preferred
+        # try:
+        #     self._stage3_agent = Stage3RefinementAgent(
+        #         config_path=None,  # Will auto-resolve to english_grammar_validation_t1.json
+        #         dry_run=False  # Production mode - apply fixes
+        #     )
+        #     self.enable_stage3 = True
+        #     logger.info("✓ Stage 3 Refinement Agent initialized (hard cap splitting enabled)")
+        # except Exception as e:
+        #     logger.warning(f"⚠ Stage 3 initialization failed: {e}")
+        #     logger.warning("Continuing without Stage 3 post-processing")
+        logger.info("⚠ Stage 3 Refinement Agent DISABLED (raw model output mode)")
+
         # Load character names from manifest.json for name consistency
         self.character_names = self._load_character_names()
         if self.character_names:
@@ -128,7 +151,9 @@ class ChapterProcessor:
         self.voice_settings: Dict[str, Any] = {}  # Unused - kept for compatibility
         self.enable_rtas = False  # DISABLED - direct manifest reading instead
         self.contraction_rates: Dict[str, int] = {}  # Direct manifest-to-rate mapping
+        self.relationship_progress: List[Dict[str, Any]] = []  # Chapter-scoped contraction overrides
         self._load_contraction_rates_from_manifest()
+        self._load_relationship_progress_from_manifest()
         self._stage2_registers = self._load_stage2_registers()
         self._stage2_rhythm_targets = self._load_stage2_rhythm_targets()
         self._phase155_context = self._load_phase155_context_offload()
@@ -148,20 +173,11 @@ class ChapterProcessor:
         Default: 95% for contemporary casual speech (global baseline)
         """
         try:
-            work_dir = self.context_manager.work_dir
-            manifest_path = work_dir / "manifest.json"
-
-            if not manifest_path.exists():
-                logger.debug("No manifest.json found for contraction rate loading")
+            metadata_en = self._load_metadata_en_for_voice_guidance()
+            if not metadata_en:
+                logger.debug("No metadata_en payload found for contraction rate loading")
                 return
 
-            with open(manifest_path, 'r', encoding='utf-8') as f:
-                manifest = json.load(f)
-
-            # Extract character_profiles from metadata_en
-            metadata_en = manifest.get("metadata_en", {})
-            if not isinstance(metadata_en, dict):
-                metadata_en = {}
             profiles = metadata_en.get("character_profiles", {})
             if not isinstance(profiles, dict):
                 profiles = {}
@@ -191,7 +207,69 @@ class ChapterProcessor:
             logger.warning(f"Failed to load contraction rates from manifest: {e}")
             self.contraction_rates = {}
 
-    def _format_rtas_guidance(self) -> Optional[str]:
+    def _load_relationship_progress_from_manifest(self) -> None:
+        """
+        Load optional relationship_progress entries from metadata.
+
+        This powers chapter-scoped overrides for slow-burn relationship arcs where
+        strict global contraction targets would produce false positives.
+        """
+        self.relationship_progress = []
+        try:
+            metadata_en = self._load_metadata_en_for_voice_guidance()
+            if not metadata_en:
+                return
+
+            raw_progress = metadata_en.get("relationship_progress", [])
+            if not isinstance(raw_progress, list):
+                return
+
+            for item in raw_progress:
+                if isinstance(item, dict):
+                    self.relationship_progress.append(item)
+
+            if self.relationship_progress:
+                logger.info(
+                    f"✓ Loaded relationship_progress entries: {len(self.relationship_progress)}"
+                )
+        except Exception as e:
+            logger.warning(f"Failed to load relationship progress metadata: {e}")
+            self.relationship_progress = []
+
+    def _load_metadata_en_for_voice_guidance(self) -> Dict[str, Any]:
+        """
+        Load metadata_en payload for voice guidance.
+
+        Priority:
+          1. WORK/<volume>/metadata_en.json (actively edited metadata)
+          2. WORK/<volume>/manifest.json.metadata_en
+        """
+        work_dir = self.context_manager.work_dir
+
+        metadata_en_path = work_dir / "metadata_en.json"
+        if metadata_en_path.exists():
+            try:
+                with open(metadata_en_path, 'r', encoding='utf-8') as f:
+                    payload = json.load(f)
+                if isinstance(payload, dict) and payload:
+                    return payload
+            except Exception as e:
+                logger.warning(f"Failed reading metadata_en.json for voice guidance: {e}")
+
+        manifest_path = work_dir / "manifest.json"
+        if not manifest_path.exists():
+            return {}
+
+        try:
+            with open(manifest_path, 'r', encoding='utf-8') as f:
+                manifest = json.load(f)
+            metadata_en = manifest.get("metadata_en", {})
+            return metadata_en if isinstance(metadata_en, dict) else {}
+        except Exception as e:
+            logger.warning(f"Failed reading manifest.json for voice guidance: {e}")
+            return {}
+
+    def _format_rtas_guidance(self, chapter_id: Optional[str] = None) -> Optional[str]:
         """
         Format contraction rate guidance for prompt injection.
 
@@ -257,6 +335,13 @@ class ChapterProcessor:
         else:
             lines.append("Narrator uses formal narration style with minimal contractions.")
 
+        relationship_override = self._format_relationship_progress_override(chapter_id)
+        if relationship_override:
+            lines.append("")
+            lines.append("**RELATIONSHIP PROGRESS OVERRIDE (SLOW-BURN):**")
+            lines.append("When active, this policy supersedes the global contraction baseline for scoped scenes.")
+            lines.extend(relationship_override)
+
         lines.append("")
         lines.append("---")
         lines.append("**EXAMPLES:**")
@@ -274,31 +359,232 @@ class ChapterProcessor:
         lines.append("  \"I am going home now. Please do not wait for me. It is rather late.\"")
 
         return "\n".join(lines)
+
+    def _format_relationship_progress_override(self, chapter_id: Optional[str]) -> List[str]:
+        """Render relationship_progress overrides that match the current chapter."""
+        if not chapter_id or not self.relationship_progress:
+            return []
+
+        chapter_key = self._normalize_chapter_key(chapter_id)
+        if not chapter_key:
+            return []
+
+        chapter_number = self._extract_chapter_number(chapter_key)
+        active: List[Dict[str, Any]] = []
+        for entry in self.relationship_progress:
+            if self._relationship_progress_matches_chapter(entry, chapter_key, chapter_number):
+                active.append(entry)
+
+        if not active:
+            return []
+
+        active.sort(
+            key=lambda item: int(item.get("priority", 0)) if str(item.get("priority", "")).strip().isdigit() else 0,
+            reverse=True,
+        )
+
+        lines: List[str] = []
+        for entry in active[:3]:
+            arc = str(entry.get("arc_id") or entry.get("arc") or "relationship_arc").strip()
+            stage = str(entry.get("stage") or "unspecified").strip()
+            pair = entry.get("pair", [])
+            pair_display = ", ".join(str(p).strip() for p in pair if str(p).strip()) if isinstance(pair, list) else str(pair or "").strip()
+            prefix = f"- arc={arc} | stage={stage}"
+            if pair_display:
+                prefix += f" | pair={pair_display}"
+            lines.append(prefix)
+
+            override = entry.get("contraction_override", {})
+            if not isinstance(override, dict):
+                override = {}
+
+            target = self._coerce_percent(
+                override.get("target_percent")
+                or override.get("target_rate_percent")
+                or override.get("target")
+            )
+            dialogue = self._coerce_percent(
+                override.get("dialogue_percent")
+                or override.get("dialogue_target_percent")
+            )
+            narration = self._coerce_percent(
+                override.get("narration_percent")
+                or override.get("narration_target_percent")
+            )
+            mode = str(override.get("mode") or "override_global_baseline").strip()
+            scope = str(override.get("scope") or "romance-linked dialogue/internal monologue").strip()
+
+            lines.append(f"  mode={mode}; scope={scope}")
+            if target is not None:
+                lines.append(f"  target={target}% (overrides global baseline in scope)")
+            if dialogue is not None:
+                lines.append(f"  dialogue_target={dialogue}%")
+            if narration is not None:
+                lines.append(f"  narration_target={narration}%")
+
+            notes = str(entry.get("notes") or override.get("notes") or "").strip()
+            if notes:
+                lines.append(f"  notes={notes}")
+
+        return lines
+
+    def _relationship_progress_matches_chapter(
+        self,
+        entry: Dict[str, Any],
+        chapter_key: str,
+        chapter_number: Optional[int],
+    ) -> bool:
+        """Check whether one relationship_progress entry applies to chapter_key."""
+        if not isinstance(entry, dict):
+            return False
+
+        enabled = entry.get("enabled", True)
+        if isinstance(enabled, str):
+            enabled = enabled.strip().lower() in {"1", "true", "yes", "on"}
+        if not enabled:
+            return False
+
+        chapter_tokens: List[str] = []
+        for field in ("chapters", "chapter_ids"):
+            value = entry.get(field)
+            if isinstance(value, list):
+                chapter_tokens.extend(str(v) for v in value)
+            elif isinstance(value, str):
+                chapter_tokens.append(value)
+
+        chapter_single = entry.get("chapter")
+        if isinstance(chapter_single, str):
+            chapter_tokens.append(chapter_single)
+
+        normalized_ids = {self._normalize_chapter_key(token) for token in chapter_tokens if token}
+        normalized_ids.discard("")
+        if normalized_ids:
+            return chapter_key in normalized_ids
+
+        # Range form: chapter_start/chapter_end or chapter_range
+        start_raw = entry.get("chapter_start")
+        end_raw = entry.get("chapter_end")
+        chapter_range = entry.get("chapter_range")
+        if isinstance(chapter_range, dict):
+            start_raw = chapter_range.get("start", start_raw)
+            end_raw = chapter_range.get("end", end_raw)
+        elif isinstance(chapter_range, list) and len(chapter_range) >= 2:
+            start_raw = chapter_range[0]
+            end_raw = chapter_range[1]
+
+        start_num = self._extract_chapter_number(str(start_raw))
+        end_num = self._extract_chapter_number(str(end_raw))
+
+        if start_num is None and end_num is None:
+            return False
+        if chapter_number is None:
+            return False
+
+        if start_num is None:
+            start_num = end_num
+        if end_num is None:
+            end_num = start_num
+
+        if start_num is None or end_num is None:
+            return False
+
+        lo = min(start_num, end_num)
+        hi = max(start_num, end_num)
+        return lo <= chapter_number <= hi
+
+    def _extract_chapter_number(self, value: Any) -> Optional[int]:
+        """Extract chapter number from chapter-like token."""
+        raw = str(value or "").strip()
+        if not raw:
+            return None
+        normalized = self._normalize_chapter_key(raw)
+        if normalized:
+            match = re.search(r"chapter_(\d+)", normalized, re.IGNORECASE)
+            if match:
+                return int(match.group(1))
+        match = re.search(r"\b0*(\d{1,3})\b", raw)
+        return int(match.group(1)) if match else None
+
+    @staticmethod
+    def _coerce_percent(value: Any) -> Optional[int]:
+        """Normalize percent values from int/float/string to 0-100 integer."""
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            num = float(value)
+        elif isinstance(value, str):
+            stripped = value.strip().replace("%", "")
+            if not stripped:
+                return None
+            try:
+                num = float(stripped)
+            except ValueError:
+                return None
+        else:
+            return None
+
+        if 0.0 <= num <= 1.0:
+            num = num * 100.0
+        if num < 0:
+            num = 0.0
+        if num > 100:
+            num = 100.0
+        return int(round(num))
     
     def _load_character_names(self) -> Dict[str, str]:
-        """Load character names from manifest.json metadata_en."""
+        """Load character names from manifest.json metadata_en.
+
+        Enriches the flat character_names registry with nickname hints from
+        character_profiles when a character has a kira-kira name (furigana
+        reading differs semantically from a plain romanization).
+
+        Example: 春河月{ルナ} — ruby_reading="るな" romanizes to "Runa", but
+        the author intended the English word "Luna" (月 = moon). Without the
+        nickname hint, per-chapter calls independently resolve the name and
+        produce inconsistent output (Runa vs Luna across chapters).
+        """
         try:
             # Get work directory from context_manager
             work_dir = self.context_manager.work_dir
-            
+
+            def _enrich_with_nicknames(metadata_en: dict) -> dict:
+                """Merge character_profiles.nickname into character_names where useful."""
+                names = dict(metadata_en.get('character_names', {}))
+                profiles = metadata_en.get('character_profiles', {})
+                for char_name, profile in profiles.items():
+                    nickname = profile.get('nickname', '').strip()
+                    ruby_base = profile.get('ruby_base', '').strip()
+                    if not nickname or not ruby_base:
+                        continue
+                    # Only annotate when nickname differs from the bare romanization
+                    # stored in character_names (avoids redundant noise like "Chito-chan")
+                    current = names.get(ruby_base, '')
+                    bare_given = current.split()[-1] if current else ''
+                    if nickname and nickname.lower() != bare_given.lower() and '(' not in current:
+                        names[ruby_base] = f"{current} (nickname: {nickname})"
+                        logger.debug(
+                            f"[NAME-REGISTRY] Enriched '{ruby_base}': '{current}' → '{names[ruby_base]}'"
+                        )
+                return names
+
             # Try metadata_en.json first (preferred)
             metadata_en_path = work_dir / "metadata_en.json"
             if metadata_en_path.exists():
                 with open(metadata_en_path, 'r', encoding='utf-8') as f:
                     metadata_en = json.load(f)
-                    return metadata_en.get('character_names', {})
-            
+                    return _enrich_with_nicknames(metadata_en)
+
             # Fallback to manifest.json
             manifest_path = work_dir / "manifest.json"
             if manifest_path.exists():
                 with open(manifest_path, 'r', encoding='utf-8') as f:
                     manifest = json.load(f)
                     metadata_en = manifest.get('metadata_en', {})
-                    return metadata_en.get('character_names', {})
-            
+                    return _enrich_with_nicknames(metadata_en)
+
             logger.warning("No character names found in manifest")
             return {}
-            
+
         except Exception as e:
             logger.warning(f"Failed to load character names: {e}")
             return {}
@@ -431,10 +717,17 @@ class ChapterProcessor:
         
         gemini_config = get_config_section('gemini')
         thinking_config = gemini_config.get('thinking_mode', {})
-        
-        if not thinking_config.get('save_to_file', False):
+
+        # For Anthropic provider, always save extracted inline thinking blocks.
+        # For Gemini, respect the save_to_file flag.
+        from pipeline.translator.config import get_translator_provider
+        is_anthropic = get_translator_provider() == "anthropic"
+        if not is_anthropic and not thinking_config.get('save_to_file', False):
             return
-        
+
+        # Normalize formatting before writing.
+        thinking_content = self._normalize_thinking_markdown(thinking_content)
+
         # Create THINKING directory in the work folder
         thinking_dir = output_path.parent.parent / thinking_config.get('output_dir', 'THINKING')
         thinking_dir.mkdir(exist_ok=True)
@@ -478,6 +771,8 @@ The following visual analysis was provided to guide translation:
                 except Exception as e:
                     logger.debug(f"[THINKING] Could not include visual thinking log: {e}")
         
+        reasoning_model_label = "Claude" if is_anthropic else "Gemini"
+
         markdown_content = f"""# Translation Reasoning Process
 
 **Chapter**: {chapter_id}
@@ -488,9 +783,9 @@ The following visual analysis was provided to guide translation:
 
 ---
 {multimodal_section}{visual_thinking_section}
-## Gemini's Translation Reasoning
+## {reasoning_model_label}'s Translation Reasoning
 
-This document contains the internal reasoning process that Gemini used while translating this chapter. This "thinking" output shows how the model analyzed the source text, made translation decisions, and considered context.
+This document contains the internal reasoning process that {reasoning_model_label} used while translating this chapter. This "thinking" output shows how the model analyzed the source text, made translation decisions, and considered context.
 
 ---
 
@@ -498,7 +793,7 @@ This document contains the internal reasoning process that Gemini used while tra
 
 ---
 
-*This thinking process is automatically generated by Gemini 3/2.5 models and provides insight into the translation decision-making process.*
+*This thinking process is automatically generated by the active translator model and provides insight into translation decision-making.*
 """
         
         # Write to file
@@ -506,6 +801,87 @@ This document contains the internal reasoning process that Gemini used while tra
             f.write(markdown_content)
         
         logger.info(f"💭 Thinking process saved to: {thinking_file.relative_to(output_path.parent.parent.parent)}")
+
+    @staticmethod
+    def _normalize_thinking_markdown(thinking_content: str) -> str:
+        """
+        Clean malformed streaming-fragment formatting in thinking logs.
+
+        In rare cases, providers can yield chunked thinking output that looks like:
+          token\n\nfragment\n\nfragment...
+        which renders as one-token-per-line. Detect and stitch this shape back into
+        readable prose while preserving intentional paragraph breaks when possible.
+        """
+        text = (thinking_content or "").replace("\r\n", "\n").replace("\r", "\n")
+        lines = text.splitlines()
+        non_empty = [ln for ln in lines if ln.strip()]
+        if not non_empty:
+            return text.strip()
+
+        short_lines = sum(1 for ln in non_empty if len(ln.strip()) <= 24)
+        blank_ratio = (len(lines) - len(non_empty)) / max(1, len(lines))
+        short_ratio = short_lines / max(1, len(non_empty))
+
+        # Fragmentation signature:
+        # - lots of tiny lines
+        # - many blank separators
+        if len(non_empty) >= 40 and short_ratio >= 0.60 and blank_ratio >= 0.30:
+            # Pass 1: remove artificial blank separators inserted between chunks.
+            text = re.sub(r"(?<=\S)\n\n(?=\S)", "", text)
+            text = re.sub(r"\n{3,}", "\n\n", text)
+
+            # Pass 2: if still fragmented, reflow short line fragments into prose.
+            post_lines = text.splitlines()
+            post_non_empty = [ln for ln in post_lines if ln.strip()]
+            post_short = sum(1 for ln in post_non_empty if len(ln.strip()) <= 24)
+            post_short_ratio = post_short / max(1, len(post_non_empty))
+
+            if len(post_non_empty) >= 30 and post_short_ratio >= 0.55:
+                def _merge_piece(buf: str, piece: str) -> str:
+                    if not buf:
+                        return piece
+                    return f"{buf} {piece}"
+
+                rebuilt: List[str] = []
+                paragraph = ""
+                for raw in post_lines:
+                    s = raw.strip()
+                    if not s:
+                        if paragraph:
+                            rebuilt.append(paragraph)
+                            paragraph = ""
+                        continue
+
+                    is_block = s in {"---", "```"} or s.startswith("#") or s.startswith("> ")
+                    if is_block:
+                        if paragraph:
+                            rebuilt.append(paragraph)
+                            paragraph = ""
+                        rebuilt.append(s)
+                        continue
+
+                    paragraph = _merge_piece(paragraph, s)
+
+                if paragraph:
+                    rebuilt.append(paragraph)
+
+                text = "\n\n".join(rebuilt)
+
+            # Pass 3: emergency flatten if chunk-fragment shape still survives.
+            final_lines = text.splitlines()
+            final_non_empty = [ln for ln in final_lines if ln.strip()]
+            if final_non_empty:
+                final_short = sum(1 for ln in final_non_empty if len(ln.strip()) <= 24)
+                final_blank_ratio = (len(final_lines) - len(final_non_empty)) / max(1, len(final_lines))
+                final_short_ratio = final_short / max(1, len(final_non_empty))
+                if len(final_non_empty) >= 20 and final_short_ratio >= 0.55 and final_blank_ratio >= 0.15:
+                    flattened = re.sub(r"\s*\n\s*", " ", text)
+                    flattened = re.sub(r"\s{2,}", " ", flattened).strip()
+                    # Keep markdown-like emphasis labels somewhat readable.
+                    flattened = re.sub(r"(\*\*[^*]+:\*\*)", r"\n\n\1\n\n", flattened)
+                    text = re.sub(r"\n{3,}", "\n\n", flattened)
+
+        return text.strip()
 
     def translate_chapter(
         self,
@@ -828,16 +1204,38 @@ This document contains the internal reasoning process that Gemini used while tra
             # === END MULTIMODAL ===
 
             # 2. Build Prompt
-            # Skip rebuilding system instruction if cache is available
-            # Check: external cached_content OR internal client cache
-            if effective_cache or (self.client.enable_caching and self.client._is_cache_valid(model_name)):
-                cache_type = "external" if effective_cache else "internal"
-                cache_name = effective_cache or self.client._cached_content_name
+            # Skip rebuilding system instruction if cache is available.
+            # Check: external cached_content OR internal client cache.
+            #
+            # Gemini: uses _is_cache_valid() / _cached_content_name (named server resource)
+            # Anthropic: uses _cached_system_blocks (inline cache blocks stored in memory)
+            #   When prewarm ran, _cached_system_blocks is set. generate() activates it
+            #   only when cached_content is truthy. So we must inject the sentinel as
+            #   effective_cache to signal "use stored inline blocks".
+            has_gemini_cache = (
+                self.client.enable_caching
+                and hasattr(self.client, "_is_cache_valid")
+                and self.client._is_cache_valid(model_name)
+            )
+            has_anthropic_cache = (
+                self.client.enable_caching
+                and hasattr(self.client, "_cached_system_blocks")
+                and self.client._cached_system_blocks is not None
+            )
+            if has_anthropic_cache and not effective_cache:
+                # Inject sentinel so generate() activates the stored inline blocks
+                from pipeline.common.anthropic_client import _ANTHROPIC_CACHE_SENTINEL
+                effective_cache = _ANTHROPIC_CACHE_SENTINEL
+            has_internal_cache = has_gemini_cache or has_anthropic_cache
+            if effective_cache or has_internal_cache:
+                cache_type = "external" if (effective_cache and not has_anthropic_cache) else "internal"
+                internal_cache_name = getattr(self.client, "_cached_content_name", None)
+                cache_name = effective_cache or internal_cache_name
                 logger.debug(f"[VERBOSE] Using {cache_type} cached system instruction ({cache_name})")
                 system_instruction = None  # Not needed when cache is active
             else:
                 logger.debug(f"[VERBOSE] Building system instruction...")
-                system_instruction = self.prompt_loader.build_system_instruction()
+                system_instruction = self.prompt_loader.build_system_instruction(genre=self.book_genre)
                 logger.debug(f"[VERBOSE] System instruction length: {len(system_instruction)} characters")
             
             # Get Context (Continuity)
@@ -881,8 +1279,8 @@ This document contains the internal reasoning process that Gemini used while tra
             )
             logger.debug(f"[VERBOSE] User prompt length: {len(user_prompt)} characters")
             
-            # 3. Call Gemini
-            logger.debug(f"[VERBOSE] Calling Gemini API...")
+            # 3. Call LLM (provider-routed: Anthropic or Gemini)
+            logger.debug(f"[VERBOSE] Calling LLM API ({type(self.client).__name__})...")
             # Note regarding model: gemini_client usually handles model in init or call
             # We pass system_instruction separately as per new API patterns
             # If we have cached_content from previous chapter, pass it for continuity
@@ -990,7 +1388,7 @@ This document contains the internal reasoning process that Gemini used while tra
                     f"{', '.join(bleed_headings[:3])}"
                 )
                 logger.warning("[CACHE BLEED] Retrying chapter once without external cache...")
-                fallback_system_instruction = system_instruction or self.prompt_loader.build_system_instruction()
+                fallback_system_instruction = system_instruction or self.prompt_loader.build_system_instruction(genre=self.book_genre)
                 retry_response = self.client.generate(
                     prompt=user_prompt,
                     system_instruction=fallback_system_instruction,
@@ -1052,7 +1450,46 @@ This document contains the internal reasoning process that Gemini used while tra
                 if remaining_leaks > 0:
                     logger.warning(f"⚠ CJK post-processor: {remaining_leaks} unknown leaks remain (manual review needed)")
 
-            # 9. Post-Processing: Self-Healing Anti-AI-ism Agent (DISABLED - damages prose quality)
+            # 9. Post-Processing: Stage 3 Refinement Agent (2026-02-18)
+            # Handles: hard cap sentence splitting, tense consistency, literary flow analysis
+            stage3_metrics = {}
+            if self.enable_stage3 and self._stage3_agent:
+                try:
+                    logger.info(f"[STAGE3] Running refinement agent on {chapter_id}...")
+                    stage3_report = self._stage3_agent.process_chapter(output_path)
+
+                    if stage3_report:
+                        stage3_metrics = {
+                            'hard_cap_violations': stage3_report.hard_cap_violations,
+                            'hard_cap_fixed': stage3_report.hard_cap_auto_split,
+                            'tense_violations': stage3_report.tense_violations,
+                            'tense_flagged': stage3_report.tense_whitelisted,
+                            'ai_isms_fixed': stage3_report.ai_ism_fixes_applied,
+                            'flow_warnings': len(stage3_report.flow_issues)
+                        }
+
+                        # Log key metrics
+                        if stage3_report.hard_cap_auto_split > 0:
+                            fix_rate = (stage3_report.hard_cap_auto_split / stage3_report.hard_cap_violations * 100) if stage3_report.hard_cap_violations > 0 else 0
+                            logger.info(f"✓ Stage 3: {stage3_report.hard_cap_auto_split}/{stage3_report.hard_cap_violations} sentences auto-split ({fix_rate:.1f}% fix rate)")
+
+                        if stage3_report.ai_ism_fixes_applied > 0:
+                            logger.info(f"✓ Stage 3: {stage3_report.ai_ism_fixes_applied} AI-isms auto-fixed")
+
+                        if stage3_report.tense_whitelisted > 0:
+                            logger.info(f"⚠ Stage 3: {stage3_report.tense_whitelisted} tense inconsistencies flagged for review")
+
+                        if len(stage3_report.flow_issues) > 0:
+                            logger.info(f"⚠ Stage 3: {len(stage3_report.flow_issues)} flow warnings (low variety/repetition)")
+
+                        if stage3_report.hard_cap_auto_split == 0 and stage3_report.ai_ism_fixes_applied == 0:
+                            logger.debug(f"[STAGE3] No fixes needed for {chapter_id} (clean output)")
+
+                except Exception as e:
+                    logger.warning(f"[STAGE3] Refinement failed: {e}")
+                    logger.warning("[STAGE3] Continuing without Stage 3 post-processing")
+
+            # 10. Post-Processing: Self-Healing Anti-AI-ism Agent (DISABLED - damages prose quality)
             # DISABLED (2026-02-10): 1a60 audit found only 1 AI-ism in entire volume (0.015/1k).
             # Gemini's native output is excellent. Post-processing over-correction damages natural prose.
             # Evidence: Grammar validator introduced 35 errors trying to "fix" correct grammar.
@@ -1105,7 +1542,8 @@ This document contains the internal reasoning process that Gemini used while tra
                 input_tokens=response.input_tokens,
                 output_tokens=response.output_tokens,
                 audit_result=audit,
-                warnings=validation_warnings
+                warnings=validation_warnings,
+                stage3_metrics=stage3_metrics if stage3_metrics else None
             )
 
         except Exception as e:
@@ -1209,6 +1647,30 @@ This document contains the internal reasoning process that Gemini used while tra
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(merged_content, encoding="utf-8")
 
+            # Post-Processing: Stage 3 Refinement Agent (chunked translation path)
+            stage3_metrics = {}
+            if self.enable_stage3 and self._stage3_agent:
+                try:
+                    logger.info(f"[STAGE3] Running refinement agent on {chapter_id} (chunked)...")
+                    stage3_report = self._stage3_agent.process_chapter(output_path)
+
+                    if stage3_report:
+                        stage3_metrics = {
+                            'hard_cap_violations': stage3_report.hard_cap_violations,
+                            'hard_cap_fixed': stage3_report.hard_cap_auto_split,
+                            'tense_violations': stage3_report.tense_violations,
+                            'tense_flagged': stage3_report.tense_whitelisted,
+                            'ai_isms_fixed': stage3_report.ai_ism_fixes_applied,
+                            'flow_warnings': len(stage3_report.flow_issues)
+                        }
+
+                        if stage3_report.hard_cap_auto_split > 0:
+                            fix_rate = (stage3_report.hard_cap_auto_split / stage3_report.hard_cap_violations * 100) if stage3_report.hard_cap_violations > 0 else 0
+                            logger.info(f"✓ Stage 3: {stage3_report.hard_cap_auto_split}/{stage3_report.hard_cap_violations} sentences auto-split ({fix_rate:.1f}% fix rate)")
+
+                except Exception as e:
+                    logger.warning(f"[STAGE3] Refinement failed: {e}")
+
             audit = QualityMetrics.quick_audit(merged_content, source_text)
             validation_warnings = list(audit.warnings or [])
 
@@ -1219,6 +1681,7 @@ This document contains the internal reasoning process that Gemini used while tra
                 output_tokens=total_output_tokens,
                 audit_result=audit,
                 warnings=validation_warnings,
+                stage3_metrics=stage3_metrics if stage3_metrics else None
             )
         except Exception as e:
             logger.exception(f"Chunk translation failed for {chapter_id}")
@@ -1514,10 +1977,8 @@ This document contains the internal reasoning process that Gemini used while tra
             lines.append(f"Pacing strategy: {pacing}")
         lines.append("")
 
-        lines.append("Rhythm enum map:")
-        for key, value in self._stage2_rhythm_targets.items():
-            lines.append(f"- {key}: {value}")
-        lines.append("")
+        # Rhythm enum map omitted — Opus's instinctive rhythm sense is stronger
+        # than pre-calculated word-range targets. Beat type + register carry sufficient signal.
 
         lines.append("Scene beats:")
         for raw_scene in scenes:
@@ -1537,18 +1998,30 @@ This document contains the internal reasoning process that Gemini used while tra
 
             register = str(raw_scene.get("dialogue_register") or "casual_teen").strip()
             register = self._map_stage2_dialogue_register(register)
-            rhythm_key = self._map_stage2_rhythm_key(raw_scene.get("target_rhythm"))
-            rhythm_range = self._stage2_rhythm_targets.get(rhythm_key, "")
-            rhythm_display = f"{rhythm_key} ({rhythm_range})" if rhythm_range else rhythm_key
             arc = self._shorten_stage2_text(raw_scene.get("emotional_arc"), 100)
 
             lines.append(
-                f"- {scene_id} [{para_range}] {beat_type} | register={register} | rhythm={rhythm_display}"
+                f"- {scene_id} [{para_range}] {beat_type} | register={register}"
             )
             if arc:
                 lines.append(f"  arc: {arc}")
             if bool(raw_scene.get("illustration_anchor")):
                 lines.append("  note: illustration_anchor=true -> compress narration and trust the visual beat.")
+            # Culture bleed risk warning — inject inline with the beat context
+            bleed_risk = raw_scene.get("culture_bleed_risk")
+            if bleed_risk in ("high", "medium"):
+                bleed_phrase = raw_scene.get("culture_bleed_source_phrase", "")
+                bleed_category = raw_scene.get("culture_bleed_category", "")
+                bleed_warning = raw_scene.get("culture_bleed_warning", "")
+                bleed_forbidden = raw_scene.get("culture_bleed_forbidden") or []
+                lines.append(
+                    f"  ⚠ CULTURE BLEED RISK [{bleed_risk.upper()}] ({bleed_category}): "
+                    f"source phrase 「{bleed_phrase}」"
+                )
+                if bleed_warning:
+                    lines.append(f"    {bleed_warning}")
+                if bleed_forbidden:
+                    lines.append(f"    FORBIDDEN substitutions: {', '.join(repr(f) for f in bleed_forbidden)}")
 
         profiles = scene_plan.get("character_profiles", {})
         if isinstance(profiles, dict) and profiles:
@@ -1604,11 +2077,20 @@ This document contains the internal reasoning process that Gemini used while tra
         Files are optional and translation remains functional when missing.
         """
         context_dir = self.context_manager.work_dir / ".context"
+        # Build/refresh deduplicated reference registry from chapter-level reports.
+        try:
+            compiled_ref = compile_reference_reports(context_dir, min_confidence=0.70)
+            if compiled_ref:
+                logger.info(f"✓ Compiled reference registry: {compiled_ref.name}")
+        except Exception as e:
+            logger.warning(f"[P1.55] Reference registry compilation failed: {e}")
+
         cache_files = {
             "character_registry": context_dir / "character_registry.json",
             "cultural_glossary": context_dir / "cultural_glossary.json",
             "timeline_map": context_dir / "timeline_map.json",
             "idiom_transcreation_cache": context_dir / "idiom_transcreation_cache.json",
+            "reference_registry": context_dir / "reference_registry.json",
         }
 
         payload: Dict[str, Any] = {"_idiom_by_chapter": {}}
@@ -1647,7 +2129,7 @@ This document contains the internal reasoning process that Gemini used while tra
 
         if loaded:
             logger.info(
-                f"✓ Loaded Phase 1.55 context caches: {loaded}/4 "
+                f"✓ Loaded Phase 1.55 context caches: {loaded}/{len(cache_files)} "
                 f"(idiom entries indexed: {sum(len(v) for v in idiom_index.values())})"
             )
         return payload
@@ -1770,6 +2252,49 @@ This document contains the internal reasoning process that Gemini used while tra
                     lines.append(f"- {jp} -> {en}")
                 lines.append("")
 
+        reference_registry = self._phase155_context.get("reference_registry", {})
+        if isinstance(reference_registry, dict):
+            deob_map = reference_registry.get("deobfuscation_map", [])
+            entities = reference_registry.get("entities", [])
+
+            if isinstance(deob_map, list) and deob_map:
+                lines.append("Real-world reference normalization (obfuscated -> canonical):")
+                for item in deob_map[:10]:
+                    if not isinstance(item, dict):
+                        continue
+                    detected = str(item.get("detected_term", "")).strip()
+                    canonical = str(item.get("canonical_name", "")).strip()
+                    etype = str(item.get("entity_type", "")).strip()
+                    conf = float(item.get("confidence", 0.0) or 0.0)
+                    if not detected or not canonical:
+                        continue
+                    snippet = f"- {detected} -> {canonical}"
+                    if etype:
+                        snippet += f" ({etype}"
+                    else:
+                        snippet += " ("
+                    snippet += f", conf={conf:.2f})"
+                    lines.append(snippet)
+                lines.append(
+                    "When these entities appear in JP text, keep canonical real-world names consistent."
+                )
+                lines.append("")
+            elif isinstance(entities, list) and entities:
+                lines.append("Real-world reference registry (canonical forms):")
+                for item in entities[:8]:
+                    if not isinstance(item, dict):
+                        continue
+                    canonical = str(item.get("canonical_name", "")).strip()
+                    if not canonical:
+                        continue
+                    etype = str(item.get("entity_type", "")).strip()
+                    conf = float(item.get("max_confidence", 0.0) or 0.0)
+                    if etype:
+                        lines.append(f"- {canonical} ({etype}, conf={conf:.2f})")
+                    else:
+                        lines.append(f"- {canonical} (conf={conf:.2f})")
+                lines.append("")
+
         timeline_map = self._phase155_context.get("timeline_map", {})
         if isinstance(timeline_map, dict):
             chapter_timeline = timeline_map.get("chapter_timeline", [])
@@ -1792,7 +2317,21 @@ This document contains the internal reasoning process that Gemini used while tra
                         lines.append("Continuity constraints:")
                         for note in continuity[:4]:
                             lines.append(f"- {self._shorten_stage2_text(note, 100)}")
-                    if (isinstance(markers, list) and markers) or (isinstance(continuity, list) and continuity):
+                    # Prose rhythm: per-scene sentence length + temperature targets
+                    scenes_with_rhythm = [
+                        s for s in matched.get("scenes", [])
+                        if isinstance(s, dict) and "prose_rhythm" in s
+                    ]
+                    if scenes_with_rhythm:
+                        lines.append("Scene prose rhythm targets:")
+                        for s in scenes_with_rhythm:
+                            sid = s.get("id", "?")
+                            beat = s.get("beat_type", "")
+                            pr = s.get("prose_rhythm", {})
+                            sl = pr.get("sentence_length", "")
+                            pt = pr.get("prose_temperature", "")
+                            lines.append(f"- {sid} [{beat}]: length={sl} | temperature={pt}")
+                    if (isinstance(markers, list) and markers) or (isinstance(continuity, list) and continuity) or scenes_with_rhythm:
                         lines.append("")
 
         idiom_items = self._select_idiom_opportunities(chapter_key, scene_plan)
@@ -1932,9 +2471,35 @@ This document contains the internal reasoning process that Gemini used while tra
                 base_prompt = f"{p155_context_guidance}\n\n{base_prompt}"
 
         # Inject RTAS character voice settings (English translations only)
-        rtas_guidance = self._format_rtas_guidance()
+        rtas_guidance = self._format_rtas_guidance(chapter_id=chapter_id)
         if rtas_guidance:
             base_prompt = f"{base_prompt}\n\n{rtas_guidance}"
+
+        # ── Anthropic Thinking Discipline (user-turn injection) ──────────────
+        # Injected here (user turn) rather than in the system instruction because
+        # the system instruction is replaced by cached blocks when caching is active.
+        # The user turn is always sent fresh, guaranteeing delivery on every call.
+        #
+        # Goal: keep full reasoning process but eliminate line-by-line translation
+        # scratchpad behavior. Claude defaults to narrating each source line with
+        # "= English translation" inside <thinking>, consuming the entire output
+        # token budget before the actual translation even starts.
+        try:
+            from pipeline.translator.config import get_translator_provider
+            if get_translator_provider() == "anthropic":
+                base_prompt += (
+                    "\n\n<!-- THINKING DISCIPLINE -->\n"
+                    "You may use <thinking> freely for reasoning: analyzing POV, "
+                    "tone, cultural context, character voice, beat structure, or any "
+                    "translation decision that benefits from deliberate thought.\n"
+                    "ONE STRICT RULE: DO NOT produce a line-by-line translation inside <thinking>. "
+                    "Do not write patterns like '「Japanese」= \"English\"' or translate individual "
+                    "sentences/paragraphs sequentially. Think about the chapter — do not pre-translate it. "
+                    "The full translation must appear AFTER </thinking>, not inside it.\n"
+                    "<!-- END THINKING DISCIPLINE -->"
+                )
+        except Exception:
+            pass
 
         return base_prompt
     

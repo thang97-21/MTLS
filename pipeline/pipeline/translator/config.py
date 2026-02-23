@@ -15,6 +15,30 @@ from pipeline.config import (
 MODULE_NAME = "translator"
 
 
+def get_translator_provider() -> str:
+    """
+    Return the active LLM provider for the translator path.
+
+    Values: "google" (default) | "anthropic"
+    Sub-agents (planner, summarizer, metadata) always use Gemini regardless.
+    """
+    cfg = get_config_section("translator_provider")
+    # get_config_section returns the raw value when the key maps to a scalar
+    if isinstance(cfg, str):
+        return cfg.strip().lower()
+    # Fallback: read directly from the top-level config dict
+    try:
+        from pipeline.config import load_config
+        return load_config().get("translator_provider", "google").strip().lower()
+    except Exception:
+        return "google"
+
+
+def get_anthropic_config() -> Dict[str, Any]:
+    """Get Anthropic API configuration (only used when translator_provider=anthropic)."""
+    return get_config_section("anthropic") or {}
+
+
 def get_gemini_config() -> Dict[str, Any]:
     """Get Gemini API configuration."""
     return get_config_section("gemini")

@@ -1,0 +1,540 @@
+{
+  "bible_version": "1.0",
+  "series_id": "series_34375a5bcc",
+  "series_title": {
+    "ja": "お姉さん派の俺がなぜちっちゃい君を好きになったのか？【電子特典付き】",
+    "en": "お姉さん派の俺がなぜちっちゃい君を好きになったのか？【電子特典付き】",
+    "romaji": ""
+  },
+  "created_at": "2026-02-21T14:39:11.179983+00:00",
+  "last_updated": "2026-02-21T14:41:13.646435+00:00",
+  "volumes_registered": [
+    {
+      "volume_id": "231c",
+      "title": "お姉さん派の俺がなぜちっちゃい君を好きになったのか？【電子特典付き】",
+      "index": 2
+    }
+  ],
+  "world_setting": {
+    "type": "modern_japan",
+    "label": "Contemporary High School Romance in Japan",
+    "honorifics": {
+      "mode": "retain",
+      "policy": "Retain Japanese honorifics (e.g., -kun, -chan, -san, -sensei) to preserve character relationships and social dynamics. Provide context where necessary."
+    },
+    "name_order": {
+      "default": "family_given",
+      "policy": "Use Family Given order for Japanese names by default; preserve canonical spelling. Use Given Family only for explicit non-Japanese exceptions.",
+      "exceptions": []
+    }
+  },
+  "characters": {
+    "遠近 空": {
+      "canonical_en": "Toochika Sora",
+      "source": "manifest_profile_seed",
+      "short_name": "Sky",
+      "category": "Self (Protagonist)",
+      "affiliation": "Japanese",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {
+          "Doumyouji Ichigo": "polite/respectful (initially, then more casual as he gets used to her)",
+          "Naruse Sawa": "polite/respectful",
+          "Amemori Chizuru": "polite/respectful",
+          "Shinju": "polite/respectful",
+          "Harukawa Runa": "casual (childhood friend)",
+          "Satsuki Nonoa": "casual (classmate, but with some respect for her 'onee-san' aura)",
+          "Naruse Chito": "casual (classmate, initially distant, then more familiar)"
+        },
+        "emotional_shifts": {
+          "excitement": "more direct, less formal",
+          "flustered": "stuttering, less coherent",
+          "anger": "blunt, aggressive"
+        },
+        "notes": "Maintains a casual tone with close friends and classmates, but uses polite Japanese (keigo) with adults, teachers, and strangers, especially those he respects or finds attractive (like 'onee-san' types)."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Neatly styled hair, often seen in school uniform or casual wear like shirts and slim pants. His expression is generally earnest, sometimes flustered or surprised. His posture is relaxed but can become assertive when defending someone. He doesn't have prominent accessories."
+      },
+      "notes": "Onee-san enthusiast, kind, helpful, a bit dense/non-delicate (ノンデリ), honest about his preferences, prone to misunderstandings (lolicon accusations), easily flustered by unexpected advances, values sincerity, can be surprisingly assertive when protecting others, has a 'fubin taishitsu' (unfortunate/pitiful disposition) that attracts trouble.",
+      "volume_events": {
+        "231c": {
+          "relationship_to_protagonist": "Self (Protagonist)",
+          "relationship_to_others": "Childhood friend to Harukawa Runa; Classmate to Naruse Chito and Satsuki Nonoa; Acquaintance to Doumyouji Ichigo, Naruse Sawa, Amemori Chizuru, Shinju-sensei; Familiar with dogs Low and Lin.",
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {
+              "Doumyouji Ichigo": "polite/respectful (initially, then more casual as he gets used to her)",
+              "Naruse Sawa": "polite/respectful",
+              "Amemori Chizuru": "polite/respectful",
+              "Shinju": "polite/respectful",
+              "Harukawa Runa": "casual (childhood friend)",
+              "Satsuki Nonoa": "casual (classmate, but with some respect for her 'onee-san' aura)",
+              "Naruse Chito": "casual (classmate, initially distant, then more familiar)"
+            },
+            "emotional_shifts": {
+              "excitement": "more direct, less formal",
+              "flustered": "stuttering, less coherent",
+              "anger": "blunt, aggressive"
+            },
+            "notes": "Maintains a casual tone with close friends and classmates, but uses polite Japanese (keigo) with adults, teachers, and strangers, especially those he respects or finds attractive (like 'onee-san' types)."
+          },
+          "character_arc": "Initially focused solely on older, taller women, he gradually begins to acknowledge and appreciate Naruse Chito's unique charm and sincerity, challenging his own preconceived preferences."
+        }
+      }
+    },
+    "成瀬 小都": {
+      "canonical_en": "Naruse Chito",
+      "source": "manifest_profile_seed",
+      "short_name": "Chito-chan",
+      "category": "Classmate, self-proclaimed love interest. Initially helped by the protagonist on a train.",
+      "affiliation": "Japanese",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {
+          "Toochika Sora": "casual (initially 'Toochika-kun', then 'Tōchika-kun' or 'Tōchika'), sometimes playful or teasing",
+          "Naruse Sawa": "casual (sister)",
+          "Satsuki Nonoa": "casual (best friend)",
+          "Harukawa Runa": "casual (classmate, friend)",
+          "Doumyouji Ichigo": "polite/respectful",
+          "Amemori Chizuru": "polite/respectful",
+          "Shinju": "polite/respectful"
+        },
+        "emotional_shifts": {
+          "excitement": "high-pitched, rapid speech",
+          "embarrassment": "mumbling, flustered",
+          "determination": "firm, direct"
+        },
+        "notes": "Generally uses casual speech, but can switch to polite forms when addressing adults or in formal situations. Her unique greeting 'Ohachito!' is a personal quirk."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Long hair styled in two pigtails, often adorned with large, prominent hair ornaments (bear/dog-shaped). Her clothing silhouette is often loose on top (oversized cardigans/hoodies, blouses) contrasting with short skirts or denim salopettes. Her expression is frequently cheerful, determined, or playfully mischievous, sometimes flustered. Her posture is active and dynamic, often seen bouncing or moving quickly. She carries an eco-bag or a small purse."
+      },
+      "notes": "Energetic, assertive, persistent, uses her small stature as a 'weapon' to get attention, surprisingly mature expressions for her age, loves food, strives to be noticed, straightforward in her feelings, prone to accidents, easily embarrassed by compliments but also seeks them.",
+      "volume_events": {
+        "231c": {
+          "relationship_to_protagonist": "Classmate, self-proclaimed love interest. Initially helped by the protagonist on a train.",
+          "relationship_to_others": "Best friend with Satsuki Nonoa; Younger sister to Naruse Sawa; Acquaintance to Harukawa Runa, Doumyouji Ichigo, Amemori Chizuru, Shinju-sensei; Cares for dogs Low and Lin.",
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {
+              "Toochika Sora": "casual (initially 'Toochika-kun', then 'Tōchika-kun' or 'Tōchika'), sometimes playful or teasing",
+              "Naruse Sawa": "casual (sister)",
+              "Satsuki Nonoa": "casual (best friend)",
+              "Harukawa Runa": "casual (classmate, friend)",
+              "Doumyouji Ichigo": "polite/respectful",
+              "Amemori Chizuru": "polite/respectful",
+              "Shinju": "polite/respectful"
+            },
+            "emotional_shifts": {
+              "excitement": "high-pitched, rapid speech",
+              "embarrassment": "mumbling, flustered",
+              "determination": "firm, direct"
+            },
+            "notes": "Generally uses casual speech, but can switch to polite forms when addressing adults or in formal situations. Her unique greeting 'Ohachito!' is a personal quirk."
+          },
+          "character_arc": "Actively pursues the protagonist, Toochika Sora, despite his stated preference for older women. Her goal is to 'twist his kinks' and make him fall for her, while also dealing with the social perception of her small stature."
+        }
+      }
+    },
+    "道明寺 苺": {
+      "canonical_en": "Doumyouji Ichigo",
+      "source": "manifest_profile_seed",
+      "short_name": "None",
+      "category": "Police officer who initially mistakes Sora for a pervert, later becomes an acquaintance.",
+      "affiliation": "Japanese",
+      "keigo": {
+        "narration": "formal",
+        "internal_thoughts": "formal",
+        "speaking_to": {
+          "Toochika Sora": "formal/authoritative, then more polite after realizing her mistake",
+          "Naruse Chito": "formal/concerned"
+        },
+        "emotional_shifts": {},
+        "notes": "Maintains a professional and formal register."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Long brown hair casually tied back. Wears a plain navy suit, giving a professional and capable silhouette. Her expression is typically serious and sharp, but can soften. Her posture is upright and confident. She carries a police ID."
+      },
+      "notes": "Sharp, serious, professional, beautiful, but also capable of quick judgment and apology, observant.",
+      "volume_events": {
+        "231c": {
+          "relationship_to_protagonist": "Police officer who initially mistakes Sora for a pervert, later becomes an acquaintance.",
+          "relationship_to_others": "Acquaintance to Naruse Chito.",
+          "keigo_switch": {
+            "narration": "formal",
+            "internal_thoughts": "formal",
+            "speaking_to": {
+              "Toochika Sora": "formal/authoritative, then more polite after realizing her mistake",
+              "Naruse Chito": "formal/concerned"
+            },
+            "emotional_shifts": {},
+            "notes": "Maintains a professional and formal register."
+          },
+          "character_arc": "Introduced as an antagonist due to misunderstanding, she later becomes a minor recurring character who observes Sora and Chito's interactions."
+        }
+      }
+    },
+    "春河 月": {
+      "canonical_en": "Harukawa Runa",
+      "source": "manifest_profile_seed",
+      "short_name": "Luna",
+      "category": "Childhood friend, classmate. Secretly has feelings for him.",
+      "affiliation": "Japanese",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {
+          "Toochika Sora": "casual (childhood friend), often teasing or scolding",
+          "Naruse Chito": "casual",
+          "Satsuki Nonoa": "casual",
+          "Shinju": "polite/respectful"
+        },
+        "emotional_shifts": {
+          "embarrassment": "stuttering, defensive",
+          "anger": "loud, direct"
+        },
+        "notes": "Maintains a very casual, almost brotherly tone with Sora, reflecting their long-standing friendship."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Short black hair. Wears a jersey jacket over a school uniform mini-skirt, giving an athletic yet feminine silhouette. Carries a large sports bag. Her expression is often serious or exasperated, but can show warmth. Her posture is confident and strong."
+      },
+      "notes": "Tall, athletic (volleyball), boyish demeanor, strong-willed, dislikes growing taller, can be blunt but cares deeply for Sora, protective, secretly harbors romantic feelings for Sora, easily flustered when her feelings are hinted at.",
+      "volume_events": {
+        "231c": {
+          "relationship_to_protagonist": "Childhood friend, classmate. Secretly has feelings for him.",
+          "relationship_to_others": "Classmate and friend to Naruse Chito and Satsuki Nonoa.",
+          "how_character_refers_to_others": "Sora: 'Sky', Chito: 'Naruse-chan', Nonoa: 'Satsuki'.",
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {
+              "Toochika Sora": "casual (childhood friend), often teasing or scolding",
+              "Naruse Chito": "casual",
+              "Satsuki Nonoa": "casual",
+              "Shinju": "polite/respectful"
+            },
+            "emotional_shifts": {
+              "embarrassment": "stuttering, defensive",
+              "anger": "loud, direct"
+            },
+            "notes": "Maintains a very casual, almost brotherly tone with Sora, reflecting their long-standing friendship."
+          },
+          "character_arc": "Supports Sora and Chito's budding friendship/romance while grappling with her own unrequited feelings for Sora. Acts as a protector for Sora and Chito from social judgment."
+        }
+      }
+    },
+    "皐月 乃々愛": {
+      "canonical_en": "Satsuki Nonoa",
+      "source": "manifest_profile_seed",
+      "short_name": "Nono",
+      "category": "Classmate, Naruse Chito's best friend. Initially skeptical of Sora, but later acknowledges his good intentions.",
+      "affiliation": "Japanese",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {
+          "Toochika Sora": "casual, sometimes teasing or challenging",
+          "Naruse Chito": "casual (best friend), affectionate",
+          "Harukawa Runa": "casual",
+          "Naruse Sawa": "casual"
+        },
+        "emotional_shifts": {
+          "embarrassment": "blushing, defensive",
+          "seriousness": "direct, firm"
+        },
+        "notes": "Maintains a casual, friendly tone, but can become serious and protective, especially regarding Chito."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Long blonde hair, often tied in a high ponytail during physical activity. Her clothing is trendy and 'gyaru' style, frequently seen in a white t-shirt and half-pants with a jersey tied around her waist, giving a confident and stylish silhouette. Her expression is often cool or slightly amused, but can be stern when protective. Her posture is relaxed and self-assured. She has no prominent accessories beyond her hair styling."
+      },
+      "notes": "Tall, gyaru appearance but surprisingly serious and protective of Chito, cool, sometimes blunt, can be easily flustered when complimented by Sora, perceptive.",
+      "volume_events": {
+        "231c": {
+          "relationship_to_protagonist": "Classmate, Naruse Chito's best friend. Initially skeptical of Sora, but later acknowledges his good intentions.",
+          "relationship_to_others": "Best friend to Naruse Chito; Classmate to Toochika Sora and Harukawa Runa; Acquaintance to Naruse Sawa.",
+          "how_character_refers_to_others": "Chito: 'Chii', Sora: 'Toochika' (or 'Enkin'), Runa: 'Harukawa'.",
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {
+              "Toochika Sora": "casual, sometimes teasing or challenging",
+              "Naruse Chito": "casual (best friend), affectionate",
+              "Harukawa Runa": "casual",
+              "Naruse Sawa": "casual"
+            },
+            "emotional_shifts": {
+              "embarrassment": "blushing, defensive",
+              "seriousness": "direct, firm"
+            },
+            "notes": "Maintains a casual, friendly tone, but can become serious and protective, especially regarding Chito."
+          },
+          "character_arc": "Acts as a protective figure for Chito, initially wary of Sora but gradually coming to trust and even respect him. She also offers a temporary 'fake dating' solution to Sora to quell rumors."
+        }
+      }
+    },
+    "成瀬 紗和": {
+      "canonical_en": "Naruse Sawa",
+      "source": "manifest_profile_seed",
+      "short_name": "Onee-san (by Sora and Chito)",
+      "category": "Manager of the dog cafe, Naruse Chito's older sister. Sora's 'ideal onee-san' type.",
+      "affiliation": "Japanese",
+      "keigo": {
+        "narration": "formal",
+        "internal_thoughts": "formal",
+        "speaking_to": {
+          "Toochika Sora": "polite/respectful, sometimes teasing",
+          "Naruse Chito": "casual (sister), sometimes scolding playfully"
+        },
+        "emotional_shifts": {},
+        "notes": "Maintains a polite and composed demeanor."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Elegant and beautiful, often seen in a white shirt and jeans, sometimes with a black apron over it, giving a sophisticated yet approachable silhouette. Her expression is typically calm and composed, with a hint of amusement. Her posture is graceful and confident. No specific accessories mentioned beyond her work attire."
+      },
+      "notes": "Beautiful, cool, calm, collected, works hard but also enjoys leisure, seems to have a mysterious past, observant, business-minded but also caring towards her sister and dogs.",
+      "volume_events": {
+        "231c": {
+          "relationship_to_protagonist": "Manager of the dog cafe, Naruse Chito's older sister. Sora's 'ideal onee-san' type.",
+          "relationship_to_others": "Older sister to Naruse Chito; Employer of Chito; Acquaintance to Satsuki Nonoa.",
+          "how_character_refers_to_others": "Sora: 'Shounen' (boy), Chito: 'Chito' (casual).",
+          "keigo_switch": {
+            "narration": "formal",
+            "internal_thoughts": "formal",
+            "speaking_to": {
+              "Toochika Sora": "polite/respectful, sometimes teasing",
+              "Naruse Chito": "casual (sister), sometimes scolding playfully"
+            },
+            "emotional_shifts": {},
+            "notes": "Maintains a polite and composed demeanor."
+          },
+          "character_arc": "Manages the dog cafe and provides a setting for Sora and Chito's interactions. Her mysterious past and 'onee-san' charm are a source of fascination for Sora."
+        }
+      }
+    },
+    "雨森 千鶴": {
+      "canonical_en": "Amemori Chizuru",
+      "source": "manifest_profile_seed",
+      "short_name": "None",
+      "category": "School counselor, initially suspicious of Sora's intentions towards Chito.",
+      "affiliation": "Japanese",
+      "keigo": {
+        "narration": "formal",
+        "internal_thoughts": "formal",
+        "speaking_to": {
+          "Toochika Sora": "formal/inquiring, sometimes accusatory",
+          "Naruse Chito": "formal/concerned"
+        },
+        "emotional_shifts": {
+          "excitement": "standing up, speaking more forcefully",
+          "calm": "sitting, composed"
+        },
+        "notes": "Maintains a professional and formal register, even when expressing strong concerns."
+      },
+      "visual_identity_non_color": {
+        "identity_summary": "Black hair tied back, wears glasses, and a white lab coat, giving an intellectual and professional appearance. Her expression is often serious, observant, or concerned. Her posture is typically poised and formal. No specific accessories mentioned."
+      },
+      "notes": "Intellectual, observant, concerned for students' well-being, can be a bit overzealous/misguided in her concerns, but well-intentioned, prone to prejudice against men.",
+      "volume_events": {
+        "231c": {
+          "relationship_to_protagonist": "School counselor, initially suspicious of Sora's intentions towards Chito.",
+          "relationship_to_others": "School counselor for Toochika Sora and Naruse Chito.",
+          "how_character_refers_to_others": "Sora: 'Enkin-kun', Chito: 'Naruse-san'.",
+          "keigo_switch": {
+            "narration": "formal",
+            "internal_thoughts": "formal",
+            "speaking_to": {
+              "Toochika Sora": "formal/inquiring, sometimes accusatory",
+              "Naruse Chito": "formal/concerned"
+            },
+            "emotional_shifts": {
+              "excitement": "standing up, speaking more forcefully",
+              "calm": "sitting, composed"
+            },
+            "notes": "Maintains a professional and formal register, even when expressing strong concerns."
+          },
+          "character_arc": "Acts as an external force of social judgment, reflecting the 'lolicon' accusations against Sora, but eventually seems to understand the situation better."
+        }
+      }
+    },
+    "神樹": {
+      "canonical_en": "Shinju",
+      "source": "manifest_profile_seed",
+      "short_name": "Shinju-sensei",
+      "category": "Homeroom teacher.",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "No specific visual descriptors provided in the text."
+      },
+      "notes": "Observant, gives wise advice, seems to understand student dynamics, supportive.",
+      "keigo": {
+        "narration": "formal",
+        "internal_thoughts": "formal",
+        "speaking_to": {
+          "students": "formal/encouraging"
+        },
+        "emotional_shifts": {},
+        "notes": "Maintains a formal and supportive tone as a teacher."
+      },
+      "volume_events": {
+        "231c": {
+          "relationship_to_protagonist": "Homeroom teacher.",
+          "relationship_to_others": "Teacher to Toochika Sora, Naruse Chito, Harukawa Runa, Satsuki Nonoa.",
+          "keigo_switch": {
+            "narration": "formal",
+            "internal_thoughts": "formal",
+            "speaking_to": {
+              "students": "formal/encouraging"
+            },
+            "emotional_shifts": {},
+            "notes": "Maintains a formal and supportive tone as a teacher."
+          },
+          "character_arc": "Provides a concluding statement that helps to resolve the social misunderstanding surrounding Sora and Chito."
+        }
+      }
+    },
+    "ロウ": {
+      "canonical_en": "Low",
+      "source": "manifest_profile_seed",
+      "short_name": "Low-kun",
+      "category": "Dog at the cafe, becomes familiar with Sora through walks and interactions.",
+      "affiliation": "Dog (breed not specified, but described as 'small but fierce like a hunting dog')",
+      "visual_identity_non_color": {
+        "identity_summary": "A small dog, described as 'fierce like a hunting dog' with a dynamic, active posture, often seen running or pulling on a leash. Its expression is lively and energetic. No accessories."
+      },
+      "notes": "Energetic, playful, strong-willed (pulls hard on the leash), was initially distrustful of humans due to changing owners, but warms up to Sora, likes to run.",
+      "keigo": {
+        "narration": "N/A",
+        "internal_thoughts": "N/A",
+        "speaking_to": {},
+        "emotional_shifts": {},
+        "notes": "N/A"
+      },
+      "volume_events": {
+        "231c": {
+          "relationship_to_protagonist": "Dog at the cafe, becomes familiar with Sora through walks and interactions.",
+          "relationship_to_others": "Companion to Lin; Cared for by Naruse Chito and Naruse Sawa.",
+          "character_arc": "Overcomes initial distrust of humans and forms a bond with Sora, becoming more comfortable with people through his interactions at the dog cafe."
+        }
+      }
+    },
+    "リン": {
+      "canonical_en": "Lin",
+      "source": "manifest_profile_seed",
+      "short_name": "Lin-chan",
+      "category": "Dog at the cafe, interacts with Sora.",
+      "affiliation": "Dog (breed not specified, but described as 'small, fluffy fur')",
+      "visual_identity_non_color": {
+        "identity_summary": "A small dog with fluffy fur and a gentle face, often seen with a calm or independent expression. Its posture is more relaxed than Low's, often sitting or walking at its own pace. No accessories."
+      },
+      "notes": "More independent, less overtly affectionate than Low, but still friendly, 'my pace' (マイペース).",
+      "keigo": {
+        "narration": "N/A",
+        "internal_thoughts": "N/A",
+        "speaking_to": {},
+        "emotional_shifts": {},
+        "notes": "N/A"
+      },
+      "volume_events": {
+        "231c": {
+          "relationship_to_protagonist": "Dog at the cafe, interacts with Sora.",
+          "relationship_to_others": "Companion to Low; Cared for by Naruse Chito and Naruse Sawa.",
+          "character_arc": "Learns to trust and interact with people at the dog cafe, maintaining her independent nature."
+        }
+      }
+    },
+    "Toochika Sora": {
+      "short_name": "Sky",
+      "category": "Self (Protagonist)",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Neatly styled hair, often seen in school uniform or casual wear like shirts and slim pants. His expression is generally earnest, sometimes flustered or surprised. His posture is relaxed but can become assertive when defending someone. He doesn't have prominent accessories."
+      },
+      "notes": "Onee-san enthusiast, kind, helpful, a bit dense/non-delicate (ノンデリ), honest about his preferences, prone to misunderstandings (lolicon accusations), easily flustered by unexpected advances, values sincerity, can be surprisingly assertive when protecting others, has a 'fubin taishitsu' (unfortunate/pitiful disposition) that attracts trouble.",
+      "keigo": {
+        "narration": "casual",
+        "internal_thoughts": "casual",
+        "speaking_to": {},
+        "emotional_shifts": {},
+        "notes": "[TO BE FILLED - context-dependent register notes]"
+      },
+      "volume_events": {
+        "231c": {
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {},
+            "emotional_shifts": {},
+            "notes": "[TO BE FILLED - context-dependent register notes]"
+          }
+        }
+      }
+    },
+    "Naruse Chito": {
+      "short_name": "Chito-chan",
+      "category": "Classmate, self-proclaimed love interest. Initially helped by the protagonist on a train.",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Long hair styled in two pigtails, often adorned with large, prominent hair ornaments (bear/dog-shaped). Her clothing silhouette is often loose on top (oversized cardigans/hoodies, blouses) contrasting with short skirts or denim salopettes. Her expression is frequently cheerful, determined, or playfully mischievous, sometimes flustered. Her posture is active and dynamic, often seen bouncing or moving quickly. She carries an eco-bag or a small purse."
+      },
+      "notes": "Energetic, assertive, persistent, uses her small stature as a 'weapon' to get attention, surprisingly mature expressions for her age, loves food, strives to be noticed, straightforward in her feelings, prone to accidents, easily embarrassed by compliments but also seeks them."
+    },
+    "Doumyouji Ichigo": {
+      "category": "Police officer who initially mistakes Sora for a pervert, later becomes an acquaintance.",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Long brown hair casually tied back. Wears a plain navy suit, giving a professional and capable silhouette. Her expression is typically serious and sharp, but can soften. Her posture is upright and confident. She carries a police ID."
+      },
+      "notes": "Sharp, serious, professional, beautiful, but also capable of quick judgment and apology, observant."
+    },
+    "Harukawa Runa": {
+      "short_name": "Luna",
+      "category": "Childhood friend, classmate. Secretly has feelings for him.",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Short black hair. Wears a jersey jacket over a school uniform mini-skirt, giving an athletic yet feminine silhouette. Carries a large sports bag. Her expression is often serious or exasperated, but can show warmth. Her posture is confident and strong."
+      },
+      "notes": "Tall, athletic (volleyball), boyish demeanor, strong-willed, dislikes growing taller, can be blunt but cares deeply for Sora, protective, secretly harbors romantic feelings for Sora, easily flustered when her feelings are hinted at."
+    },
+    "Satsuki Nonoa": {
+      "short_name": "Nono",
+      "category": "Classmate, Naruse Chito's best friend. Initially skeptical of Sora, but later acknowledges his good intentions.",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Long blonde hair, often tied in a high ponytail during physical activity. Her clothing is trendy and 'gyaru' style, frequently seen in a white t-shirt and half-pants with a jersey tied around her waist, giving a confident and stylish silhouette. Her expression is often cool or slightly amused, but can be stern when protective. Her posture is relaxed and self-assured. She has no prominent accessories beyond her hair styling."
+      },
+      "notes": "Tall, gyaru appearance but surprisingly serious and protective of Chito, cool, sometimes blunt, can be easily flustered when complimented by Sora, perceptive."
+    },
+    "Naruse Sawa": {
+      "short_name": "Onee-san (by Sora and Chito)",
+      "category": "Manager of the dog cafe, Naruse Chito's older sister. Sora's 'ideal onee-san' type.",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Elegant and beautiful, often seen in a white shirt and jeans, sometimes with a black apron over it, giving a sophisticated yet approachable silhouette. Her expression is typically calm and composed, with a hint of amusement. Her posture is graceful and confident. No specific accessories mentioned beyond her work attire."
+      },
+      "notes": "Beautiful, cool, calm, collected, works hard but also enjoys leisure, seems to have a mysterious past, observant, business-minded but also caring towards her sister and dogs."
+    },
+    "Amemori Chizuru": {
+      "category": "School counselor, initially suspicious of Sora's intentions towards Chito.",
+      "affiliation": "Japanese",
+      "visual_identity_non_color": {
+        "identity_summary": "Black hair tied back, wears glasses, and a white lab coat, giving an intellectual and professional appearance. Her expression is often serious, observant, or concerned. Her posture is typically poised and formal. No specific accessories mentioned."
+      },
+      "notes": "Intellectual, observant, concerned for students' well-being, can be a bit overzealous/misguided in her concerns, but well-intentioned, prone to prejudice against men."
+    }
+  },
+  "geography": {
+    "countries": {},
+    "regions": {},
+    "cities": {}
+  },
+  "weapons_artifacts": {},
+  "organizations": {},
+  "cultural_terms": {},
+  "mythology": {},
+  "translation_rules": {}
+}

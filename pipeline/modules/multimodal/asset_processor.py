@@ -72,7 +72,13 @@ class VisualAssetProcessor:
     ):
         self.volume_path = volume_path
         self.model = model
-        self.thinking_level = thinking_level
+        self.thinking_level = str(thinking_level).strip().lower() or "medium"
+        if self.thinking_level not in {"medium", "high"}:
+            logger.warning(
+                "[PHASE 1.6] Invalid multimodal thinking_level '%s'; coercing to 'medium'.",
+                thinking_level,
+            )
+            self.thinking_level = "medium"
         self.api_key = resolve_api_key(api_key=api_key, required=False)
         self.backend = resolve_genai_backend()
         self.rate_limit_seconds = rate_limit_seconds
@@ -102,11 +108,14 @@ class VisualAssetProcessor:
 
     def _load_thinking_routing_policy(self) -> Dict[str, Any]:
         """Load multimodal thinking routing policy from config.yaml with safe defaults."""
+        safe_default_level = str(self.thinking_level).strip().lower()
+        if safe_default_level not in {"medium", "high"}:
+            safe_default_level = "medium"
         defaults: Dict[str, Any] = {
             "enabled": True,
-            "default_level": self.thinking_level,
+            "default_level": safe_default_level,
             "version": "v1",
-            "levels": ["low", "medium", "high"],
+            "levels": ["medium", "high"],
             "high_triggers": ["climax", "emotional_peak", "plot_revelation"],
             "high_confidence_min": 0.75,
             "low_confidence_margin": 0.15,
@@ -122,10 +131,15 @@ class VisualAssetProcessor:
             if not isinstance(levels, list) or not levels:
                 levels = defaults["levels"]
             levels = [str(v).strip().lower() for v in levels if str(v).strip()]
-            levels = [v for v in levels if v in {"low", "medium", "high"}] or defaults["levels"]
+            if "low" in levels:
+                logger.warning(
+                    "[PHASE 1.6] multimodal.thinking.routing.levels contains 'low'; "
+                    "coercing to medium/high only."
+                )
+            levels = [v for v in levels if v in {"medium", "high"}] or defaults["levels"]
 
             default_level = str(thinking_cfg.get("default_level", defaults["default_level"])).strip().lower()
-            if default_level not in {"low", "medium", "high"}:
+            if default_level not in {"medium", "high"}:
                 default_level = str(defaults["default_level"]).strip().lower()
             if default_level not in levels:
                 default_level = "medium" if "medium" in levels else levels[0]
@@ -236,6 +250,78 @@ class VisualAssetProcessor:
                 chapters = structure.get("chapters", [])
         return chapters if isinstance(chapters, list) else []
 
+    @staticmethod
+    def _strip_reading_annotations(raw_name: str) -> str:
+        """Strip JP reading wrappers like 《かな》, （かな）, (kana)."""
+        name = str(raw_name or "").strip()
+        if not name:
+            return ""
+        name = re.sub(r"《[^《》]*》", "", name)
+        name = re.sub(r"（[^（）]*）", "", name)
+        name = re.sub(r"\([^()]*\)", "", name)
+        name = re.sub(r"\s+", " ", name).strip()
+        return name
+
+    @classmethod
+    def _name_key(cls, raw_name: str) -> str:
+        """Normalized key for robust candidate matching."""
+        cleaned = cls._strip_reading_annotations(raw_name)
+        if not cleaned:
+            return ""
+        collapsed = re.sub(r"[ \u3000・･／/,，、\-\u2010\u2013\u2014]", "", cleaned)
+        return collapsed.lower().strip()
+
+    @staticmethod
+    def _latin_signature(raw_name: str) -> Tuple[str, ...]:
+        """
+        Signature for Latin-script name order tolerance.
+        Example: 'Rino Watanuki' == 'Watanuki Rino'
+        """
+        normalized = re.sub(r"[’'`]", "", str(raw_name or "").lower())
+        tokens = [tok for tok in re.findall(r"[a-z]+", normalized) if tok]
+        return tuple(sorted(tokens))
+
+    def _build_jp_to_en_map(self, character_names: Any) -> Dict[str, str]:
+        """Build JP-keyed lookup map from metadata_en.character_names."""
+        mapping: Dict[str, str] = {}
+        if not isinstance(character_names, dict):
+            return mapping
+        for jp_name, en_name in character_names.items():
+            jp = str(jp_name).strip()
+            en = str(en_name).strip()
+            if not jp or not en:
+                continue
+            for token in {jp, self._strip_reading_annotations(jp)}:
+                key = self._name_key(token)
+                if key and key not in mapping:
+                    mapping[key] = en
+        return mapping
+
+    def _resolve_profile_canonical_name(
+        self,
+        *,
+        profile_key: str,
+        profile: Dict[str, Any],
+        jp_to_en_map: Dict[str, str],
+    ) -> str:
+        """Resolve canonical roster name (prefer EN canonical if mapping exists)."""
+        full_name_raw = str(profile.get("full_name", "")).strip()
+        ruby_base = str(profile.get("ruby_base", "")).strip()
+        candidates = [
+            profile_key,
+            full_name_raw,
+            self._strip_reading_annotations(full_name_raw),
+            ruby_base,
+            self._strip_reading_annotations(ruby_base),
+        ]
+        for candidate in candidates:
+            key = self._name_key(candidate)
+            if key and key in jp_to_en_map:
+                return jp_to_en_map[key]
+
+        fallback = self._strip_reading_annotations(full_name_raw) or self._strip_reading_annotations(profile_key)
+        return fallback
+
     def _chapter_for_illustration(self, image_name: str) -> Optional[Dict[str, Any]]:
         """Find chapter metadata entry that owns this illustration."""
         image_stem = Path(image_name).stem
@@ -302,22 +388,18 @@ class VisualAssetProcessor:
             return [], None
 
         candidates: List[Dict[str, Any]] = []
-        canonical_name_map: Dict[str, str] = {}
-        if isinstance(character_names, dict):
-            for jp_name, en_name in character_names.items():
-                jp = str(jp_name).strip()
-                en = str(en_name).strip()
-                if jp and en:
-                    canonical_name_map[en] = jp
+        jp_to_en_map = self._build_jp_to_en_map(character_names)
 
         profile_rows: List[Dict[str, Any]] = []
         for jp_name, profile in profiles.items():
             if jp_name == "Unknown" or not isinstance(profile, dict):
                 continue
 
-            canonical_name = str(profile.get("full_name", "")).strip()
-            if not canonical_name:
-                canonical_name = canonical_name_map.get(str(jp_name).strip(), "")
+            canonical_name = self._resolve_profile_canonical_name(
+                profile_key=str(jp_name),
+                profile=profile,
+                jp_to_en_map=jp_to_en_map,
+            )
             if not canonical_name:
                 continue
 
@@ -406,33 +488,23 @@ class VisualAssetProcessor:
         if not isinstance(profiles, dict):
             return []
 
-        jp_to_en: Dict[str, str] = {}
-        en_to_jp: Dict[str, str] = {}
-        if isinstance(character_names, dict):
-            for jp_name, en_name in character_names.items():
-                jp = str(jp_name).strip()
-                en = str(en_name).strip()
-                if jp and en:
-                    jp_to_en[jp] = en
-                    en_to_jp[en] = jp
+        jp_to_en = self._build_jp_to_en_map(character_names)
 
         rows: List[Dict[str, Any]] = []
         for key, profile in profiles.items():
             if key == "Unknown" or not isinstance(profile, dict):
                 continue
-            canonical = str(profile.get("full_name", "")).strip()
-            if not canonical:
-                raw_key = str(key).strip()
-                if raw_key in jp_to_en:
-                    canonical = jp_to_en[raw_key]
-                else:
-                    canonical = raw_key
+            canonical = self._resolve_profile_canonical_name(
+                profile_key=str(key),
+                profile=profile,
+                jp_to_en_map=jp_to_en,
+            )
             if not canonical:
                 continue
             ruby_base = str(profile.get("ruby_base", "")).strip()
             rows.append({
                 "canonical_name": canonical,
-                "japanese_name": ruby_base or en_to_jp.get(canonical, ""),
+                "japanese_name": ruby_base or self._strip_reading_annotations(str(key)),
                 "visual_identity_non_color": profile.get("visual_identity_non_color"),
             })
 
@@ -459,7 +531,10 @@ class VisualAssetProcessor:
         """
         Determine per-image thinking level with conservative text-first routing.
         """
-        levels = self.routing_policy.get("levels", ["low", "medium", "high"])
+        levels = self.routing_policy.get("levels", ["medium", "high"])
+        levels = [lvl for lvl in levels if lvl in {"medium", "high"}]
+        if not levels:
+            levels = ["medium", "high"]
         default_level = str(self.routing_policy.get("default_level", self.thinking_level)).strip().lower()
         if default_level not in levels:
             default_level = "medium" if "medium" in levels else levels[0]
@@ -512,11 +587,11 @@ class VisualAssetProcessor:
         elif multi_expected and candidate_count >= 2 and (top_score < high_conf_min or margin < low_margin) and "high" in levels:
             level = "high"
             reason = "ambiguous_multi_character_scene"
-        elif candidate_count <= 1 and top_score >= high_conf_min and not multi_expected and "low" in levels:
-            level = "low"
+        elif candidate_count <= 1 and top_score >= high_conf_min and not multi_expected and "medium" in levels:
+            level = "medium"
             reason = "single_high_confidence_candidate"
-        elif image_kind == "cover" and candidate_count <= 1 and "low" in levels:
-            level = "low"
+        elif image_kind == "cover" and candidate_count <= 1 and "medium" in levels:
+            level = "medium"
             reason = "cover_low_complexity"
         elif image_kind == "kuchie" and candidate_count >= 3 and "high" in levels:
             level = "high"
@@ -786,17 +861,92 @@ class VisualAssetProcessor:
         if not allowed_set:
             allowed_set = primary_set or secondary_set
 
+        def _build_name_index(values: set) -> Tuple[Dict[str, str], Dict[Tuple[str, ...], List[str]]]:
+            norm_map: Dict[str, str] = {}
+            sig_map: Dict[Tuple[str, ...], List[str]] = {}
+            for value in values:
+                key = self._name_key(value)
+                if key and key not in norm_map:
+                    norm_map[key] = value
+                signature = self._latin_signature(value)
+                if signature:
+                    sig_map.setdefault(signature, []).append(value)
+            return norm_map, sig_map
+
+        primary_norm, primary_sig = _build_name_index(primary_set)
+        secondary_norm, secondary_sig = _build_name_index(secondary_set)
+        allowed_norm, allowed_sig = _build_name_index(allowed_set)
+
         out_of_candidate: List[str] = []
         fallback_used: List[str] = []
         if primary_set or secondary_set or allowed_set:
             kept = []
             for item in recognized:
                 canonical = str(item.get("canonical_name", "")).strip()
+                original_canonical = canonical
                 confidence_raw = item.get("confidence", 0.0)
                 try:
                     confidence = float(confidence_raw)
                 except Exception:
                     confidence = 0.0
+
+                # Relaxed canonical reconciliation:
+                # - normalized string match (strip readings/punctuation)
+                # - Latin-token signature match (order-invariant)
+                if canonical not in primary_set and canonical not in secondary_set and canonical not in allowed_set:
+                    canonical_key = self._name_key(canonical)
+                    mapped_name = ""
+                    match_method = ""
+                    mapped_tier = ""
+
+                    if primary_set:
+                        if canonical_key and canonical_key in primary_norm:
+                            mapped_name = primary_norm.get(canonical_key, "")
+                            match_method = "normalized_key"
+                            mapped_tier = "primary"
+                        elif canonical_key and canonical_key in secondary_norm:
+                            mapped_name = secondary_norm.get(canonical_key, "")
+                            match_method = "normalized_key"
+                            mapped_tier = "secondary"
+                    else:
+                        if canonical_key and canonical_key in allowed_norm:
+                            mapped_name = allowed_norm.get(canonical_key, "")
+                            match_method = "normalized_key"
+                            mapped_tier = "allowed"
+
+                    if not mapped_name:
+                        signature = self._latin_signature(canonical)
+                        if signature:
+                            if primary_set:
+                                primary_hits = primary_sig.get(signature, [])
+                                secondary_hits = secondary_sig.get(signature, [])
+                                if len(primary_hits) == 1:
+                                    mapped_name = primary_hits[0]
+                                    match_method = "latin_signature"
+                                    mapped_tier = "primary"
+                                elif len(secondary_hits) == 1:
+                                    mapped_name = secondary_hits[0]
+                                    match_method = "latin_signature"
+                                    mapped_tier = "secondary"
+                            else:
+                                allowed_hits = allowed_sig.get(signature, [])
+                                if len(allowed_hits) == 1:
+                                    mapped_name = allowed_hits[0]
+                                    match_method = "latin_signature"
+                                    mapped_tier = "allowed"
+
+                    if mapped_name:
+                        logger.debug(
+                            "[PHASE 1.6] Identity reconciliation: recognized '%s' -> mapped '%s' "
+                            "(method=%s, tier=%s)",
+                            original_canonical,
+                            mapped_name,
+                            match_method or "unknown",
+                            mapped_tier or "unknown",
+                        )
+                        item = dict(item)
+                        item["canonical_name"] = mapped_name
+                        canonical = mapped_name
 
                 if primary_set:
                     if canonical in primary_set:
@@ -806,31 +956,40 @@ class VisualAssetProcessor:
                         fallback_used.append(canonical)
                         unresolved.append(f"fallback_secondary:{canonical}")
                     else:
-                        out_of_candidate.append(canonical)
-                        unresolved.append(f"out_of_candidate:{canonical}")
+                        out_of_candidate.append(original_canonical or canonical)
+                        unresolved.append(f"out_of_candidate:{original_canonical or canonical}")
                 elif canonical in allowed_set:
                     kept.append(item)
                 else:
-                    out_of_candidate.append(canonical)
-                    unresolved.append(f"out_of_candidate:{canonical}")
+                    out_of_candidate.append(original_canonical or canonical)
+                    unresolved.append(f"out_of_candidate:{original_canonical or canonical}")
             recognized = kept
             normalized["recognized_characters"] = recognized
             normalized["unresolved_characters"] = sorted(set(unresolved))
 
         recognized_names = sorted({str(item.get("canonical_name", "")).strip() for item in recognized if str(item.get("canonical_name", "")).strip()})
         text_mentioned_names = sorted({str(n).strip() for n in (text_mentions or []) if str(n).strip()})
+        recognized_set = set(recognized_names)
+        text_mentioned_set = set(text_mentioned_names)
+        missing_from_recognized = sorted(text_mentioned_set - recognized_set)
+        recognized_without_text_mention = sorted(recognized_set - text_mentioned_set)
 
         status = "pass"
         reason = "ok"
         if out_of_candidate:
             status = "fail"
             reason = "out_of_candidate_names"
+        elif recognized_names and text_mentioned_names and missing_from_recognized:
+            status = "fail"
+            reason = "text_vs_identity_conflict"
         elif fallback_used:
             status = "warn"
             reason = "used_secondary_fallback"
-        elif recognized_names and text_mentioned_names and set(recognized_names) != set(text_mentioned_names):
-            status = "fail"
-            reason = "text_vs_identity_conflict"
+        elif recognized_names and text_mentioned_names and recognized_without_text_mention:
+            # Valid in POV-heavy scenes: identity_resolution can include POV owner
+            # even when visual text fields only mention the other character.
+            status = "warn"
+            reason = "text_mentions_partial"
         elif multi_expected and not recognized:
             status = "fail"
             reason = "missing_recognized_for_multi_character_scene"
@@ -849,6 +1008,8 @@ class VisualAssetProcessor:
                 "secondary_fallback_used": sorted(set(fallback_used)),
                 "text_mentioned_names": text_mentioned_names,
                 "recognized_names": recognized_names,
+                "missing_from_recognized": missing_from_recognized,
+                "recognized_without_text_mention": recognized_without_text_mention,
             },
             "recognized_count": len(recognized),
             "multi_character_expected": bool(multi_expected),
@@ -1031,6 +1192,9 @@ class VisualAssetProcessor:
             )
         else:
             logger.warning("[PHASE 1.6] Identity lock unavailable before analysis (base prompt fallback)")
+
+        # Reclassify legacy strict conflicts to graceful fallback warnings.
+        self._normalize_legacy_identity_conflicts()
         stats = {"total": len(illustrations), "cached": 0, "generated": 0, "blocked": 0}
 
         for img_path in illustrations:
@@ -1110,6 +1274,14 @@ class VisualAssetProcessor:
                     logger.warning(
                         f"  [REVIEW] {illust_id}: identity consistency failed "
                         f"({validation.get('identity_consistency', {}).get('reason')})"
+                    )
+                elif (
+                    final_status == "cached"
+                    and validation.get("identity_consistency", {}).get("reason") == "text_mentions_partial"
+                ):
+                    logger.info(
+                        f"  [FALLBACK] {illust_id}: text mentions are partial; "
+                        "keeping recognized roster match as graceful fallback"
                     )
 
                 if final_status == "safety_blocked":
@@ -1191,6 +1363,53 @@ class VisualAssetProcessor:
         logger.info(f"  Blocked/Error: {stats['blocked']}")
 
         return stats
+
+    def _normalize_legacy_identity_conflicts(self) -> None:
+        """
+        Downgrade legacy strict text-vs-identity conflicts when recognized set
+        is a superset of text mentions (valid POV/implicit-name scenario).
+        """
+        cache = self.cache_manager.cache if isinstance(self.cache_manager.cache, dict) else {}
+        if not cache:
+            return
+
+        updated = 0
+        for illust_id, entry in cache.items():
+            if not isinstance(entry, dict):
+                continue
+            validation = entry.get("validation", {})
+            if not isinstance(validation, dict):
+                continue
+            ic = validation.get("identity_consistency", {})
+            if not isinstance(ic, dict):
+                continue
+            if ic.get("reason") != "text_vs_identity_conflict":
+                continue
+
+            recognized = {str(v).strip() for v in (ic.get("recognized_names") or []) if str(v).strip()}
+            text_mentions = {str(v).strip() for v in (ic.get("text_mentioned_names") or []) if str(v).strip()}
+            if not recognized or not text_mentions:
+                continue
+            if not text_mentions.issubset(recognized):
+                continue
+
+            ic["status"] = "warn"
+            ic["reason"] = "text_mentions_partial"
+            ic["missing_from_recognized"] = sorted(text_mentions - recognized)
+            ic["recognized_without_text_mention"] = sorted(recognized - text_mentions)
+            validation["identity_consistency"] = ic
+            entry["validation"] = validation
+
+            if entry.get("status") == "needs_review":
+                entry["status"] = "cached"
+            cache[illust_id] = entry
+            updated += 1
+
+        if updated > 0:
+            logger.info(
+                f"[PHASE 1.6] Reclassified {updated} legacy text-vs-identity conflict(s) to graceful fallback"
+            )
+            self.cache_manager.save_cache()
     
     def _inject_canon_names(self) -> None:
         """
@@ -1315,6 +1534,8 @@ class VisualAssetProcessor:
             if prompt_override:
                 prompt_text = f"{prompt_text}\n\n{prompt_override}"
             thinking_level = str(thinking_level_override or self.thinking_level).strip().lower() or "medium"
+            if thinking_level not in {"medium", "high"}:
+                thinking_level = "medium"
 
             response = self.genai_client.models.generate_content(
                 model=self.model,
@@ -1474,6 +1695,109 @@ class VisualAssetProcessor:
         repaired = re.sub(r",(\s*[}\]])", r"\1", repaired)
         return repaired
 
+    def _escape_unescaped_newlines_in_strings(self, raw: str) -> str:
+        """
+        Escape raw newline/control characters inside JSON string literals.
+
+        Some model outputs include literal newlines inside quoted strings which
+        invalidates JSON parsing. This keeps structure intact while making
+        strings JSON-safe.
+        """
+        out: List[str] = []
+        in_string = False
+        escaped = False
+
+        for ch in raw:
+            if in_string:
+                if escaped:
+                    out.append(ch)
+                    escaped = False
+                    continue
+                if ch == "\\":
+                    out.append(ch)
+                    escaped = True
+                    continue
+                if ch == "\"":
+                    out.append(ch)
+                    in_string = False
+                    continue
+                if ch in ("\n", "\r"):
+                    out.append("\\n")
+                    continue
+                if ord(ch) < 0x20 and ch != "\t":
+                    out.append(" ")
+                    continue
+                out.append(ch)
+                continue
+
+            if ch == "\"":
+                in_string = True
+            out.append(ch)
+
+        return "".join(out)
+
+    def _repair_truncated_json_candidate(self, text: str) -> Optional[str]:
+        """
+        Attempt recovery for truncated model JSON output.
+
+        Strategy:
+        1. Trim to first object marker.
+        2. Close unterminated string if needed.
+        3. Replace dangling key/value suffix with null.
+        4. Close remaining unbalanced object/array delimiters.
+        """
+        candidate = text.strip()
+        if not candidate:
+            return None
+
+        first_obj = candidate.find("{")
+        if first_obj < 0:
+            return None
+        if first_obj > 0:
+            candidate = candidate[first_obj:].lstrip()
+        if not candidate.startswith("{"):
+            return None
+
+        stack: List[str] = []
+        in_string = False
+        escaped = False
+        for ch in candidate:
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif ch == "\\":
+                    escaped = True
+                elif ch == "\"":
+                    in_string = False
+                continue
+
+            if ch == "\"":
+                in_string = True
+            elif ch in "{[":
+                stack.append(ch)
+            elif ch in "}]":
+                if stack and ((stack[-1] == "{" and ch == "}") or (stack[-1] == "[" and ch == "]")):
+                    stack.pop()
+
+        repaired = candidate
+        if in_string:
+            repaired += "\""
+
+        repaired = re.sub(r'("([^"\\]|\\.)*"\s*:\s*)$', r"\1null", repaired)
+        repaired = re.sub(r'([,{]\s*"([^"\\]|\\.)*")\s*$', r"\1: null", repaired)
+        repaired = re.sub(r",\s*$", "", repaired)
+
+        while stack:
+            opener = stack.pop()
+            repaired += "}" if opener == "{" else "]"
+
+        repaired = re.sub(r",\s*([}\]])", r"\1", repaired)
+        try:
+            json.loads(repaired)
+            return repaired
+        except Exception:
+            return None
+
     def _parse_analysis_json(self, text: str) -> Dict[str, Any]:
         """Parse visual analysis JSON with resilient fallback/repair passes."""
         # Strip markdown code fences if present
@@ -1500,9 +1824,23 @@ class VisualAssetProcessor:
 
             # Pass 2: conservative repair (trailing commas, smart quotes)
             repaired = self._repair_json_text(candidate)
-            if repaired != candidate:
+            try:
+                return json.loads(repaired)
+            except json.JSONDecodeError as e:
+                last_error = e
+
+            # Pass 3: normalize invalid line/control chars inside strings
+            escaped = self._escape_unescaped_newlines_in_strings(repaired)
+            try:
+                return json.loads(escaped)
+            except json.JSONDecodeError as e:
+                last_error = e
+
+            # Pass 4: salvage truncated object (unterminated string / missing closers)
+            truncated = self._repair_truncated_json_candidate(escaped)
+            if truncated:
                 try:
-                    return json.loads(repaired)
+                    return json.loads(truncated)
                 except json.JSONDecodeError as e:
                     last_error = e
 

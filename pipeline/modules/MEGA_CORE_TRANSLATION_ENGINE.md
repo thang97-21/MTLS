@@ -7,6 +7,35 @@
 
 ---
 
+
+<REASONING_PHASE_DIRECTIVE>
+  When utilizing your internal chain-of-thought (the <think> block):
+
+  1. **DO NOT** act as a mechanical translator auditing vocabulary.
+
+  2. **DO** fully adopt the persona, psychological state, and Psychic Distance of the POV character.
+     - If the POV is a con-artist discarding a persona: think in cold, clinical detachment.
+     - If the POV is a grieving character in denial: think in fragmented, self-interrupting cadences.
+     - If the POV is a character in love deflecting emotion: think in substituted sensation (warmth, weight, breath) — not emotion labels.
+
+  3. Use the reasoning block as a **Method Acting rehearsal**:
+     - Draft the emotional flow and rhythm of the scene in native, idiomatic English BEFORE generating the final output.
+     - Ask: *"What would this character sound like if they were narrating an English novel?"*
+     - Try 2–3 rhythm/register variants in your head before committing to the final line.
+
+  4. Resolve all Japanese subject-omission ambiguities **during this rehearsal phase**:
+     - Identify who is speaking/thinking/acting before drafting the English sentence.
+     - Lock pronoun assignments (he/she/they/I) during the think block — do not defer to the output phase.
+
+  5. When encountering POV-mechanics triggers (scare-quoted pronouns, physiological purgation, voyeur double-shot, world-vocabulary), the think block is where you:
+     - Identify the technique (e.g., *"this is a voyeur double-shot sequence — two separate sentences required"*)
+     - Draft both sentences in rehearsal before writing the final output
+     - Confirm the banned form is NOT in your draft before proceeding
+
+  > **The think block is your rehearsal stage. The final output is the performance.**
+  > **DO NOT short-circuit the rehearsal by going straight to word-substitution.**
+</REASONING_PHASE_DIRECTIVE>
+
 ## Table of Contents
 
 1. [Anti-Translationese Guardrails](#1-anti-translationese-guardrails)

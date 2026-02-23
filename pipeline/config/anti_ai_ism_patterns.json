@@ -1,7 +1,7 @@
 {
   "_meta": {
-    "version": "2.1",
-    "last_updated": "2026-01-30",
+    "version": "2.2",
+    "last_updated": "2026-02-15",
     "echo_detection": {
       "enabled": true,
       "proximity_window": 100
@@ -543,6 +543,16 @@
         "echo_detection_priority": true,
         "patterns": [
           {
+            "id": "quite",
+            "regex": "\\bquite\\b",
+            "display": "quite",
+            "fix": "Drop or replace with direct contemporary emphasis (pretty/really) unless formal/British register is intentional",
+            "proximity_penalty": {
+              "window": 120,
+              "severity": "MAJOR"
+            }
+          },
+          {
             "id": "somewhat",
             "regex": "\\bsomewhat\\b",
             "display": "somewhat",
@@ -554,12 +564,22 @@
           },
           {
             "id": "rather",
-            "regex": "\\brather (?!than)\\w+",
+            "regex": "(?<!would )(?<!had )\\brather\\b(?!\\s+than\\b)",
             "display": "rather [adj/adv]",
-            "fix": "Fine in dialogue, but AI overuses in narration",
+            "fix": "Avoid in teen/casual narration; reserve for intentional formal/British character voice",
             "proximity_penalty": {
               "window": 150,
-              "severity": "MINOR"
+              "severity": "MAJOR"
+            }
+          },
+          {
+            "id": "indeed",
+            "regex": "\\bindeed\\b",
+            "display": "indeed",
+            "fix": "Usually reads stiff in contemporary prose; use direct assertion unless deliberate formal voice",
+            "proximity_penalty": {
+              "window": 150,
+              "severity": "MAJOR"
             }
           },
           {

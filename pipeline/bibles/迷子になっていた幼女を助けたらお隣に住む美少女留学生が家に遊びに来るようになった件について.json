@@ -6,7 +6,7 @@
     "en": "I Rescued a Lost Little Girl, and Now the Beautiful Exchange Student Next Door Won't Stop Visiting!",
     "romaji": ""
   },
-  "last_updated": "2026-02-14T15:51:16.414984+00:00",
+  "last_updated": "2026-02-15T08:14:33.965317+00:00",
   "volumes_registered": [
     {
       "volume_id": "0b24",
@@ -52,6 +52,11 @@
       "volume_id": "02f6",
       "title": "迷子になっていた幼女を助けたら、お隣に住む美少女留学生が家に遊びに来るようになった件について 6 (ダッシュエックス文庫DIGITAL)",
       "index": 6
+    },
+    {
+      "volume_id": "1d63",
+      "title": "迷子になっていた幼女を助けたら、お隣に住む美少女留学生が家に遊びに来るようになった件について 7",
+      "index": 7
     }
   ],
   "characters": {
@@ -173,6 +178,28 @@
           },
           "keigo_switch": "Uses polite speech (です/ます) with adults/seniors/new acquaintances (Kaon, Kaguya, Sophia, Olivia, Shimizu, Kousaka, Nikaidou), casual speech with close friends/family (Charlotte, Emma, Akira, Karin).",
           "contraction_rate": "High in internal monologue and casual speech."
+        },
+        "1d63": {
+          "relationship_to_protagonist": "Protagonist",
+          "keigo_switch": {
+            "narration": "casual",
+            "internal_thoughts": "casual",
+            "speaking_to": {
+              "Charlotte Bennett": "polite-casual mix, becoming more casual and intimate in private",
+              "Emma Bennett": "gentle, affectionate, casual",
+              "Himemiya Kanon": "polite",
+              "Kaguraya": "polite",
+              "Saionji Akira": "casual, friendly",
+              "Shimizu": "casual, friendly",
+              "Kousaka": "casual, friendly",
+              "Karin": "gentle, older-brotherly, supportive",
+              "Olivia Kenny": "initially polite, then casual as requested",
+              "Sophia Bennett": "polite"
+            },
+            "emotional_shifts": "Becomes more direct and assertive when protecting others or expressing strong affection.",
+            "notes": "Akihito's internal monologue often reflects his overthinking and concern for others, sometimes leading to self-deprecating humor."
+          },
+          "character_arc": "Continues to deepen his relationship with Charlotte, becoming her fiancé. Grows more confident in his romantic role while still maintaining his caring and responsible nature towards all his loved ones."
         }
       }
     },
@@ -278,6 +305,26 @@
           },
           "keigo_switch": "Uses polite speech (です/ます) consistently, especially with Akihito, but her tone can become very intimate, breathless, and less formal when highly emotional or aroused.",
           "contraction_rate": "Low in general, but higher in internal thoughts or when flustered."
+        },
+        "1d63": {
+          "relationship_to_protagonist": "Fiancée, main love interest.",
+          "keigo_switch": {
+            "speaking_to": {
+              "Aoyagi Akihito": "polite keigo with affectionate and teasing undertones, shifts to more casual and intimate in private, especially after engagement",
+              "Emma Bennett": "gentle, affectionate, older-sisterly",
+              "Himemiya Kanon": "polite keigo",
+              "Kaguraya": "polite keigo",
+              "Saionji Akira": "polite keigo",
+              "Shimizu": "polite keigo",
+              "Kousaka": "polite keigo",
+              "Karin": "polite keigo, gentle",
+              "Olivia Kenny": "more casual, affectionate, and teasing, but still generally polite",
+              "Sophia Bennett": "polite keigo"
+            },
+            "emotional_shifts": "Stutters and uses more informal language when extremely embarrassed, flustered, or expressing strong desire. Her polite facade can crack to reveal a more playful or stubborn side, especially with Olivia or when teasing Akihito.",
+            "notes": "Her speech reflects her efforts to be 'adult-like' due to her past, but her true, more expressive self emerges around Akihito and close friends."
+          },
+          "character_arc": "Deepens her romantic and physical relationship with Akihito, becoming his fiancée. Confronts her past trauma with Akihito's support, allowing her to be more open, affectionate, and even playfully assertive, especially with her childhood friend Olivia."
         }
       },
       "biological_arrays": {
@@ -386,6 +433,22 @@
           },
           "keigo_switch": "Child-like speech, simple phrases, often uses 'んっ' for affirmation.",
           "contraction_rate": "N/A (child speech)."
+        },
+        "1d63": {
+          "relationship_to_protagonist": "Sister-figure (Akihito is her 'Onii-chan').",
+          "keigo_switch": {
+            "speaking_to": {
+              "Aoyagi Akihito": "child-like English, affectionate",
+              "Charlotte Bennett": "child-like English, affectionate",
+              "Olivia Kenny": "child-like English, playful (after warming up)",
+              "Karin": "child-like English, friendly",
+              "Himemiya Kanon": "child-like English",
+              "Kaguraya": "child-like English",
+              "Sophia Bennett": "child-like English"
+            },
+            "notes": "Her limited vocabulary and directness are key to her character voice. Often expresses emotions through actions (hugging, pouting, rubbing cheek)."
+          },
+          "character_arc": "Continues to grow more accustomed to Japan and opens up to more people beyond her immediate family (Akihito, Charlotte, Sophia), notably befriending Livvy and Karin. Remains deeply attached to Akihito."
         }
       }
     },
@@ -482,6 +545,18 @@
           },
           "keigo_switch": "Casual speech.",
           "contraction_rate": "High."
+        },
+        "1d63": {
+          "relationship_to_protagonist": "Akihito's best friend, childhood friend.",
+          "keigo_switch": {
+            "speaking_to": {
+              "Aoyagi Akihito": "casual, friendly",
+              "Charlotte Bennett": "polite, slightly formal (when giving gift)",
+              "Olivia Kenny": "casual, enthusiastic (despite language barrier)",
+              "Shimizu": "casual, complaining",
+              "Kousaka": "casual, complaining"
+            }
+          }
         }
       }
     },
@@ -836,6 +911,27 @@
     ]
   },
   "translation_rules": {
-    "style": "Natural English prose matching the genre tone."
+    "style": "Natural English prose matching the genre tone.",
+    "ai_ism_ban_list": {
+      "tier": "project_specific",
+      "banned_fillers": [
+        "quite",
+        "rather",
+        "indeed",
+        "it cannot be helped"
+      ],
+      "preferred_alternatives": {
+        "quite": "pretty / really / direct adjective",
+        "rather": "pretty / kind of / direct adjective",
+        "indeed": "yes / definitely / direct assertion",
+        "it cannot be helped": "can't help it / no choice / nothing I can do"
+      },
+      "exceptions": {
+        "formal_british_voice": [
+          "rather",
+          "indeed"
+        ]
+      }
+    }
   }
 }

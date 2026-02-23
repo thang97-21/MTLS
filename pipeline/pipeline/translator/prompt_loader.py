@@ -44,6 +44,7 @@ class PromptLoader:
         self.english_grammar_rag_path = None  # English Grammar RAG (Tier 1) - EN only
         self.english_grammar_validation_t1_path = None  # EN Grammar Validation T1 (Tier 1) - EN only
         self.literacy_techniques_path = None  # Literary techniques (Tier 1) - language-agnostic
+        self.formatting_standards_path = None  # Formatting standards + romanization (Tier 1)
 
         # Setup Three-Tier RAG paths for VN
         self.vietnamese_grammar_rag_path = None  # Vietnamese Grammar RAG (Tier 1) - VN only
@@ -77,6 +78,7 @@ class PromptLoader:
         # Literacy Techniques (Tier 1 - language-agnostic, applies to both EN and VN)
         config_dir = PIPELINE_ROOT / 'config'
         self.literacy_techniques_path = config_dir / 'literacy_techniques.json'
+        self.formatting_standards_path = config_dir / 'formatting_standards.json'
 
         self._master_prompt_cache = None
         self._rag_modules_cache = {}
@@ -88,6 +90,7 @@ class PromptLoader:
         self._english_grammar_validation_t1 = None  # EN Grammar Validation T1 (Tier 1)
         self._vietnamese_grammar_rag = None  # Vietnamese Grammar RAG (Tier 1) - anti-AI-ism + particle system
         self._literacy_techniques = None  # Literary techniques (Tier 1) - language-agnostic narrative techniques
+        self._formatting_standards = None  # Formatting standards + romanization (Tier 1)
         self._continuity_pack = None  # Continuity pack from previous volume
         self._character_names = None  # Character names from manifest
         self._glossary = None  # Glossary terms from manifest
@@ -622,6 +625,30 @@ class PromptLoader:
             logger.warning(f"Failed to load literacy techniques: {e}")
             return None
 
+    def load_formatting_standards(self) -> Optional[Dict[str, Any]]:
+        """Load formatting_standards.json (Tier 1) - punctuation + romanization standards."""
+        if self._formatting_standards:
+            return self._formatting_standards
+
+        if not self.formatting_standards_path or not self.formatting_standards_path.exists():
+            logger.debug(f"Formatting standards not found: {self.formatting_standards_path}")
+            return None
+
+        try:
+            with open(self.formatting_standards_path, 'r', encoding='utf-8') as f:
+                self._formatting_standards = json.load(f)
+            size_kb = self.formatting_standards_path.stat().st_size / 1024
+            categories = self._formatting_standards.get('pattern_categories', {})
+            category_count = len(categories) if isinstance(categories, dict) else 0
+            logger.info(
+                f"✓ Loaded formatting_standards.json: {category_count} categories "
+                f"({size_kb:.1f}KB)"
+            )
+            return self._formatting_standards
+        except Exception as e:
+            logger.warning(f"Failed to load formatting standards: {e}")
+            return None
+
     def load_narrative_tense_standards(self) -> Optional[Dict[str, Any]]:
         """
         Load narrative tense consistency standards from literacy_techniques.json.
@@ -781,12 +808,16 @@ class PromptLoader:
           - cjk_prevention_schema_*.json (language-specific)
           - anti_ai_ism_patterns.json (EN only)
           - english_grammar_rag.json (EN only)
-          - english_grammar_validation_t1.json (EN only)
           - vietnamese_grammar_rag.json (VN only)
           - literacy_techniques.json (language-agnostic)
+          - formatting_standards.json (language-agnostic)
 
-        Tier 2 (Context-aware):
+        Tier 2 (Context-aware / genre-gated):
           - Reference modules based on genre/triggers
+          - FANTASY_TRANSLATION_MODULE_EN.md: only for fantasy/isekai/action genres
+
+        Stage 3 only (NOT injected at generation time):
+          - english_grammar_validation_t1.json: post-hoc validation rules for stage3_refinement_agent.py
 
         Tier 3 (On-demand):
           - Deferred to Week 3 (retrieval-based)
@@ -838,6 +869,10 @@ class PromptLoader:
         logger.debug("[VERBOSE] Loading Tier 1: literacy_techniques.json...")
         literacy_techniques_data = self.load_literacy_techniques()
 
+        # Load Tier 1: formatting_standards.json (language-agnostic formatting + romanization)
+        logger.debug("[VERBOSE] Loading Tier 1: formatting_standards.json...")
+        formatting_standards_data = self.load_formatting_standards()
+
         # Load Tier 2: Reference modules (context-aware)
         logger.debug("[VERBOSE] Loading Tier 2 reference modules...")
         reference_modules = self.load_reference_modules(genre)
@@ -845,7 +880,19 @@ class PromptLoader:
         
         # Merge all modules for injection
         all_modules = {**tier1_modules, **reference_modules}
-        
+
+        # Tier 2 gate: skip FANTASY module for non-fantasy genres (saves ~7.7K tokens)
+        # FANTASY_TRANSLATION_MODULE_EN.md is irrelevant for romcom/contemporary/slice-of-life
+        _fantasy_genres = {"fantasy", "isekai", "action", "adventure", "dark_fantasy"}
+        _current_genre = (genre or "").lower()
+        if not any(fg in _current_genre for fg in _fantasy_genres):
+            fantasy_key = next(
+                (k for k in all_modules if "FANTASY_TRANSLATION_MODULE" in k), None
+            )
+            if fantasy_key:
+                del all_modules[fantasy_key]
+                logger.info(f"Skipped {fantasy_key} (genre='{genre}' is non-fantasy — Tier 2 gate)")
+
         final_prompt = master_prompt
         injected_count = 0
         anti_ai_ism_injected = []
@@ -937,50 +984,14 @@ class PromptLoader:
             injected_count += 1
             anti_ai_ism_injected.append('english_grammar_rag.json (Tier 1, auto-appended)')
 
-        # Inject english_grammar_validation_t1.json (Tier 1 - EN only, rhythm/literal/repetition guardrails)
-        if english_grammar_validation_t1_data and "english_grammar_validation_t1.json" in final_prompt:
-            english_validation_formatted = self._format_english_grammar_validation_t1_for_injection(
-                english_grammar_validation_t1_data
-            )
-            validation_size_kb = len(english_validation_formatted.encode('utf-8')) / 1024
-
-            categories = english_grammar_validation_t1_data.get('validation_categories', {})
-            rhythm_rules = len(categories.get('rhythm_and_emphasis', {}).get('patterns', []))
-            literal_rules = len(categories.get('literal_phrasing', {}).get('patterns', []))
-
-            logger.info(
-                f"Injecting english_grammar_validation_t1.json: "
-                f"{rhythm_rules} rhythm/emphasis + {literal_rules} literal-phrasing rules "
-                f"({validation_size_kb:.1f}KB)"
-            )
-            validation_injection = (
-                "\n<!-- START MODULE: english_grammar_validation_t1.json -->\n"
-                f"{english_validation_formatted}\n"
-                "<!-- END MODULE: english_grammar_validation_t1.json -->\n"
-            )
-            final_prompt = final_prompt.replace("english_grammar_validation_t1.json", validation_injection)
-            injected_count += 1
-            anti_ai_ism_injected.append('english_grammar_validation_t1.json (Tier 1)')
-        elif english_grammar_validation_t1_data:
-            # Auto-append if placeholder not found (fallback for prompts without placeholder)
-            english_validation_formatted = self._format_english_grammar_validation_t1_for_injection(
-                english_grammar_validation_t1_data
-            )
-            validation_size_kb = len(english_validation_formatted.encode('utf-8')) / 1024
-            categories = english_grammar_validation_t1_data.get('validation_categories', {})
-            rhythm_rules = len(categories.get('rhythm_and_emphasis', {}).get('patterns', []))
-
-            logger.info(
-                f"Appending english_grammar_validation_t1.json (no placeholder found): "
-                f"{rhythm_rules} rhythm/emphasis rules ({validation_size_kb:.1f}KB)"
-            )
-            final_prompt += (
-                "\n\n<!-- START MODULE: english_grammar_validation_t1.json (AUTO-APPENDED) -->\n"
-                f"{english_validation_formatted}\n"
-                "<!-- END MODULE: english_grammar_validation_t1.json -->\n"
-            )
-            injected_count += 1
-            anti_ai_ism_injected.append('english_grammar_validation_t1.json (Tier 1, auto-appended)')
+        # english_grammar_validation_t1.json — Stage 3 reference only, NOT injected into generation context.
+        # This file contains post-hoc validation rules (rhythm guardrails, AI-ism detection, tense checking)
+        # that are consumed by stage3_refinement_agent.py AFTER Opus generates output.
+        # Injecting it into Opus's 210K token system prompt wastes ~20K tokens on diagnostic instructions
+        # that the model cannot act on at generation time.
+        # Data is still loaded (load_english_grammar_validation_t1) for Stage 3 and literacy_techniques injection.
+        if english_grammar_validation_t1_data:
+            logger.info("english_grammar_validation_t1.json loaded for Stage 3 / literacy_techniques — NOT injected into generation context")
 
         # Inject vietnamese_grammar_rag.json (Tier 1 - VN only, anti-AI-ism + particle system)
         if vietnamese_grammar_rag_data and "vietnamese_grammar_rag.json" in final_prompt:
@@ -1049,6 +1060,39 @@ class PromptLoader:
 
             logger.info(f"Appending literacy_techniques.json (no placeholder found): {first_person + third_person + 1} techniques ({literacy_size_kb:.1f}KB)")
             final_prompt += f"\n\n<!-- START MODULE: literacy_techniques.json (AUTO-APPENDED) -->\n{literacy_formatted}\n<!-- END MODULE: literacy_techniques.json -->\n"
+            injected_count += 1
+
+        # Inject formatting_standards.json (Tier 1 - punctuation + Hepburn romanization standards)
+        if formatting_standards_data and "formatting_standards.json" in final_prompt:
+            formatting_formatted = self._format_formatting_standards_for_injection(formatting_standards_data)
+            formatting_size_kb = len(formatting_formatted.encode('utf-8')) / 1024
+            category_count = len(formatting_standards_data.get('pattern_categories', {}))
+
+            logger.info(
+                f"Injecting formatting_standards.json: {category_count} categories "
+                f"({formatting_size_kb:.1f}KB)"
+            )
+            formatting_injection = (
+                "\n<!-- START MODULE: formatting_standards.json -->\n"
+                f"{formatting_formatted}\n"
+                "<!-- END MODULE: formatting_standards.json -->\n"
+            )
+            final_prompt = final_prompt.replace("formatting_standards.json", formatting_injection)
+            injected_count += 1
+        elif formatting_standards_data:
+            formatting_formatted = self._format_formatting_standards_for_injection(formatting_standards_data)
+            formatting_size_kb = len(formatting_formatted.encode('utf-8')) / 1024
+            category_count = len(formatting_standards_data.get('pattern_categories', {}))
+
+            logger.info(
+                f"Appending formatting_standards.json (no placeholder found): "
+                f"{category_count} categories ({formatting_size_kb:.1f}KB)"
+            )
+            final_prompt += (
+                "\n\n<!-- START MODULE: formatting_standards.json (AUTO-APPENDED) -->\n"
+                f"{formatting_formatted}\n"
+                "<!-- END MODULE: formatting_standards.json -->\n"
+            )
             injected_count += 1
 
         final_size_kb = len(final_prompt.encode('utf-8')) / 1024
@@ -1152,8 +1196,14 @@ class PromptLoader:
                 final_prompt += f"\n\n<!-- VIETNAMESE STYLE GUIDE (Experimental) -->\n{style_guide_injection}\n"
                 logger.info(f"✓ [EXPERIMENTAL] Vietnamese style guide appended ({len(style_guide_injection)} chars)")
 
+        # NOTE: Anthropic Thinking Discipline was previously injected here.
+        # Moved to _build_user_prompt() in chapter_processor.py because the system
+        # instruction is replaced by cached blocks when caching is active — meaning
+        # this injection was silently dropped on every cached chapter call.
+        # The user turn is always sent fresh, so that's the correct injection point.
+
         return final_prompt
-    
+
     def _format_semantic_metadata(self, metadata: Dict[str, Any]) -> str:
         """
         Format semantic metadata for prompt injection.
@@ -2942,6 +2992,89 @@ class PromptLoader:
             parts.append("  ✓ If gaiji appears mid-dialogue, integrate naturally without breaking flow")
 
         return "\n".join(parts)
+
+    def _format_formatting_standards_for_injection(
+        self,
+        formatting_data: Dict[str, Any],
+    ) -> str:
+        """
+        Format formatting_standards.json for Tier 1 prompt injection.
+
+        Focuses on high-impact punctuation rules and Standard Hepburn romanization
+        guidance (ASCII style: no macrons, use ou/oo/ei/ii/uu).
+        """
+        lines = ["# FORMATTING STANDARDS (Tier 1)\n"]
+        lines.append("Apply these rules consistently across all chapters.\n")
+
+        categories = formatting_data.get("pattern_categories", {})
+        if not isinstance(categories, dict):
+            return "\n".join(lines)
+
+        punctuation = categories.get("punctuation_conversion", {})
+        punctuation_patterns = punctuation.get("patterns", []) if isinstance(punctuation, dict) else []
+        if punctuation_patterns:
+            lines.append("## Punctuation Conversion")
+            for pattern in punctuation_patterns:
+                if not isinstance(pattern, dict):
+                    continue
+                jp_symbol = pattern.get("japanese_symbol", "")
+                target_en = pattern.get("target_en", "")
+                target_vn = pattern.get("target_vn", "")
+                rule = pattern.get("rule", "")
+                if jp_symbol and rule:
+                    target = target_en if self.target_language == "en" else target_vn or target_en
+                    if target:
+                        lines.append(f"- {jp_symbol} -> {target} | {rule}")
+                    else:
+                        lines.append(f"- {jp_symbol}: {rule}")
+            lines.append("")
+
+        romanization = categories.get("romanization_standards", {})
+        romanization_patterns = romanization.get("patterns", []) if isinstance(romanization, dict) else []
+        if romanization_patterns:
+            lines.append("## Romanization (Standard Hepburn)")
+            for pattern in romanization_patterns:
+                if not isinstance(pattern, dict):
+                    continue
+                rule = pattern.get("rule", "")
+                if rule:
+                    lines.append(f"- {rule}")
+                usage_rules = pattern.get("usage_rules", [])
+                for usage in usage_rules[:4]:
+                    lines.append(f"  - {usage}")
+
+                examples = pattern.get("examples", [])
+                for example in examples[:4]:
+                    if not isinstance(example, dict):
+                        continue
+                    jp = example.get("jp", "")
+                    correct = example.get("correct", "")
+                    incorrect = example.get("incorrect", "")
+                    if jp and correct:
+                        lines.append(f"  - {jp}: {correct} (not {incorrect})" if incorrect else f"  - {jp}: {correct}")
+            lines.append("")
+
+        emphasis = categories.get("emphasis_texture", {})
+        emphasis_patterns = emphasis.get("patterns", []) if isinstance(emphasis, dict) else []
+        ruby_rule = next(
+            (
+                p for p in emphasis_patterns
+                if isinstance(p, dict) and p.get("id") == "ruby_text_authority"
+            ),
+            None,
+        )
+        if isinstance(ruby_rule, dict):
+            lines.append("## Ruby/Furigana Priority")
+            lines.append(f"- {ruby_rule.get('rule', 'Ruby text is authoritative.')}")
+            for usage in ruby_rule.get("usage_rules", [])[:3]:
+                lines.append(f"  - {usage}")
+            lines.append("")
+
+        lines.append("## Final Checks")
+        lines.append("- Keep punctuation normalized (no JP quote brackets in final output).")
+        lines.append("- Lock romanization on first appearance and stay consistent chapter-to-chapter.")
+        lines.append("- Use ASCII Hepburn long vowels (ou/oo/ei/ii/uu), not macrons.")
+        return "\n".join(lines)
 
     def get_total_rag_size(self) -> int:
         """Get total size of RAG modules in characters."""
