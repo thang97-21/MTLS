@@ -155,7 +155,6 @@ pipeline/scripts/*_test.py
 pipeline/scripts/corpus_scan_results*.json
 pipeline/scripts/corpus_scan_sino_vn.json
 pipeline/scripts/scan_output.txt
-docs/
 
 # Old README.md
 README_BACKUP.md
