@@ -275,6 +275,282 @@ def _advanced_settings(config: ConfigBridge) -> None:
         console.print(f"[green]✓ Default verbose mode {status}[/green]")
 
 
+
+def runtime_profile_panel(config: ConfigBridge) -> bool:
+    """Interactive runtime profile editor (Phase A)."""
+    changed = False
+
+    while True:
+        summary = config.get_runtime_summary()
+        provider = str(summary.get('provider', 'anthropic')).upper()
+
+        console.print()
+        console.print(Panel(
+            "[bold]Runtime Profile (Phase A)[/bold]\n"
+            f"[dim]Provider:[/dim] {provider}  |  "
+            f"[dim]Model:[/dim] {summary.get('model')}  |  "
+            f"[dim]Cache:[/dim] {'ON' if summary.get('cache_enabled') else 'OFF'} ({summary.get('cache_ttl')}m)\n"
+            f"[dim]Thinking:[/dim] {summary.get('thinking_type')} ({'ON' if summary.get('thinking') else 'OFF'})  |  "
+            f"[dim]Max Out:[/dim] {summary.get('max_output_tokens')}  |  "
+            f"[dim]Project Debug Log:[/dim] {'ON' if summary.get('project_debug_log') else 'OFF'}\n"
+            f"[dim]OpenRouter Route:[/dim] {'RUN' if summary.get('openrouter_selected') else 'OFF'}  |  "
+            f"[dim]Endpoint:[/dim] {summary.get('openrouter_endpoint')}  |  "
+            f"[dim]ApiKeyEnv:[/dim] {summary.get('openrouter_api_key_env')}\n"
+            f"[dim]OpenRouter Gates:[/dim] Opus1MConfirmed={'ON' if summary.get('opus_1m_confirmed') else 'OFF'}  |  "
+            f"[dim]Phase1.56:[/dim] {'HARD-DISABLED' if summary.get('phase156_hard_disabled') else 'ENABLED'}\n"
+            f"[dim]Full Prequel Gate:[/dim] {'ON' if summary.get('full_prequel_gate_enabled') else 'OFF'}  |  "
+            f"[dim]Budget:[/dim] {summary.get('full_prequel_budget_tokens')}/{summary.get('full_prequel_window_tokens')} ({int(float(summary.get('full_prequel_ratio', 0.85) or 0.85) * 100)}%)",
+            border_style='magenta',
+            padding=(1, 2),
+        ))
+
+        action = questionary.select(
+            'Runtime profile action:',
+            choices=[
+                questionary.Choice('Switch Provider', value='provider'),
+                questionary.Choice('Set Active Model', value='model'),
+                questionary.Choice('Toggle Caching', value='cache_toggle'),
+                questionary.Choice('Set Cache TTL', value='cache_ttl'),
+                questionary.Choice('Set Max Output Tokens', value='max_out'),
+                questionary.Choice('Toggle Thinking', value='thinking_toggle'),
+                questionary.Choice('Set Thinking Type', value='thinking_type'),
+                questionary.Choice('Toggle Multimodal Default', value='multimodal'),
+                questionary.Choice('Toggle Smart Chunking', value='chunking'),
+                questionary.Choice('Toggle Project Debug Log', value='project_debug_log'),
+                questionary.Choice('Toggle Batch TTL 1h Promotion (Anthropic)', value='batch_ttl_1h'),
+                questionary.Separator(),
+                questionary.Choice('Back', value='back'),
+            ],
+            style=custom_style,
+        ).ask()
+
+        if action in (None, 'back'):
+            return changed
+
+        if action == 'provider':
+            selected = questionary.select(
+                'Translator provider:',
+                choices=[
+                    questionary.Choice('Anthropic', value='anthropic'),
+                    questionary.Choice('Gemini', value='gemini'),
+                ],
+                default=config.translator_provider,
+                style=custom_style,
+            ).ask()
+            if selected and selected != config.translator_provider:
+                config.translator_provider = selected
+                changed = True
+
+        elif action == 'model':
+            model_choices = [questionary.Choice(m['label'] + ' - ' + m['desc'], value=m['value']) for m in config.get_available_models()]
+            selected = questionary.select(
+                'Active model:',
+                choices=model_choices,
+                default=config.active_model,
+                style=custom_style,
+            ).ask()
+            if selected and selected != config.active_model:
+                config.model = selected
+                changed = True
+
+        elif action == 'cache_toggle':
+            value = questionary.confirm(
+                f"Enable caching? (currently {'ON' if config.caching_enabled else 'OFF'})",
+                default=config.caching_enabled,
+                style=custom_style,
+            ).ask()
+            if value != config.caching_enabled:
+                config.caching_enabled = bool(value)
+                changed = True
+
+        elif action == 'cache_ttl':
+            value = questionary.text(
+                f'Cache TTL minutes (current: {config.cache_ttl}):',
+                default=str(config.cache_ttl),
+                validate=lambda x: _validate_int(x, 1, 240),
+                style=custom_style,
+            ).ask()
+            if value:
+                new_ttl = int(value)
+                if new_ttl != config.cache_ttl:
+                    config.cache_ttl = new_ttl
+                    changed = True
+
+        elif action == 'max_out':
+            max_cap = 128000 if config.translator_provider == 'anthropic' else 65535
+            value = questionary.text(
+                f'Max output tokens (current: {config.max_output_tokens}, cap: {max_cap}):',
+                default=str(config.max_output_tokens),
+                validate=lambda x: _validate_int(x, 256, max_cap),
+                style=custom_style,
+            ).ask()
+            if value:
+                new_val = int(value)
+                if new_val != config.max_output_tokens:
+                    config.max_output_tokens = new_val
+                    changed = True
+
+        elif action == 'thinking_toggle':
+            if config.translator_provider == 'anthropic':
+                current = config.anthropic_thinking_enabled
+                value = questionary.confirm(
+                    f"Enable Anthropic thinking? (currently {'ON' if current else 'OFF'})",
+                    default=current,
+                    style=custom_style,
+                ).ask()
+                if value != current:
+                    config.anthropic_thinking_enabled = bool(value)
+                    changed = True
+            else:
+                current = bool(config.get('gemini.thinking_mode.enabled', True))
+                value = questionary.confirm(
+                    f"Enable Gemini thinking? (currently {'ON' if current else 'OFF'})",
+                    default=current,
+                    style=custom_style,
+                ).ask()
+                if value != current:
+                    config.set('gemini.thinking_mode.enabled', bool(value))
+                    changed = True
+
+        elif action == 'thinking_type':
+            if config.translator_provider == 'anthropic':
+                current = config.anthropic_thinking_type
+                selected = questionary.select(
+                    'Anthropic thinking type:',
+                    choices=[
+                        questionary.Choice('adaptive', value='adaptive'),
+                        questionary.Choice('enabled', value='enabled'),
+                    ],
+                    default=current if current in {'adaptive', 'enabled'} else 'adaptive',
+                    style=custom_style,
+                ).ask()
+                if selected and selected != current:
+                    config.anthropic_thinking_type = selected
+                    changed = True
+            else:
+                current = str(config.get('gemini.thinking_mode.thinking_level', 'medium'))
+                selected = questionary.select(
+                    'Gemini thinking level:',
+                    choices=['low', 'medium', 'high'],
+                    default=current if current in {'low', 'medium', 'high'} else 'medium',
+                    style=custom_style,
+                ).ask()
+                if selected and selected != current:
+                    config.set('gemini.thinking_mode.thinking_level', selected)
+                    changed = True
+
+        elif action == 'multimodal':
+            current = config.multimodal_processor_enabled
+            value = questionary.confirm(
+                f"Enable multimodal by default? (currently {'ON' if current else 'OFF'})",
+                default=current,
+                style=custom_style,
+            ).ask()
+            if value != current:
+                config.multimodal_processor_enabled = bool(value)
+                changed = True
+
+        elif action == 'chunking':
+            current = config.smart_chunking_enabled
+            value = questionary.confirm(
+                f"Enable smart chunking? (currently {'ON' if current else 'OFF'})",
+                default=current,
+                style=custom_style,
+            ).ask()
+            if value != current:
+                config.smart_chunking_enabled = bool(value)
+                changed = True
+
+        elif action == 'project_debug_log':
+            current = config.translator_project_debug_log
+            value = questionary.confirm(
+                f"Save translator debug logs to project folder? (currently {'ON' if current else 'OFF'})",
+                default=current,
+                style=custom_style,
+            ).ask()
+            if value != current:
+                config.translator_project_debug_log = bool(value)
+                changed = True
+
+        elif action == 'batch_ttl_1h':
+            if config.translator_provider != 'anthropic':
+                console.print('[yellow]Batch TTL promotion applies to Anthropic only.[/yellow]')
+                continue
+            current = config.anthropic_batch_promote_ttl_1h
+            value = questionary.confirm(
+                f"Promote cache TTL to 1h in batch? (currently {'ON' if current else 'OFF'})",
+                default=current,
+                style=custom_style,
+            ).ask()
+            if value != current:
+                config.anthropic_batch_promote_ttl_1h = bool(value)
+                changed = True
+
+
+def apply_runtime_preset(config: ConfigBridge) -> Optional[str]:
+    """Apply predefined runtime presets (Phase A)."""
+    selected = questionary.select(
+        'Select runtime preset:',
+        choices=[
+            questionary.Choice('Quality Max (Opus 4.6, full quality)', value='quality_max'),
+            questionary.Choice('Fast Iterate (low-latency loop)', value='fast_iterate'),
+            questionary.Choice('Cost Saver (batch/cache heavy)', value='cost_saver'),
+            questionary.Choice('Debug (max observability)', value='debug'),
+            questionary.Separator(),
+            questionary.Choice('Cancel', value='cancel'),
+        ],
+        style=custom_style,
+    ).ask()
+
+    if selected in (None, 'cancel'):
+        return None
+
+    if selected == 'quality_max':
+        config.translator_provider = 'anthropic'
+        config.anthropic_model = 'claude-opus-4-6'
+        config.anthropic_thinking_enabled = True
+        config.anthropic_thinking_type = 'adaptive'
+        config.max_output_tokens = 128000
+        config.caching_enabled = True
+        config.cache_ttl = 5
+        config.anthropic_batch_promote_ttl_1h = True
+        config.anthropic_cache_shared_brief = True
+        config.multimodal_processor_enabled = True
+        config.smart_chunking_enabled = False
+
+    elif selected == 'fast_iterate':
+        config.translator_provider = 'anthropic'
+        config.anthropic_model = 'claude-sonnet-4-6'
+        config.anthropic_thinking_enabled = True
+        config.anthropic_thinking_type = 'enabled'
+        config.max_output_tokens = 64000
+        config.caching_enabled = True
+        config.cache_ttl = 5
+        config.multimodal_processor_enabled = False
+        config.smart_chunking_enabled = True
+
+    elif selected == 'cost_saver':
+        config.translator_provider = 'anthropic'
+        config.anthropic_model = 'claude-sonnet-4-6'
+        config.anthropic_thinking_enabled = True
+        config.anthropic_thinking_type = 'adaptive'
+        config.max_output_tokens = 64000
+        config.caching_enabled = True
+        config.cache_ttl = 5
+        config.anthropic_batch_promote_ttl_1h = True
+        config.anthropic_cache_shared_brief = True
+        config.multimodal_processor_enabled = False
+        config.smart_chunking_enabled = True
+
+    elif selected == 'debug':
+        config.verbose_mode = True
+        config.debug_mode = True
+        config.translator_project_debug_log = True
+        config.caching_enabled = True
+        config.multimodal_processor_enabled = True
+
+    return selected
+
 def show_current_settings(config: ConfigBridge) -> None:
     """
     Display current settings in a formatted table.
@@ -309,6 +585,22 @@ def show_current_settings(config: ConfigBridge) -> None:
     if config.caching_enabled:
         table.add_row("", "Cache TTL", f"{config.cache_ttl} minutes")
     table.add_row("", "Smart Chunking", "Enabled" if config.smart_chunking_enabled else "Disabled")
+
+    runtime = config.get_runtime_summary()
+    table.add_row("OpenRouter", "Route", "RUN" if runtime.get("openrouter_selected") else "OFF")
+    table.add_row("", "Endpoint", str(runtime.get("openrouter_endpoint", "")))
+    table.add_row("", "ApiKey Env", str(runtime.get("openrouter_api_key_env", "")))
+    table.add_row("", "Opus 1M Confirmed", "ON" if runtime.get("opus_1m_confirmed") else "OFF")
+    table.add_row("", "Phase 1.56", "HARD-DISABLED" if runtime.get("phase156_hard_disabled") else "ENABLED")
+    table.add_row(
+        "",
+        "Full Prequel Gate",
+        (
+            f"{'ON' if runtime.get('full_prequel_gate_enabled') else 'OFF'} "
+            f"({runtime.get('full_prequel_budget_tokens')}/{runtime.get('full_prequel_window_tokens')} "
+            f"{int(float(runtime.get('full_prequel_ratio', 0.85) or 0.85) * 100)}%)"
+        ),
+    )
 
     # Advanced
     pre_toc_status = "Enabled" if config.pre_toc_enabled else "Disabled"

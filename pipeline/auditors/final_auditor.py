@@ -89,24 +89,30 @@ class FinalAuditor:
             errors.append(f"Missing: {fidelity_path}")
         
         # Load Integrity Report (Subagent 2)
+        # VN-aware: prefer vn_name_consistency_report.json for Vietnamese volumes
         integrity_path = self.audit_dir / "integrity_audit_report.json"
-        if integrity_path.exists():
+        vn_integrity_path = self.audit_dir / "vn_name_consistency_report.json"
+        active_integrity_path = vn_integrity_path if vn_integrity_path.exists() else integrity_path
+        if active_integrity_path.exists():
             try:
-                with open(integrity_path, 'r', encoding='utf-8') as f:
+                with open(active_integrity_path, 'r', encoding='utf-8') as f:
                     self.integrity_report = json.load(f)
-                print(f"✅ Loaded: {integrity_path.name}")
+                print(f"✅ Loaded: {active_integrity_path.name}")
             except Exception as e:
                 errors.append(f"Failed to load integrity report: {e}")
         else:
             errors.append(f"Missing: {integrity_path}")
         
         # Load Prose Report (Subagent 3)
+        # VN-aware: prefer vn_prose_audit_report.json for Vietnamese volumes
         prose_path = self.audit_dir / "prose_audit_report.json"
-        if prose_path.exists():
+        vn_prose_path = self.audit_dir / "vn_prose_audit_report.json"
+        active_prose_path = vn_prose_path if vn_prose_path.exists() else prose_path
+        if active_prose_path.exists():
             try:
-                with open(prose_path, 'r', encoding='utf-8') as f:
+                with open(active_prose_path, 'r', encoding='utf-8') as f:
                     self.prose_report = json.load(f)
-                print(f"✅ Loaded: {prose_path.name}")
+                print(f"✅ Loaded: {active_prose_path.name}")
             except Exception as e:
                 errors.append(f"Failed to load prose report: {e}")
         else:

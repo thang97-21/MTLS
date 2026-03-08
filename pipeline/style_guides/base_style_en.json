@@ -1,0 +1,35 @@
+{
+  "language": "en",
+  "version": "1.0",
+  "description": "Base English translation style — universal rules for all genres. Applied first; genre guides layer on top.",
+
+  "fundamental_principles": {
+    "voice": "Preserve the author's distinct voice and rhythm — do not homogenize",
+    "naturalness": "Write as a fluent native English speaker; never carry JP syntax into EN",
+    "consistency": "Use established character names and terms throughout the volume",
+    "register": "Match the emotional and social register of the source text",
+    "no_translationese": "Avoid word-for-word literal translation; find the English idiom"
+  },
+
+  "core_grammar_rules": {
+    "no_jp_sentence_structure": "JP subject-object-verb order must be rearranged naturally",
+    "pronoun_usage": "Use gendered or gender-neutral pronouns consistently per character",
+    "tense_consistency": "Narrative past tense throughout unless genre demands otherwise",
+    "no_over_formality": "Avoid stilted formal English in casual dialogue"
+  },
+
+  "cultural_terms": {
+    "first_mention": "Introduce JP cultural terms with brief English context on first use",
+    "subsequent_mentions": "Use the established EN equivalent or romanized term consistently",
+    "honorifics": "Retain Japanese honorifics (san, kun, chan, senpai) in dialogue when they carry relational meaning not expressible in EN"
+  },
+
+  "quality_checklist": {
+    "no_translationese": "No literal JP syntax carried into EN",
+    "no_jp_residue": "No romanized JP terms without prior introduction",
+    "character_voice": "Each character has a distinct, consistent speech pattern",
+    "cultural_terms": "First-use cultural terms carry English context gloss",
+    "no_filter_words": "Minimal use of filter words (saw, felt, thought that) in close third/first person",
+    "rhythm": "Sentence rhythm matches the pacing of the source scene"
+  }
+}

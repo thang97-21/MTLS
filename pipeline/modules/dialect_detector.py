@@ -16,10 +16,17 @@ Version: 1.0
 
 import re
 import json
+import warnings
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
+_DEPRECATION_MESSAGE = (
+    "modules.dialect_detector is deprecated. Use Phase 1.55 .context/dialect_fingerprint.json "
+    "via ChapterProcessor._load_dialect_guidance() instead."
+)
+warnings.warn(_DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
 
 # Load dialect patterns from config
 PATTERNS_FILE = Path(__file__).parent.parent / "config" / "gap_patterns_curated.json"
@@ -362,6 +369,7 @@ def detect_chapter_dialects(source_text: str, chapter_id: str = "unknown") -> Tu
     Returns:
         Tuple of (has_dialects: bool, guidance_text: str)
     """
+    warnings.warn(_DEPRECATION_MESSAGE, DeprecationWarning, stacklevel=2)
     detector = DialectDetector()
     report = detector.detect_dialects(source_text, chapter_id)
     

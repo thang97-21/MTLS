@@ -1,0 +1,550 @@
+{
+  "language": "en",
+  "genre": "autobiography_memoir",
+  "version": "1.0",
+  "description": "Autobiography / artist memoir — first-person introspective prose. Applies to non-fiction memoir works. Prioritizes direct emotional assertion, consistent narrator voice, and natural movement between past and present.",
+
+  "target_audience": {
+    "age_group": "18-35",
+    "reading_level": "accessible to literary — emotionally sophisticated without being academic",
+    "context": "Readers familiar with Japanese music/arts culture seeking empathy and insight into an artist's life"
+  },
+
+  "tone_guidelines": {
+    "narration_style": "first-person, introspective, emotionally direct — no glass between narrator and reader",
+    "emotional_register": "honest and vulnerable — DO NOT soften emotions with uncertainty words",
+    "pacing": "slower than light novel — longer sentences, extended reflection, less action",
+    "humor": "rare and self-deprecating when it appears",
+    "tense_handling": "past is the base layer; present tense marks the narrator reflecting NOW — see temporal_framing_markers"
+  },
+
+  "CRITICAL_ANTI_HEDGING_RULE": {
+    "priority": "ABSOLUTE",
+    "version": "2.1",
+    "description": "Memoir uses direct emotional assertion. DO NOT insert uncertainty words into emotions already stated directly in the source. This rule is unconditional — applies in closing chapters, retrospective passages, and emotional climaxes equally.",
+    "banned_insertions": [
+      "it seemed like — ABSOLUTE BAN in memoir. Permitted ONLY if JP uses rashii / you da / mitai da as a pure evidential (not causal context).",
+      "I felt as though — permitted ONLY if JP uses you na ki ga suru / you na kanji specifically.",
+      "perhaps — permitted ONLY if JP uses kamoshirenai / kamoshirenakatta / kana / janai kana. NOT darou, no darou, seika, kara, node, dakara.",
+      "maybe — permitted ONLY if JP uses kana / kashira. NOT darou.",
+      "somewhat — permitted ONLY if JP uses sukoshi / aru teido / tasho as a direct qualifier for the emotion.",
+      "a bit — permitted ONLY if JP uses sukoshi / chotto as direct qualifier.",
+      "I think (as epistemic softener for already-asserted facts) — remove unless JP has explicit epistemic marker.",
+      "I suppose (when JP has no corresponding epistemic marker) — remove.",
+      "kind of / sort of (when JP has no qualifier) — remove."
+    ],
+    "causal_particle_trap": {
+      "warning": "THIS IS THE MOST COMMON VIOLATION — JP causal/explanatory particles are NOT epistemic markers and must NOT license hedging in EN.",
+      "forbidden_mappings": [
+        "seika (せいか — due to / as a result of) → NEVER 'perhaps' or 'it seemed like'. Correct EN: 'because of... / thanks to... / as a result of...'",
+        "no darou / no da (のだろう/のだ — explanatory/presupposition) → NEVER 'perhaps'. Correct EN: 'that must be why / of course / no wonder'",
+        "darou (だろう — plain conjecture / softened assertion) → NOT automatically 'perhaps'. Translate the actual semantic content.",
+        "kara / node / dakara (から/ので/だから — causal = because/therefore) → NEVER 'perhaps'. Translate the causal relationship.",
+        "to iwareteiru / to sareteiru (言われている/とされている — reported/said to be) → NEVER 'it seems like'. Correct EN: 'people say / it is said / reportedly'"
+      ],
+      "allowed_mappings": [
+        "kamoshirenai (かもしれない) → perhaps / maybe ✅",
+        "kana / janai kana (かな/じゃないかな) → maybe / I wonder ✅",
+        "rashii (らしい) → apparently / it seems (hearsay) ✅",
+        "you da (ようだ) as evidential → it seems / appears ✅ — ONLY when inference from external evidence, not causal context"
+      ]
+    },
+    "letter_section_note": {
+      "description": "In closing letters addressed to readers/fans, the author often uses kamoshirenai/kamo to express genuine uncertainty about the future or reader reactions. This is a true epistemic marker — 'perhaps/maybe' IS licensed in these cases.",
+      "example": "'Perhaps I'll be criticized again.' (JP: ってまた言われてしまうかも) ✅ — LICENSED because JP uses kamo",
+      "contrast": "'Perhaps this way of singing suits me.' (JP: この歌い方が合ってる気がした) ❌ — NOT LICENSED because JP uses ki ga shita (incidental feeling), not epistemic marker"
+    },
+    "principle": "If the JP source says 怖かった (I was scared), EN must be 'I was terrified' or 'I was scared' — NOT 'I think I was scared' / 'I felt as though I were scared' / 'I was kind of scared'. The only test: does the JP source use a genuine epistemic marker? If not — do not insert a hedge.",
+    "examples": {
+      "jp_source": "あの時、私は本当に怖かった",
+      "wrong_en": "Back then, I think I was really kind of scared",
+      "correct_en": "Back then, I was terrified.",
+      "jp_source_2": "怒りで全てを壊したかった",
+      "wrong_en_2": "I sort of wanted to destroy everything out of anger",
+      "correct_en_2": "I wanted to tear everything apart.",
+      "jp_source_3": "時間が増えたせいか、再生数が少しずつ伸びていた",
+      "wrong_en_3": "Perhaps because I was spending more time scrolling, the view count seemed to gradually rise",
+      "correct_en_3": "As I spent more time online, the view count climbed slowly upward.",
+      "note_3": "seika is a causal particle — translate as causation, not hedged observation",
+      "jp_source_4": "自分でもよくわからなかった",
+      "correct_en_4": "I didn't even understand myself. — EXCEPTION: source-justified uncertainty"
+    },
+    "self_check_protocol": "After translation, scan the full output for: perhaps / maybe / it seemed / I felt as though / sort of / kind of / I think / I suppose / somewhat / a bit. For EACH instance: check JP source — is there a genuine epistemic marker? If not → delete the hedge.",
+    "exception": "Hedging IS correct when the author herself expresses uncertainty in the source: 自分でもよくわからなかった → 'I didn't even know what I wanted' (source-justified). Test: does the JP source state uncertainty? If yes → preserve hedge."
+  },
+
+  "temporal_framing_markers": {
+    "description": "Memoir moves constantly between past events and the present narrator reflecting. Use these markers to anchor each layer clearly.",
+    "present_reflection_markers": {
+      "description": "The narrator TODAY looking back — inject at paragraph start when JP source uses present-tense reflection (今思えば, 今では, 今になって, 今ならわかる)",
+      "expressions": [
+        "Looking back now...",
+        "Now, as I write these words...",
+        "I know now that...",
+        "After everything, I can see that...",
+        "When I look back, I realize...",
+        "These days, I understand...",
+        "Only now do I understand —",
+        "Now, looking back, I finally see:"
+      ]
+    },
+    "past_narration_markers": {
+      "description": "The narrator IN THAT MOMENT — when JP source is clearly narrating past events (あの頃, その時, 当時)",
+      "expressions": [
+        "Back then...",
+        "In those days...",
+        "That day...",
+        "At the time...",
+        "When I was...",
+        "During those years...",
+        "In those years...",
+        "That was when..."
+      ]
+    },
+    "distance_markers": {
+      "description": "Emotional distancing — narrator refers to past self in third-person-adjacent",
+      "expressions": [
+        "The girl I was then...",
+        "The person I was at seventeen...",
+        "That version of me...",
+        "The me who didn't yet know..."
+      ]
+    },
+    "temporal_aspect_rule": {
+      "priority": "HIGH",
+      "description": "JP verb form -ta (past tense) MUST map to past tense in EN, even when the surrounding paragraph is present-tense reflection.",
+      "warning": "COMMON TRAP: JP uses -ta for habitual or somatic states in memoir (things that were true in the past). If a VN equivalent would need 'hồi đó', then EN needs 'back then' or equivalent. Do not use present-habitual EN when JP states a past-completed or past-habitual fact.",
+      "examples": [
+        {
+          "jp": "Vocaloidを聴いて歌うかぎり、私の心の中心はいつも熱かった",
+          "wrong_en": "As long as I was listening to Vocaloid and singing, the center of my heart always burns hot",
+          "correct_en": "Back then, as long as I was listening to Vocaloid and singing, the core of my heart stayed lit.",
+          "note": "熱かった = past tense → EN must anchor to past, not use present frame"
+        },
+        {
+          "jp": "あの頃、私は毎日泣いていた",
+          "wrong_en": "In those days, I cry every day",
+          "correct_en": "In those days, I cried every single day.",
+          "note": "Past habitual -ていた requires simple past or past progressive in EN"
+        }
+      ],
+      "fix_pattern": "When JP source uses -ta/-teita for actions/states in memoir narrative, EN must have at least one of: [back then / in those days / at the time / during that period / that year] in the passage if no temporal anchor already exists."
+    },
+    "missing_marker_detection": {
+      "description": "When JP source contains a reflection marker (今思えば, あの時を振り返ると, 今ならわかる) but the EN passage has no corresponding anchor — MUST inject.",
+      "trigger_jp_phrases": [
+        "今思えば → Looking back now,",
+        "今ならわかる → I know now —",
+        "あの時を振り返ると → When I look back on those days,",
+        "今になって思う → Now I realize,",
+        "今でも忘れない → Even now I can't forget",
+        "当時の自分は → The person I was then..."
+      ]
+    }
+  },
+
+  "inner_monologue_patterns": {
+    "attribution_style": "em-dash prefix, NOT quotation marks",
+    "correct_format": "— I wondered if I'd made the right choice.",
+    "wrong_format": "\"I wondered if I'd made the right choice.\"",
+    "no_filter_words": {
+      "description": "Remove epistemic filter words — assert inner states directly",
+      "wrong": "I thought that maybe it was a mistake.",
+      "correct": "It was a mistake — I knew it the moment I walked in.",
+      "wrong_2": "I felt like perhaps I didn't belong.",
+      "correct_2": "I didn't belong there. Every room reminded me of it."
+    },
+    "fragmented_thoughts": "Preserve incomplete thoughts as fragments. Do not complete them into full sentences.",
+    "italics": "Do not add italics to inner monologue unless source text marks it explicitly"
+  },
+
+  "pronoun_system": {
+    "note": "First-person I throughout all narration — no drift to 'you' or 'one' or 'we' in single-narrator memoir",
+    "narrator_self_reference": "I (always — no royal we, no second-person addressing self)",
+    "flashback_exception": "In deeply embedded flashbacks, the narrator may quote her younger self using direct speech — this is NOT a pronoun drift",
+    "addressing_reader": "Rare and intentional — only if source text directly addresses reader (あなた in narrative position)"
+  },
+
+  "music_industry_vocabulary": {
+    "description": "JP music industry terms — use these EN equivalents consistently. Avoid generic substitutions.",
+    "terms": [
+      {
+        "jp_term": "レーベル",
+        "en_primary": "record label",
+        "en_alternative": "label",
+        "register": "industry standard",
+        "note": "Never 'brand' or 'company' in music context",
+        "example": "レーベルと契約した → signed with the label / signed to a record label"
+      },
+      {
+        "jp_term": "デビュー",
+        "en_primary": "debut",
+        "en_alternative": "debut release",
+        "register": "standard EN borrowed back",
+        "note": "Retain 'debut' — do not paraphrase as 'first release' unless contextually necessary",
+        "example": "デビューした → made her debut / debuted"
+      },
+      {
+        "jp_term": "MV",
+        "en_primary": "music video",
+        "en_alternative": "MV",
+        "register": "casual: MV / formal: music video",
+        "note": "MV acceptable as abbreviation after first full use",
+        "example": "MVの撮影 → shooting the music video / filming the MV"
+      },
+      {
+        "jp_term": "ライブ",
+        "en_primary": "live show",
+        "en_alternative": "concert / live performance",
+        "register": "depends on scale",
+        "note": "Small venue: live show. Arena/tour: concert. Never 'live' as standalone noun in formal prose",
+        "example": "ライブで歌った → performed live / sang at the show"
+      },
+      {
+        "jp_term": "アーティスト",
+        "en_primary": "artist",
+        "en_alternative": "performer",
+        "register": "standard",
+        "note": "Use 'artist' when source uses アーティスト — not 'singer' unless source says 歌手",
+        "example": "アーティストとして → as an artist"
+      },
+      {
+        "jp_term": "ファン",
+        "en_primary": "fans",
+        "en_alternative": "fanbase",
+        "register": "standard",
+        "note": "Plural preferred in general reference; singular fan for individual anecdote",
+        "example": "ファンへの感謝 → gratitude to my fans"
+      },
+      {
+        "jp_term": "コンサート",
+        "en_primary": "concert",
+        "en_alternative": "show",
+        "register": "standard",
+        "note": "Use concert for formal large-scale events; show for smaller or casual contexts",
+        "example": "コンサートツアー → concert tour"
+      },
+      {
+        "jp_term": "ツアー",
+        "en_primary": "tour",
+        "en_alternative": "concert tour",
+        "register": "standard",
+        "note": "Retain 'tour' — do not paraphrase",
+        "example": "全国ツアー → nationwide tour / national tour"
+      },
+      {
+        "jp_term": "シングル",
+        "en_primary": "single",
+        "en_alternative": "debut single",
+        "register": "industry standard",
+        "note": "Never 'song release' — use 'single' in music industry context",
+        "example": "ファーストシングル → first single / debut single"
+      },
+      {
+        "jp_term": "アルバム",
+        "en_primary": "album",
+        "en_alternative": "full-length album",
+        "register": "standard",
+        "note": "Retain 'album' — do not use 'record' unless source specifically implies vinyl era",
+        "example": "アルバムを出す → release an album"
+      },
+      {
+        "jp_term": "レコーディング",
+        "en_primary": "recording",
+        "en_alternative": "recording session",
+        "register": "standard",
+        "note": "Use 'recording session' when referring to a specific session; 'recording' for the general process",
+        "example": "レコーディングスタジオ → recording studio"
+      },
+      {
+        "jp_term": "スタジオ",
+        "en_primary": "studio",
+        "en_alternative": "recording studio",
+        "register": "standard",
+        "note": "Qualify as 'recording studio' on first use; 'studio' thereafter",
+        "example": "スタジオに入る → head into the studio"
+      },
+      {
+        "jp_term": "プロデューサー",
+        "en_primary": "producer",
+        "en_alternative": "music producer",
+        "register": "industry standard",
+        "note": "Qualify as 'music producer' on first use to distinguish from film producer",
+        "example": "プロデューサーと組む → work with a producer"
+      },
+      {
+        "jp_term": "マネージャー",
+        "en_primary": "manager",
+        "en_alternative": "talent manager",
+        "register": "standard",
+        "note": "Retain 'manager' — do not localize to 'agent' unless source clearly means agent",
+        "example": "マネージャーに相談する → talk to my manager"
+      },
+      {
+        "jp_term": "事務所",
+        "en_primary": "agency",
+        "en_alternative": "talent agency / management company",
+        "register": "industry standard",
+        "note": "Use 'agency' in industry context — not 'office' (literal) or 'company' (too generic)",
+        "example": "事務所に所属する → signed to an agency / under agency management"
+      },
+      {
+        "jp_term": "オーディション",
+        "en_primary": "audition",
+        "en_alternative": "auditions",
+        "register": "standard",
+        "note": "Retain 'audition' — do not paraphrase as 'tryout'",
+        "example": "オーディションに受かる → pass the audition / make it through auditions"
+      },
+      {
+        "jp_term": "センター",
+        "en_primary": "center position",
+        "en_alternative": "lead / center",
+        "register": "idol industry term",
+        "note": "Use 'center position' on first use for reader orientation; 'center' thereafter",
+        "example": "センターを務める → take the center position"
+      },
+      {
+        "jp_term": "握手会",
+        "en_primary": "handshake event",
+        "en_alternative": "fan meet",
+        "register": "idol industry term",
+        "note": "Use 'handshake event' with brief context on first use; glosses unnecessary in memoir context if established",
+        "example": "握手会でファンに会う → meet fans at handshake events"
+      },
+      {
+        "jp_term": "サイン会",
+        "en_primary": "signing event",
+        "en_alternative": "autograph session",
+        "register": "standard",
+        "note": "Either 'signing event' or 'autograph session' is acceptable",
+        "example": "サイン会を開く → hold a signing event"
+      },
+      {
+        "jp_term": "フェス",
+        "en_primary": "festival",
+        "en_alternative": "music festival",
+        "register": "casual abbreviation",
+        "note": "Use 'festival' or 'music festival' — do not carry 'fes' romanization into EN",
+        "example": "夏フェスに出る → perform at a summer festival"
+      },
+      {
+        "jp_term": "バックダンサー",
+        "en_primary": "backup dancer",
+        "en_alternative": "background dancer",
+        "register": "standard",
+        "note": "Use 'backup dancer' — not 'back dancer' (Japanglish)",
+        "example": "バックダンサーとして働く → work as a backup dancer"
+      },
+      {
+        "jp_term": "振り付け",
+        "en_primary": "choreography",
+        "en_alternative": "routine",
+        "register": "standard",
+        "note": "Use 'choreography' for the craft; 'routine' for a specific performed piece",
+        "example": "振り付けを覚える → learn the choreography"
+      },
+      {
+        "jp_term": "歌詞",
+        "en_primary": "lyrics",
+        "en_alternative": "words",
+        "register": "standard",
+        "note": "Use 'lyrics' for music context — not 'words' or 'text'",
+        "example": "歌詞を書く → write the lyrics"
+      },
+      {
+        "jp_term": "作詞",
+        "en_primary": "lyric writing",
+        "en_alternative": "writing lyrics",
+        "register": "standard",
+        "note": "Use 'write the lyrics' (verb form) or 'lyricist' (noun for role)",
+        "example": "作詞作曲する → write and compose / write her own songs"
+      },
+      {
+        "jp_term": "作曲",
+        "en_primary": "composing",
+        "en_alternative": "composition / songwriting",
+        "register": "standard",
+        "note": "Use 'composing' or 'write the music' — not 'making music' in formal memoir prose",
+        "example": "作曲家 → composer"
+      },
+      {
+        "jp_term": "サウンドチェック",
+        "en_primary": "sound check",
+        "en_alternative": "soundcheck",
+        "register": "industry standard",
+        "note": "Either 'sound check' (two words) or 'soundcheck' (one word) is acceptable; be consistent",
+        "example": "サウンドチェックをする → do the sound check"
+      },
+      {
+        "jp_term": "リハーサル",
+        "en_primary": "rehearsal",
+        "en_alternative": "rehearsals",
+        "register": "standard",
+        "note": "Retain 'rehearsal' — do not paraphrase as 'practice' in professional context",
+        "example": "リハーサルを重ねる → put in hours of rehearsal"
+      },
+      {
+        "jp_term": "ステージ",
+        "en_primary": "stage",
+        "en_alternative": "the stage",
+        "register": "standard",
+        "note": "Retain 'stage' — do not over-translate to 'platform' or 'performance area'",
+        "example": "ステージに立つ → stand on stage / take the stage"
+      },
+      {
+        "jp_term": "マイク",
+        "en_primary": "mic",
+        "en_alternative": "microphone",
+        "register": "casual: mic / formal: microphone",
+        "note": "Use 'mic' in performance/action contexts; 'microphone' in technical/formal descriptions",
+        "example": "マイクを握る → grip the mic"
+      },
+      {
+        "jp_term": "チャート",
+        "en_primary": "charts",
+        "en_alternative": "music charts",
+        "register": "industry standard",
+        "note": "Use 'the charts' — not 'rankings' or 'ranking board'",
+        "example": "チャートで一位 → number one on the charts"
+      },
+      {
+        "jp_term": "ヒット曲",
+        "en_primary": "hit song",
+        "en_alternative": "hit",
+        "register": "standard",
+        "note": "Use 'hit song' on first reference; 'hit' thereafter",
+        "example": "ヒット曲が生まれた → it became a hit"
+      },
+      {
+        "jp_term": "デモ",
+        "en_primary": "demo",
+        "en_alternative": "demo track",
+        "register": "industry standard",
+        "note": "Retain 'demo' — do not paraphrase as 'rough recording'",
+        "example": "デモを聞かせてもらう → listen to the demo"
+      },
+      {
+        "jp_term": "インタビュー",
+        "en_primary": "interview",
+        "en_alternative": "press interview",
+        "register": "standard",
+        "note": "Retain 'interview' — qualify as 'press interview' when context is media/promotion",
+        "example": "インタビューに答える → give an interview"
+      },
+      {
+        "jp_term": "プレッシャー",
+        "en_primary": "pressure",
+        "en_alternative": "the weight of expectations",
+        "register": "standard / literary",
+        "note": "Use 'pressure' for direct context; 'the weight of...' for literary/memoir register",
+        "example": "プレッシャーを感じる → feel the pressure / feel the weight of it all"
+      },
+      {
+        "jp_term": "スランプ",
+        "en_primary": "slump",
+        "en_alternative": "creative block / rough patch",
+        "register": "depends on context",
+        "note": "Use 'slump' for performance/career context; 'creative block' for writing/artistic context",
+        "example": "スランプに陥る → fall into a slump / hit a rough patch"
+      },
+      {
+        "jp_term": "復帰",
+        "en_primary": "comeback",
+        "en_alternative": "return",
+        "register": "industry standard",
+        "note": "Use 'comeback' for post-hiatus return; 'return' for general resumption",
+        "example": "復帰を果たす → stage a comeback / make her return"
+      },
+      {
+        "jp_term": "引退",
+        "en_primary": "retirement",
+        "en_alternative": "retiring from",
+        "register": "standard",
+        "note": "Use 'retirement' for deliberate departure from the industry; 'stepping back' for partial withdrawal",
+        "example": "引退を決意する → decide to retire"
+      },
+      {
+        "jp_term": "グループ",
+        "en_primary": "group",
+        "en_alternative": "the group",
+        "register": "standard",
+        "note": "Use 'group' for idol/music group; 'band' only if source explicitly uses バンド",
+        "example": "グループを離れる → leave the group"
+      },
+      {
+        "jp_term": "ソロ",
+        "en_primary": "solo",
+        "en_alternative": "solo career / solo act",
+        "register": "standard",
+        "note": "Retain 'solo' — do not paraphrase as 'on her own' unless for stylistic variation",
+        "example": "ソロで活動する → pursue a solo career"
+      }
+    ]
+  },
+
+  "sentence_rhythm": {
+    "description": "Memoir sentence rhythm: punctuated by short declarative sentences after extended reflection",
+    "technique": "Long reflection → short declarative punch. Mirrors JP memoir rhythm.",
+    "example": {
+      "long_reflection": "I had practiced for months, told myself I was ready, convinced everyone around me that this was the right time.",
+      "short_punch": "I wasn't ready."
+    },
+    "fragments": "Deliberate sentence fragments are permitted for emotional emphasis. They are a feature, not an error.",
+    "em_dash_use": "Em dash (—) for abrupt shifts in thought or inner-monologue attribution. Not hyphen (-). Not en dash (–)."
+  },
+
+  "negative_vectors": {
+    "description": "Patterns that degrade memoir quality",
+    "forbidden": [
+      "ABSOLUTE: Inserting hedging words not in source (perhaps, maybe, it seemed, sort of, kind of, I think, I suppose) — see CRITICAL_ANTI_HEDGING_RULE.",
+      "ABSOLUTE: Letting JP causal particles (seika, kara, node, darou) become 'perhaps/maybe/it seemed' — translate the causal relationship, not a hedge.",
+      "ABSOLUTE: Omitting temporal framing markers when JP source uses 今思えば / 今ならわかる / あの頃を振り返って — inject the EN equivalent.",
+      "ABSOLUTE: Using present tense for JP -ta/-teita verbs in past memoir narrative — use past tense with temporal anchor.",
+      "Converting direct assertions into questions ('Was it really worth it?' when source states directly)",
+      "Adding sentimental framing not in source ('heartwarming', 'touching moment')",
+      "Normalizing fragments — completing them into full sentences erases voice",
+      "Using passive voice where source uses active first-person",
+      "Inserting moral conclusions the narrator doesn't state",
+      "Using asterisks (*) for inner monologue — use em dash (—) prefix only"
+    ]
+  },
+
+  "in_context_learning_examples": [
+    {
+      "label": "Direct emotional assertion — grief",
+      "jp": "ステージに立った瞬間、全部が消えた。泣き声も、怒りも、自分が誰なのかも。ただ音楽だけが残った。",
+      "wrong_en": "The moment I stepped onto the stage, it seemed like everything disappeared. The sobbing, the anger, even a sense of who I was — it all sort of faded. Only the music seemed to remain.",
+      "correct_en": "The moment I stepped onto the stage, everything disappeared. The sobbing. The anger. Who I even was. Only the music remained.",
+      "note": "Direct assertion throughout. Fragments preserved. No hedging inserted."
+    },
+    {
+      "label": "Temporal framing — present reflection",
+      "jp": "今思えば、あの時の私はまだ何もわかっていなかった。",
+      "wrong_en": "I think that perhaps at that time, I didn't understand much.",
+      "correct_en": "Looking back now, I understood nothing. Not really.",
+      "note": "Present reflection marker injected. Double hedge 'I think that perhaps' collapsed to direct statement."
+    },
+    {
+      "label": "Inner monologue — em dash, no filter",
+      "jp": "（なぜ私だけが、こんなに苦しいんだろう）",
+      "wrong_en": "I thought to myself, 'Why am I the only one who has to suffer like this?'",
+      "correct_en": "— Why was I the only one? Why did it have to be this heavy?",
+      "note": "Em dash attribution. No 'I thought'. Rhetorical expansion preserves internal voice."
+    },
+    {
+      "label": "Music industry vocabulary — label and debut",
+      "jp": "その年の春、私はとうとうレーベルと契約し、デビューした。",
+      "wrong_en": "That spring, I finally signed a contract with the company and made my first appearance.",
+      "correct_en": "That spring, I finally signed with the label and made my debut.",
+      "note": "Record label → label. デビュー → debut. Not paraphrased generically."
+    },
+    {
+      "label": "Source-justified uncertainty — exception",
+      "jp": "自分でも何がしたかったのか、よくわからなかった。",
+      "wrong_en": "I knew what I wanted.",
+      "correct_en": "I didn't even know what I wanted. Not then.",
+      "note": "Source explicitly states uncertainty — hedging is CORRECT here. Adding 'Not then' creates temporal anchor."
+    }
+  ]
+}

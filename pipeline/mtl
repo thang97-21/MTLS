@@ -24,7 +24,25 @@ NC='\033[0m' # No Color
 
 # Check for Python
 find_python() {
-    # Try python3 first, then python
+    # Prefer project-managed environments first
+    if [ -x "$SCRIPT_DIR/../python_env/bin/python3" ]; then
+        echo "$SCRIPT_DIR/../python_env/bin/python3"
+        return
+    fi
+    if [ -x "$SCRIPT_DIR/../python_env/bin/python" ]; then
+        echo "$SCRIPT_DIR/../python_env/bin/python"
+        return
+    fi
+    if [ -x "$SCRIPT_DIR/.venv/bin/python" ]; then
+        echo "$SCRIPT_DIR/.venv/bin/python"
+        return
+    fi
+    if [ -x "$SCRIPT_DIR/venv/bin/python" ]; then
+        echo "$SCRIPT_DIR/venv/bin/python"
+        return
+    fi
+
+    # Fallback to system interpreter
     if command -v python3 &> /dev/null; then
         echo "python3"
     elif command -v python &> /dev/null; then
@@ -50,22 +68,15 @@ if [ -z "$PYTHON_CMD" ]; then
     exit 1
 fi
 
-# Check for virtual environment
-VENV_PYTHON="$SCRIPT_DIR/venv/bin/python"
-
-if [ -f "$VENV_PYTHON" ]; then
-    PYTHON_CMD="$VENV_PYTHON"
-fi
-
 # Check dependencies
 check_deps() {
-    $PYTHON_CMD -c "import questionary; import rich" 2>/dev/null
+    "$PYTHON_CMD" -c "import questionary; import rich" 2>/dev/null
     return $?
 }
 
 if ! check_deps; then
     echo -e "${YELLOW}Installing required dependencies...${NC}"
-    $PYTHON_CMD -m pip install questionary rich -q
+    "$PYTHON_CMD" -m pip install questionary rich -q
 
     if ! check_deps; then
         echo -e "${RED}Failed to install dependencies.${NC}"
@@ -78,8 +89,8 @@ fi
 # Run the pipeline
 if [ $# -eq 0 ]; then
     # No arguments - launch TUI
-    exec $PYTHON_CMD "$SCRIPT_DIR/scripts/mtl.py"
+    exec "$PYTHON_CMD" "$SCRIPT_DIR/scripts/mtl.py"
 else
     # Pass all arguments to mtl.py
-    exec $PYTHON_CMD "$SCRIPT_DIR/scripts/mtl.py" "$@"
+    exec "$PYTHON_CMD" "$SCRIPT_DIR/scripts/mtl.py" "$@"
 fi

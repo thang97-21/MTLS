@@ -438,7 +438,7 @@
     "description": "Context-aware selective loading based on chapter metadata",
     "target_size_per_chapter": "20-35KB",
     "decision_factors": [
-      "RTAS range (emotion intensity)",
+      "PAIR_ID (relationship signal state)",
       "Genre (romcom, action, slice_of_life, fantasy)",
       "Character archetypes present in chapter",
       "Scene types (confession, crisis, physical_intimacy)",

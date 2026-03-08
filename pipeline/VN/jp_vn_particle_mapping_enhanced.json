@@ -1447,7 +1447,7 @@
   "usage_guidelines": {
     "priority_order": [
       "1. Check archetype signature patterns first",
-      "2. Apply RTAS-based guidance for intimate vs hostile contexts",
+      "2. Apply PAIR_ID-based guidance for intimate vs hostile contexts",
       "3. Consider gender restrictions (though VN doesn't mark gender)",
       "4. Use default mappings if no specific guidance applies",
       "5. Verify corpus frequency (higher = more reliable)"
@@ -1464,7 +1464,7 @@
     "integration_notes": [
       "This RAG is automatically loaded by vietnamese_grammar_rag.py",
       "Use get_vietnamese_particle_for_japanese() method for lookups",
-      "Combine with character archetype and RTAS score for best results",
+      "Combine with character archetype and PAIR_ID signal for best results",
       "Particle selection should consider dialogue context and speaker relationship"
     ]
   }

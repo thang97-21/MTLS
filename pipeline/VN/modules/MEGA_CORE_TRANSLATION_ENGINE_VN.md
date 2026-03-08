@@ -10,7 +10,7 @@
 ## Table of Contents
 
 1. [Pronoun Priority System](#1-pronoun-priority-system)
-2. [RTAS Scoring Logic](#2-rtas-scoring-logic)
+2. [JP Signal Recognition & PAIR_ID System](#2-jp-signal-recognition-pair-id-system)
 3. [Rhythm & Pacing Engine](#3-rhythm-pacing-engine)
 4. [Register Formality System](#4-register-formality-system)
 5. [Safety Compliance Matrix](#5-safety-compliance-matrix)
@@ -22,7 +22,7 @@
 # 1. Pronoun Priority System
 
 **Purpose:** Vietnamese pronoun selection is THE most critical aspect of JP-VN translation.
-**Framework:** FAMILY > ARCHETYPE > UNKNOWN_HIERARCHY > RTAS
+**Framework:** FAMILY > ARCHETYPE > UNKNOWN_HIERARCHY > PAIR_ID
 
 ---
 
@@ -36,7 +36,7 @@ Level 1: FAMILY_OVERRIDE (Cannot be overridden)
 
 Level 2: ARCHETYPE_VOICE_LOCK (If pair != empty)
   └── Character-specific pronoun pairs
-  └── Overrides RTAS-based selection
+  └── Overrides PAIR_ID selection
   └── Example: OJOU = "Ta-Nguoi|Em-Anh"
 
 Level 3: UNKNOWN_HIERARCHY (If hierarchy unclear)
@@ -44,9 +44,9 @@ Level 3: UNKNOWN_HIERARCHY (If hierarchy unclear)
   └── HIGH_SCHOOL: To-Cau (peer assumption)
   └── ADULT: Toi-Anh/Co (formal default)
 
-Level 4: RTAS_PAIR_MAP (Default selection)
+Level 4: PAIR_ID lookup table (Default selection)
   └── Relationship-based pronoun pairs
-  └── Score 1.0-5.0, baseline 3.0
+  └── JP signal state → PAIR_ID mapping
 ```
 
 ---
@@ -90,29 +90,28 @@ When family members use "-chan" for younger sibling, KEEP as-is:
 
 ---
 
-<a name="2-rtas-scoring-logic"></a>
-# 2. RTAS Scoring Logic
+<a name="2-jp-signal-recognition-pair-id-system"></a>
+# 2. JP Signal Recognition & PAIR_ID System
 
-**Definition:** Relationship Tension & Affection Score (RTAS) measures intimacy on 1.0-5.0 scale.
-**Baseline:** 3.0
+**Definition:** Opus reads JP relationship signals natively. PAIR_ID is determined by signal state, not numeric calculation.
 **Purpose:** Determines pronoun pair selection when FAMILY and ARCHETYPE don't override.
 
 ---
 
-## RTAS Pair Map (Mixed Gender / Romance)
+## PAIR_ID Lookup Table (Mixed Gender / Romance)
 
-| Score Range | Self | Other | Tone |
-|-------------|------|-------|------|
-| 1.0-1.5 | Toi | Anh/Co | Formal, distant |
-| 1.5-2.5 | Toi | Anh/Chi | Polite, defensive |
-| 2.0-3.5 | To | Cau | Casual peers |
-| 3.5-4.2 | To | Anh | Friendly, warm |
-| 4.2-5.0 | Em | Anh | Romantic, intimate |
+| PAIR_ID | Self | Other | Tone | JP Signal State |
+|---------|------|-------|------|-----------------|
+| PAIR_0 (Distant/Formal) | Em/Toi | Anh/Chi | Formal, distant | Honorifics (-sama, -san), polite register, no familiarity |
+| PAIR_1 (Acquaintance) | Minh | Cau | Polite, casual | Casual register, first-name basis, no honorific |
+| PAIR_2 (Close Friends) | To | Cau | Friendly, warm | Banter, teasing, shared history, physical contact |
+| PAIR_3 (Romantic) | Em | Anh | Romantic, intimate | Confession, intimate pronouns, romantic context |
+| PAIR_FAM (Family) | Con/Chau | Bo/Me/Ong/Ba | Family warmth | Explicit family relationship |
 
-**Threshold Rule (4.0):**
-- Below 4.0: Keep JP honorifics (-san, -kun, Senpai)
-- At/Above 4.0: Switch to VN pronouns (Anh/Em)
-- Exception: FAMILY always uses VN regardless of RTAS
+**Threshold Rule (PAIR_2 → PAIR_3):**
+- Below PAIR_3: Keep JP honorifics (-san, -kun, Senpai)
+- At PAIR_3: Switch to VN pronouns (Anh/Em)
+- Exception: FAMILY always uses VN regardless of PAIR_ID
 
 ---
 
@@ -193,19 +192,21 @@ Tier 3 (Tao-Mày) - Bros, no filter:
 
 ---
 
-## RTAS Modifiers
+## JP Signal Detection Reference
 
-| Category | Modifier | Range |
-|----------|----------|-------|
-| Pronouns | Intimate pronouns | +0.3 to +0.7 |
-| Honorifics | No honorific / -chan | +0.5 |
-| Honorifics | -sama / formal | -0.8 |
-| Particles | Warm particles (nha, ne) | +0.2 to +0.4 |
-| Context | Conflict/anger | -2.0 |
-| Context | Confession/intimate | +1.5 |
-| Proxemics | Physical closeness | +0.5 to +1.2 |
+Opus reads these signals natively to determine PAIR_ID:
 
-**Formula:** `RTAS_FINAL = 3.0 + Sum(MODIFIERS)`
+| Signal Category | Examples | PAIR_ID Direction |
+|-----------------|----------|-------------------|
+| Pronouns | Intimate pronouns (ore/omae, kimi) | Toward PAIR_2/3 |
+| Honorifics | No honorific / -chan | Toward PAIR_2/3 |
+| Honorifics | -sama / formal register | Toward PAIR_0 |
+| Particles | Warm particles (nha, ne) | Toward PAIR_2/3 |
+| Context | Conflict/anger | Toward PAIR_0/1 |
+| Context | Confession/intimate | PAIR_3 |
+| Proxemics | Physical closeness | Toward PAIR_2/3 |
+
+> **Note:** Opus reads JP relationship signals natively. PAIR_ID is determined by signal state, not numeric calculation.
 
 ---
 
@@ -270,7 +271,7 @@ Example (DELINQ):
 ```
 
 ### Staccato Breathless (Extreme)
-**Trigger:** RTAS >= 4.8 OR peak emotional moment
+**Trigger:** PAIR_3 (romantic peak) OR peak emotional moment
 **Word Count:** 2-5 word fragments
 **Usage:** Sparingly, 2-8 fragments max
 

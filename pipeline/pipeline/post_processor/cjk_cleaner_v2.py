@@ -23,8 +23,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 try:
     from pipeline.common.gemini_client import GeminiClient
+    from pipeline.common.phase_llm_router import PhaseLLMRouter
+    from pipeline.config import get_phase_model as _get_phase_model
 except ImportError:
     GeminiClient = None
+    PhaseLLMRouter = None
+    def _get_phase_model(phase, fallback):
+        return fallback
 
 try:
     from pipeline.post_processor.cjk_unicode_detector import (
@@ -145,7 +150,12 @@ class EnhancedCJKCleaner:
 
         # Initialize Gemini client for corrections
         if use_llm_correction and GeminiClient:
-            self.gemini_client = gemini_client or GeminiClient()
+            _cjk_model = _get_phase_model("2.5", "gemini-2.5-pro")
+            self.gemini_client = gemini_client or (
+                PhaseLLMRouter().get_client("2.5", model=_cjk_model)
+                if PhaseLLMRouter
+                else GeminiClient()
+            )
         else:
             self.gemini_client = None
 

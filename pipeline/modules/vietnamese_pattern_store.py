@@ -342,6 +342,64 @@ class VietnamesePatternStore:
 
         rag_data = self.load_rag_data()
         negative_texts_by_category: Dict[str, List[str]] = {}
+        normalized_structured_entries = 0
+
+        def _normalize_negative_entry(entry: Any) -> List[str]:
+            """
+            Normalize negative-anchor entries into plain text strings.
+
+            Supports mixed schemas:
+            - Legacy: string entries
+            - Structured: dict entries with pattern/example_wrong/example_correct/reason
+            - Nested: list entries
+            """
+            nonlocal normalized_structured_entries
+
+            if entry is None:
+                return []
+
+            if isinstance(entry, str):
+                text = entry.strip()
+                return [text] if text else []
+
+            if isinstance(entry, dict):
+                normalized_structured_entries += 1
+                # Preferred key order for structured anti-pattern entries.
+                ordered_keys = [
+                    "text",
+                    "pattern",
+                    "example_wrong",
+                    "example_correct",
+                    "reason",
+                    "description",
+                    "note",
+                ]
+                parts: List[str] = []
+                for key in ordered_keys:
+                    value = entry.get(key)
+                    if isinstance(value, str) and value.strip():
+                        parts.append(value.strip())
+
+                if not parts:
+                    # Fallback: collect primitive leaf values.
+                    for value in entry.values():
+                        if isinstance(value, str) and value.strip():
+                            parts.append(value.strip())
+                        elif isinstance(value, (int, float, bool)):
+                            parts.append(str(value))
+
+                if not parts:
+                    parts.append(json.dumps(entry, ensure_ascii=False))
+
+                return [" | ".join(parts)]
+
+            if isinstance(entry, list):
+                flattened: List[str] = []
+                for sub in entry:
+                    flattened.extend(_normalize_negative_entry(sub))
+                return flattened
+
+            return [str(entry)]
 
         # Collect negative vector texts from pattern_categories and advanced_patterns
         for section_key in ["pattern_categories", "advanced_patterns"]:
@@ -350,9 +408,25 @@ class VietnamesePatternStore:
                 if not isinstance(cat_data, dict):
                     continue
                 neg_block = cat_data.get("negative_vectors", {})
-                neg_texts = neg_block.get("texts", [])
-                if neg_texts:
-                    negative_texts_by_category[cat_name] = neg_texts
+                # Support both formats:
+                #   {"texts": [...]}  — legacy dict format
+                #   [...]             — direct array format
+                if isinstance(neg_block, list):
+                    neg_entries = neg_block
+                elif isinstance(neg_block, dict):
+                    neg_entries = neg_block.get("texts", [])
+                else:
+                    neg_entries = []
+
+                if not isinstance(neg_entries, list):
+                    neg_entries = [neg_entries]
+
+                normalized_texts: List[str] = []
+                for entry in neg_entries:
+                    normalized_texts.extend(_normalize_negative_entry(entry))
+
+                if normalized_texts:
+                    negative_texts_by_category[cat_name] = normalized_texts
 
         if not negative_texts_by_category:
             logger.info("[VN-GRAMMAR] No negative_vectors found in RAG data")
@@ -368,7 +442,15 @@ class VietnamesePatternStore:
                 all_texts.append(text)
                 text_to_category_map.append((cat_name, i))
 
-        logger.info(f"[VN-GRAMMAR] Embedding {len(all_texts)} negative anchors across {len(negative_texts_by_category)} categories...")
+        logger.info(
+            f"[VN-GRAMMAR] Embedding {len(all_texts)} negative anchors across "
+            f"{len(negative_texts_by_category)} categories..."
+        )
+        if normalized_structured_entries:
+            logger.info(
+                f"[VN-GRAMMAR] Normalized {normalized_structured_entries} structured "
+                "negative-anchor entries into plain embedding text."
+            )
 
         try:
             embeddings = self.vector_store.embed_texts_batch(all_texts)
@@ -519,6 +601,40 @@ class VietnamesePatternStore:
                 "lookup_stats": {"patterns_queried": 0, "high_conf_hits": 0, "medium_conf_hits": 0}
             }
 
+        # Defensive normalization: detector output may occasionally include
+        # nested lists or malformed items. Keep only dict pattern entries.
+        normalized_patterns: List[Dict] = []
+        dropped_items = 0
+        for item in patterns:
+            if isinstance(item, dict):
+                normalized_patterns.append(item)
+            elif isinstance(item, list):
+                for sub in item:
+                    if isinstance(sub, dict):
+                        normalized_patterns.append(sub)
+                    else:
+                        dropped_items += 1
+            else:
+                dropped_items += 1
+
+        if dropped_items:
+            logger.debug(
+                f"[VN-GRAMMAR] Dropped {dropped_items} malformed pattern item(s) "
+                f"during guidance normalization"
+            )
+
+        if not normalized_patterns:
+            return {
+                "high_confidence": [],
+                "medium_confidence": [],
+                "lookup_stats": {
+                    "patterns_queried": 0,
+                    "high_conf_hits": 0,
+                    "medium_conf_hits": 0,
+                    "dropped_malformed": dropped_items,
+                }
+            }
+
         high_confidence = []
         medium_confidence = []
 
@@ -526,7 +642,7 @@ class VietnamesePatternStore:
         queries = []
         query_metadata = []
 
-        for pattern_info in patterns:
+        for pattern_info in normalized_patterns:
             category = pattern_info.get("category", "")
             indicator = pattern_info.get("indicator", "")
             pattern_context = pattern_info.get("context", "")
@@ -578,6 +694,20 @@ class VietnamesePatternStore:
                     distance = results['distances'][0][i] if results['distances'] else 0
                     raw_similarity = 1 - distance
                     metadata = results['metadatas'][0][i] if results['metadatas'] else {}
+                    if not isinstance(metadata, dict):
+                        logger.debug(
+                            f"[VN-GRAMMAR] Non-dict metadata returned from vector store: "
+                            f"{type(metadata).__name__}"
+                        )
+                        metadata = {}
+
+                    usage_rules_raw = metadata.get("usage_rules", "")
+                    if isinstance(usage_rules_raw, str):
+                        usage_rules = usage_rules_raw.split(" | ") if usage_rules_raw else []
+                    elif isinstance(usage_rules_raw, list):
+                        usage_rules = [str(x) for x in usage_rules_raw if x]
+                    else:
+                        usage_rules = []
 
                     # Apply negative anchor penalty
                     similarity = max(0.0, raw_similarity - neg_penalty)
@@ -593,7 +723,7 @@ class VietnamesePatternStore:
                         "natural_example": metadata.get("natural", ""),
                         "jp_example": metadata.get("jp_example", ""),
                         "priority": metadata.get("priority", "medium"),
-                        "usage_rules": metadata.get("usage_rules", "").split(" | ") if metadata.get("usage_rules") else [],
+                        "usage_rules": usage_rules,
                         "corpus_frequency": metadata.get("corpus_frequency", "0")
                     }
 
@@ -611,7 +741,8 @@ class VietnamesePatternStore:
             "high_confidence": high_confidence,
             "medium_confidence": medium_confidence,
             "lookup_stats": {
-                "patterns_queried": len(patterns),
+                "patterns_queried": len(normalized_patterns),
+                "dropped_malformed": dropped_items,
                 "high_conf_hits": len(high_confidence),
                 "medium_conf_hits": len(medium_confidence),
                 "neg_penalties_applied": neg_penalties_applied

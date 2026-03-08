@@ -62,7 +62,8 @@ class XHTMLBuilder:
         chapter_title: str = "",
         chapter_id: str = "",
         lang_code: str = "en",
-        book_title: str = ""
+        book_title: str = "",
+        place_title_after_leading_illustration: bool = False,
     ) -> str:
         """
         Build industry-standard XHTML structure for a chapter.
@@ -73,6 +74,8 @@ class XHTMLBuilder:
             chapter_id: Chapter identifier for section/div id attribute
             lang_code: ISO 639-1 language code
             book_title: Book title for <title> element
+            place_title_after_leading_illustration: When True, move the H1 below
+                preserved chapter-opening illustration blocks while keeping semantic H1
 
         Returns:
             Complete XHTML document string
@@ -87,12 +90,61 @@ class XHTMLBuilder:
         # Build chapter title if provided
         title_html = ""
         if chapter_title_text:
-            title_html = f'      <h1>{escaped_title}</h1>\n\n'
+            if place_title_after_leading_illustration:
+                content = XHTMLBuilder._insert_title_after_leading_illustrations(
+                    content,
+                    f'      <h1 class="post-header-title">{escaped_title}</h1>'
+                )
+            else:
+                title_html = f'      <h1>{escaped_title}</h1>\n\n'
 
         if epub_version == "EPUB3":
             return XHTMLBuilder._build_epub3_chapter(content, title_html, section_id, lang_code, page_title)
         else:
             return XHTMLBuilder._build_epub2_chapter(content, title_html, section_id, lang_code, page_title)
+
+    @staticmethod
+    def _insert_title_after_leading_illustrations(content: str, title_markup: str) -> str:
+        """
+        Insert chapter title after leading header-illustration blocks.
+
+        Leading illustration region is defined as one or more top-of-content
+        `<p class="illustration">...</p>` paragraphs plus any immediately
+        following blank paragraphs (`<p><br/></p>`).
+        """
+        if not content or not title_markup:
+            return content
+
+        lines = content.splitlines()
+        prefix: list[str] = []
+        seen_header_illustration = False
+        index = 0
+
+        while index < len(lines):
+            stripped = lines[index].strip()
+            if not stripped:
+                prefix.append(lines[index])
+                index += 1
+                continue
+            if stripped.startswith('<p class="illustration">'):
+                seen_header_illustration = True
+                prefix.append(lines[index])
+                index += 1
+                continue
+            if seen_header_illustration and stripped == '<p><br/></p>':
+                prefix.append(lines[index])
+                index += 1
+                continue
+            break
+
+        if not seen_header_illustration:
+            return f"{title_markup}\n\n{content}"
+
+        remainder = lines[index:]
+        rebuilt = prefix + [title_markup, ""]
+        if remainder:
+            rebuilt.extend(remainder)
+        return "\n".join(rebuilt)
 
     @staticmethod
     def _build_epub3_chapter(content: str, title_html: str, section_id: str, lang_code: str, page_title: str) -> str:

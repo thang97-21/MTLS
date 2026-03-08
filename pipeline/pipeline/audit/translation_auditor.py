@@ -457,7 +457,7 @@ class TranslationAuditor:
         "ONEE": ["nè", "nhé", "cơ mà", "bé ngoan"],
     }
 
-    # VN RTAS warm particles (require RTAS >= 3.5)
+    # VN warm particles (require PAIR_2+ / close relationship signal)
     VN_WARM_PARTICLES = ["nha", "nè", "nhé", "nghen", "há"]
 
     # VN Defensive particles (TSUN mode)

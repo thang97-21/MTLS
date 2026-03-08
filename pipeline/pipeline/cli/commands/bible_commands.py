@@ -14,9 +14,10 @@ Commands:
 
 import json
 import logging
+import re
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from pipeline.cli.commands.basic_commands import CommandResult
 
@@ -283,6 +284,12 @@ def _bible_import(args: Any, controller: Any) -> CommandResult:
         logger.info(f"    {cat}: {count} entries added/enriched")
     logger.info(f"\n  Bible now has {bible.entry_count()} total entries")
 
+    _auto_update_series_bible_index(
+        args=args,
+        series_id=bible_id,
+        volume_id_hint=manifest.get('volume_id') or volume_id,
+    )
+
     return CommandResult(exit_code=0)
 
 
@@ -490,6 +497,12 @@ def _bible_sync(args: Any, controller: Any) -> CommandResult:
                 logger.warning(f"       {c}")
         logger.info(f"     Total changes: {p['total_changes']}")
 
+    _auto_update_series_bible_index(
+        args=args,
+        series_id=result.get('series_id', ''),
+        volume_id_hint=result.get('volume_id', volume_id),
+    )
+
     return CommandResult(exit_code=0)
 
 
@@ -514,3 +527,98 @@ def _resolve_volume_dir(volume_id: str, work_dir: Path) -> Path | None:
 
     logger.error(f"Volume not found: {volume_id}")
     return None
+
+
+def _extract_short_volume_id(value: str) -> Optional[str]:
+    """Extract short volume token (e.g. 25d9) from volume identifiers."""
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+
+    if re.fullmatch(r"[0-9a-fA-F]{4,8}", raw):
+        return raw.lower()
+
+    match = re.search(r"_([0-9a-fA-F]{4,8})$", raw)
+    if match:
+        return match.group(1).lower()
+
+    match = re.search(r"([0-9a-fA-F]{4,8})$", raw)
+    if match:
+        return match.group(1).lower()
+
+    return None
+
+
+def _auto_update_series_bible_index(args: Any, series_id: str, volume_id_hint: str) -> bool:
+    """
+    Auto-refresh SeriesBibleRAG index after bible-changing actions.
+
+    Policy:
+      - Default: incremental update.
+      - If DB does not exist yet: bootstrap all registered volumes.
+      - If --rebuild-series-bible-index-if-exists and DB exists: full rebuild.
+      - If --skip-series-bible-index: skip entirely.
+    """
+    if getattr(args, 'skip_series_bible_index', False):
+        logger.info("[BIBLE-RAG] Auto-update skipped (--skip-series-bible-index)")
+        return False
+
+    sid = str(series_id or "").strip()
+    if not sid:
+        logger.info("[BIBLE-RAG] Auto-update skipped (missing series_id)")
+        return False
+
+    from pipeline.config import PIPELINE_ROOT
+    index_dir = PIPELINE_ROOT / "chroma_series_bible" / sid
+    index_exists = index_dir.exists()
+
+    rebuild_if_exists = bool(getattr(args, 'rebuild_series_bible_index_if_exists', False))
+    incremental = True
+    volume_id_only = _extract_short_volume_id(volume_id_hint)
+
+    if rebuild_if_exists and index_exists:
+        incremental = False
+        volume_id_only = None
+        logger.info(f"[BIBLE-RAG] Rebuild requested and existing DB found: {index_dir}")
+    elif not index_exists:
+        volume_id_only = None
+        logger.info(f"[BIBLE-RAG] No existing DB found — bootstrapping full index for {sid!r}")
+    else:
+        logger.info(
+            f"[BIBLE-RAG] Incremental update for {sid!r}"
+            + (f" (volume {volume_id_only})" if volume_id_only else "")
+        )
+
+    try:
+        import importlib.util as _ilu
+
+        scripts_dir = PIPELINE_ROOT / "scripts"
+        spec = _ilu.spec_from_file_location(
+            "index_series_bible", scripts_dir / "index_series_bible.py"
+        )
+        if spec is None or spec.loader is None:
+            logger.warning("[BIBLE-RAG] Failed to load index_series_bible.py (spec unavailable)")
+            return False
+
+        mod = _ilu.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        total = mod.build_series_bible_index(
+            series_id=sid,
+            pipeline_root=PIPELINE_ROOT,
+            work_root=PIPELINE_ROOT / "WORK",
+            volume_id_only=volume_id_only,
+            incremental=incremental,
+            batch_size=50,
+        )
+        if total < 0:
+            logger.warning("[BIBLE-RAG] Auto-update failed")
+            return False
+
+        logger.info(
+            f"[BIBLE-RAG] Auto-update complete: {total} new passage(s)"
+            + (" (full rebuild)" if not incremental else "")
+        )
+        return True
+    except Exception as exc:
+        logger.warning(f"[BIBLE-RAG] Auto-update error: {exc}")
+        return False

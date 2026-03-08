@@ -6,43 +6,57 @@ Handles the translation of a single chapter using Gemini and RAG context.
 import re
 import json
 import logging
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, TYPE_CHECKING
 from dataclasses import dataclass
 
 from pipeline.common.gemini_client import GeminiClient
 from pipeline.translator.prompt_loader import PromptLoader
 from pipeline.translator.context_manager import ContextManager
 from pipeline.translator.quality_metrics import QualityMetrics, AuditResult
+from pipeline.translator.koji_fox_validator import KojiFoxValidator, KojiFoxReport
+from pipeline.translator.voice_validator import VoiceConsistencyValidator
 from pipeline.translator.config import (
     get_generation_params,
     get_model_name,
     get_safety_settings,
+    get_tool_mode_config,
     get_translation_config,
+    is_volume_context_legacy_mode,
 )
 from pipeline.translator.scene_break_formatter import SceneBreakFormatter
 from pipeline.translator.chunk_merger import ChunkMerger
 from pipeline.translator.glossary_lock import GlossaryLock
-from pipeline.translator.volume_context_integration import VolumeContextIntegration
+from pipeline.translator.tools import (
+    TOOL_NAME_DECLARE_TRANSLATION_PARAMETERS,
+    TOOL_NAME_FLAG_STRUCTURAL_CONSTRAINT,
+    TOOL_NAME_LOOKUP_CULTURAL_TERM,
+    TOOL_NAME_REPORT_TRANSLATION_QC,
+    TOOL_NAME_VALIDATE_GLOSSARY_TERM,
+    build_translation_tools,
+    handle_flag_structural_constraint,
+    handle_lookup_cultural_term,
+    handle_report_translation_qc,
+    handle_validate_glossary_term,
+)
 from pipeline.post_processor.vn_cjk_cleaner import VietnameseCJKCleaner
 from pipeline.post_processor.reference_context_compiler import compile_reference_reports
-# Stage3RefinementAgent disabled (2026-02-19): Sentence splitting creates awkward splits
-# from pipeline.post_processor.stage3_refinement_agent import Stage3RefinementAgent
 from pipeline.config import PIPELINE_ROOT
 from modules.gap_integration import GapIntegrationEngine
-# RTASCalculator disabled (2026-02-10): Direct manifest reading instead
-# from modules.rtas_calculator import RTASCalculator, VoiceSettings
-
-# Dialect detection (v1.0 - 2026-02-01)
-try:
-    from modules.dialect_detector import detect_chapter_dialects
-    DIALECT_DETECTION_AVAILABLE = True
-except ImportError:
-    DIALECT_DETECTION_AVAILABLE = False
-    detect_chapter_dialects = None
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from pipeline.translator.koji_fox_validator import KojiFoxReport
+    from pipeline.translator.tools.qc_reporter import TranslationQcSelfReport
+    from pipeline.translator.tools.structural_constraint_flagger import (
+        StructuralConstraintFlag,
+    )
+    from pipeline.translator.tools.translation_parameter_handler import (
+        DeclaredTranslationParameters,
+    )
 
 @dataclass
 class TranslationResult:
@@ -64,7 +78,17 @@ class TranslationResult:
     warnings: List[str] = None
     error: Optional[str] = None
     context_update: Optional[Dict[str, Any]] = None
-    stage3_metrics: Optional[Dict[str, Any]] = None  # Stage 3 refinement stats (2026-02-18)
+    stage3_metrics: Optional[Dict[str, Any]] = None
+    declared_params: Optional["DeclaredTranslationParameters"] = None
+    tool_calls_made: List[str] = None
+    tool_call_count: int = 0
+    declared_vs_actual: Optional[Dict[str, Any]] = None
+    koji_fox_report: Optional["KojiFoxReport"] = None
+    qc_self_report: Optional["TranslationQcSelfReport"] = None
+    qc_intent_gap: Optional[Dict[str, Any]] = None
+    structural_constraints: List["StructuralConstraintFlag"] = None
+    cost_audit: Optional[Dict[str, Any]] = None
+    adn_review_flags: Optional[Dict[str, Any]] = None
 
 class ChapterProcessor:
     def __init__(
@@ -73,7 +97,8 @@ class ChapterProcessor:
         prompt_loader: PromptLoader,
         context_manager: ContextManager,
         target_language: str = "en",
-        work_dir: Optional[Path] = None
+        work_dir: Optional[Path] = None,
+        tool_mode_config: Optional[Dict[str, Any]] = None,
     ):
         self.client = gemini_client
         self.prompt_loader = prompt_loader
@@ -82,38 +107,86 @@ class ChapterProcessor:
         # Derive model name from the active client so Anthropic provider doesn't
         # fall back to the Gemini config value.
         self.model_name = getattr(gemini_client, "model", None) or get_model_name()
-        self.gen_params = get_generation_params()
+        self.gen_params = get_generation_params("2.5")
+        self.gen_params.setdefault("temperature", 0.7)
+        self.gen_params.setdefault("max_output_tokens", 65535)
+        self.gen_params.setdefault("top_p", 0.95)
+        self.gen_params.setdefault("top_k", 40)
+        self.gen_params.setdefault("thinking_budget", -1)
         self.safety_settings = get_safety_settings()
+        self.translation_config = get_translation_config()
+        self.tool_mode_config = tool_mode_config or get_tool_mode_config()
+        self.tool_mode_enabled = bool(self.tool_mode_config.get("enabled", False))
+
+        adn_gate_cfg = self.translation_config.get("adn_v2_enforcement", {})
+        if not isinstance(adn_gate_cfg, dict):
+            adn_gate_cfg = {}
+        self.adn_checklist_gate_enabled = bool(adn_gate_cfg.get("enabled", True))
+        gate_mode = str(adn_gate_cfg.get("mode", "hard_flag") or "hard_flag").strip().lower()
+        if gate_mode in {"off", "disabled", "none"}:
+            self.adn_checklist_gate_enabled = False
+            gate_mode = "hard_flag"
+        if gate_mode not in {"hard_flag", "fail"}:
+            logger.warning(
+                f"[ADN-GATE] Unsupported mode '{gate_mode}', defaulting to 'hard_flag'"
+            )
+            gate_mode = "hard_flag"
+        self.adn_checklist_gate_mode = gate_mode
+        if self.adn_checklist_gate_enabled:
+            logger.info(f"✓ ADN v2 checklist gate enabled (mode={self.adn_checklist_gate_mode})")
+
+        # Koji Fox EPS data for scene anchors (injected from agent.py)
+        self._voice_fingerprints: List[Dict] = []
+        self._eps_data: Dict[str, Dict] = {}
+
+        # Gap 8.2/8.3: POV character override (injected from agent.py for non-protagonist chapters)
+        # When set, KojiFoxValidator.validate_chapter() uses the POV character's fingerprint
+        # contraction_rate as the authoritative baseline instead of declared_params.
+        self._chapter_pov: str = ""
+
+        # Gap 8.2 extension: multi-POV intra-chapter hot-switch segments
+        # Populated by agent.py when pov_tracking has ≥2 entries. Each entry is a dict
+        # with keys: character, fingerprint, start_line, end_line, description.
+        # When non-empty, takes precedence over _chapter_pov in the validator call.
+        self._chapter_pov_segments: list = []
+
+        # Inline/whole afterword mode override injected by agent.py.
+        # When true, chapter-level EPS/KF voice validators are bypassed.
+        self._afterword_mode_override: bool = False
+
+        if self.tool_mode_enabled and type(self.client).__name__ != "AnthropicClient":
+            logger.warning(
+                "[TOOL-MODE] Enabled in config but active provider is not Anthropic. "
+                "Disabling for this ChapterProcessor instance."
+            )
+            self.tool_mode_enabled = False
+
+        if self.tool_mode_enabled:
+            logger.info("✓ Translation tool mode enabled (pre-commit parameter declaration)")
+
+        # Hallucination-reduction guardrails (low-risk, retry only on severe leakage)
+        halluc_cfg = self.translation_config.get("hallucination_reduction", {})
+        if not isinstance(halluc_cfg, dict):
+            halluc_cfg = {}
+        self.hallucination_reduction_enabled = bool(halluc_cfg.get("enabled", True))
+        self.hallucination_retry_enabled = bool(halluc_cfg.get("retry_on_violation", True))
+        try:
+            self.hallucination_max_retries = max(0, int(halluc_cfg.get("max_retries", 1)))
+        except Exception:
+            self.hallucination_max_retries = 1
+        if self.hallucination_reduction_enabled:
+            logger.info(
+                f"✓ Hallucination guard enabled (retry={self.hallucination_retry_enabled}, "
+                f"max_retries={self.hallucination_max_retries})"
+            )
 
         # Initialize Vietnamese CJK cleaner for post-processing (VN only)
         self._vn_cjk_cleaner = None
         if target_language.lower() in ['vi', 'vn']:
             self._vn_cjk_cleaner = VietnameseCJKCleaner(strict_mode=True, log_substitutions=True)
             logger.info("✓ Vietnamese CJK post-processor initialized (hard substitution enabled)")
+            logger.info("[KANJIAPI] Disabled for VN: external dictionary fallback is OFF (Opus-native mode)")
         
-        # Initialize Self-Healing Anti-AI-ism Agent for post-processing
-        # DISABLED (2026-02-10): 1a60 audit proved Gemini's native output has near-zero AI-ism contamination.
-        # Post-processing over-correction damages natural prose quality. Trust the model.
-        self._anti_ai_ism_agent = None
-        self.enable_anti_ai_ism = False  # PERMANENTLY DISABLED - model quality is excellent
-
-        # Initialize Stage 3 Refinement Agent (2026-02-18)
-        # Handles: hard cap sentence splitting, tense consistency, literary flow analysis
-        # DISABLED 2026-02-19: Sentence splitting creates awkward splits, raw output preferred
-        self._stage3_agent = None
-        self.enable_stage3 = False  # DISABLED - raw model output preferred
-        # try:
-        #     self._stage3_agent = Stage3RefinementAgent(
-        #         config_path=None,  # Will auto-resolve to english_grammar_validation_t1.json
-        #         dry_run=False  # Production mode - apply fixes
-        #     )
-        #     self.enable_stage3 = True
-        #     logger.info("✓ Stage 3 Refinement Agent initialized (hard cap splitting enabled)")
-        # except Exception as e:
-        #     logger.warning(f"⚠ Stage 3 initialization failed: {e}")
-        #     logger.warning("Continuing without Stage 3 post-processing")
-        logger.info("⚠ Stage 3 Refinement Agent DISABLED (raw model output mode)")
-
         # Load character names from manifest.json for name consistency
         self.character_names = self._load_character_names()
         if self.character_names:
@@ -132,14 +205,26 @@ class ChapterProcessor:
         self.enable_multimodal = False  # Will be enabled from agent if needed
         self.visual_cache = None  # VisualCacheManager, set by agent
 
-        # Volume-level context integration (Phase 1.2 - Full Long Context)
+        # Bible pull context block (new default volume context source)
+        self.bible_context_block: Optional[str] = None
+
+        # Deprecated rolling volume-context stack (guarded by feature flag)
         self.volume_context_integration = None
-        if work_dir:
-            self.volume_context_integration = VolumeContextIntegration(
-                work_dir=work_dir,
-                gemini_client=self.client
-            )
-            logger.info("✓ Volume-level context integration enabled")
+        self._legacy_volume_context_mode = is_volume_context_legacy_mode()
+        if self._legacy_volume_context_mode and work_dir:
+            try:
+                from pipeline.translator.volume_context_integration import VolumeContextIntegration
+                self.volume_context_integration = VolumeContextIntegration(
+                    work_dir=work_dir,
+                    gemini_client=self.client
+                )
+                logger.info("✓ Legacy rolling volume context integration enabled")
+            except Exception as e:
+                logger.warning(
+                    f"[VOLUME-CTX][LEGACY] Failed to initialize legacy integration: {e}"
+                )
+        elif not self._legacy_volume_context_mode:
+            logger.info("✓ Volume context source: Series Bible pull block (legacy disabled)")
 
         # Massive chapter handling
         translation_config = get_translation_config()
@@ -155,11 +240,7 @@ class ChapterProcessor:
 
         self.glossary_lock: Optional[GlossaryLock] = None
 
-        # RTAS Calculator - DISABLED (2026-02-10)
-        # Bypass RTAS calculation, read contraction rates directly from manifest
-        self.rtas_calculator = None  # Disabled
-        self.voice_settings: Dict[str, Any] = {}  # Unused - kept for compatibility
-        self.enable_rtas = False  # DISABLED - direct manifest reading instead
+        # Contraction and register rules are read directly from manifest metadata.
         self.contraction_rates: Dict[str, int] = {}  # Direct manifest-to-rate mapping
         self.relationship_progress: List[Dict[str, Any]] = []  # Chapter-scoped contraction overrides
         self._load_contraction_rates_from_manifest()
@@ -167,16 +248,588 @@ class ChapterProcessor:
         self._stage2_registers = self._load_stage2_registers()
         self._stage2_rhythm_targets = self._load_stage2_rhythm_targets()
         self._phase155_context = self._load_phase155_context_offload()
+        # Shared vector stores (lazy singletons per ChapterProcessor instance)
+        self._english_pattern_store = None
+        self._english_pattern_store_unavailable = False
+        self._sino_vietnamese_store = None
+        self._sino_vietnamese_store_unavailable = False
+        self._vietnamese_pattern_store = None
+        self._vietnamese_pattern_store_unavailable = False
+        # SeriesBibleRAG — ships at 200K; populated by agent.py after bible load
+        self._series_id: Optional[str] = None
+        self._bible_glossary: Dict[str, str] = {}
+        self._series_bible_rag_store = None
+        self._series_bible_rag_unavailable = False
 
     def set_glossary_lock(self, glossary_lock: Optional[GlossaryLock]) -> None:
         """Attach manifest glossary lock from TranslatorAgent."""
         self.glossary_lock = glossary_lock
 
+    def set_bible_context_block(self, context_block: Optional[str]) -> None:
+        """Attach precomputed series-bible pull context for prompt injection."""
+        self.bible_context_block = context_block if context_block else None
+
+    def _build_tool_mode_tools(self) -> List[Dict[str, Any]]:
+        """Return the currently supported translation tools for this runtime."""
+        if not self.tool_mode_enabled:
+            return []
+
+        configured = build_translation_tools(self.tool_mode_config, include_declare=True)
+        if not configured:
+            return []
+        return configured
+
+    @staticmethod
+    def _build_declared_vs_actual_metrics(
+        audit: Optional[AuditResult],
+        declared_params: Optional["DeclaredTranslationParameters"],
+    ) -> Optional[Dict[str, Any]]:
+        """Compare declared narration target with measured chapter contraction rate."""
+        if audit is None or declared_params is None:
+            return None
+
+        declared_rate = declared_params.contraction_targets.get("narration_rate")
+        if declared_rate is None:
+            return None
+
+        actual_rate = float(audit.contraction_rate)
+        delta = actual_rate - float(declared_rate)
+        return {
+            "narration_rate": {
+                "declared": float(declared_rate),
+                "actual": actual_rate,
+                "delta": delta,
+            },
+            "status": "PASS" if abs(delta) <= 0.05 else "WARN",
+        }
+
+    def _thinking_dir(self, output_path: Path) -> Path:
+        return output_path.parent.parent / "THINKING"
+
+    def _qc_dir(self, output_path: Path) -> Path:
+        return output_path.parent.parent / "QC"
+
+    def _write_json(self, path: Path, payload: Dict[str, Any]) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2, ensure_ascii=False)
+
+    def _save_qc_self_report(
+        self,
+        chapter_id: str,
+        report: Optional["TranslationQcSelfReport"],
+        output_path: Path,
+    ) -> Optional[Path]:
+        if report is None:
+            return None
+        report_path = self._thinking_dir(output_path) / f"{chapter_id}_QC_SELF_REPORT.json"
+        self._write_json(report_path, report.to_dict())
+        logger.info(f"[TOOL-MODE] Saved QC self report: {report_path.name}")
+        return report_path
+
+    def _save_qc_external_report(
+        self,
+        chapter_id: str,
+        report: Optional["KojiFoxReport"],
+        output_path: Path,
+    ) -> Optional[Path]:
+        if report is None:
+            return None
+        report_path = self._qc_dir(output_path) / f"{chapter_id}_QC_EXTERNAL.json"
+        self._write_json(report_path, report.to_dict())
+        logger.info(f"[TOOL-MODE] Saved QC external report: {report_path.name}")
+        return report_path
+
+    @staticmethod
+    def _build_qc_intent_gap(
+        qc_self_report: Optional["TranslationQcSelfReport"],
+        koji_report: Optional["KojiFoxReport"],
+    ) -> Optional[Dict[str, Any]]:
+        if qc_self_report is None or koji_report is None:
+            return None
+        actual = koji_report.actual_contraction_rate
+        if actual is None:
+            return None
+        declared = float(qc_self_report.self_assessed_contraction_rate)
+        delta = float(actual) - declared
+        return {
+            "self_assessed_contraction_rate": {
+                "declared": declared,
+                "actual": float(actual),
+                "delta": delta,
+            },
+            "status": "PASS" if abs(delta) <= 0.03 else "WARN",
+        }
+
+    def _load_metadata_payload(self) -> Dict[str, Any]:
+        """Load the most complete metadata payload available for glossary/cultural tools."""
+        metadata_key = f"metadata_{self.target_language.lower()}"
+        manifest_metadata = {}
+        try:
+            manifest_path = self.context_manager.work_dir / "manifest.json"
+            if manifest_path.exists():
+                with open(manifest_path, "r", encoding="utf-8") as f:
+                    manifest = json.load(f)
+                manifest_metadata = manifest.get(metadata_key) or manifest.get("metadata_en") or {}
+                if isinstance(manifest_metadata, dict) and manifest_metadata:
+                    return manifest_metadata
+        except Exception as e:
+            logger.debug(f"[TOOL-MODE] Failed reading manifest metadata payload: {e}")
+
+        candidate_paths = [
+            self.context_manager.work_dir / f"metadata_{self.target_language.lower()}.json",
+            self.context_manager.work_dir / "metadata_en.json",
+        ]
+        for path in candidate_paths:
+            if not path.exists():
+                continue
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    payload = json.load(f)
+                if isinstance(payload, dict) and payload:
+                    return payload
+            except Exception as e:
+                logger.debug(f"[TOOL-MODE] Failed reading metadata payload {path.name}: {e}")
+        return {}
+
+    def _load_rich_metadata_patch(self) -> Dict[str, Any]:
+        """Load rich metadata patch for cultural lookups and structural rule writes."""
+        lang = self.target_language.lower()
+        candidates = [
+            self.context_manager.work_dir / f"rich_metadata_cache_patch_{lang}.json",
+            self.context_manager.work_dir / "rich_metadata_cache_patch_en.json",
+            self.context_manager.work_dir / "rich_metadata_cache_patch.json",
+        ]
+        for path in candidates:
+            if not path.exists():
+                continue
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    payload = json.load(f)
+                if isinstance(payload, dict):
+                    return payload
+            except Exception as e:
+                logger.debug(f"[TOOL-MODE] Failed reading {path.name}: {e}")
+        return {}
+
+    def _rich_metadata_patch_path(self) -> Path:
+        lang = self.target_language.lower()
+        candidates = [
+            self.context_manager.work_dir / f"rich_metadata_cache_patch_{lang}.json",
+            self.context_manager.work_dir / "rich_metadata_cache_patch_en.json",
+            self.context_manager.work_dir / "rich_metadata_cache_patch.json",
+        ]
+        for path in candidates:
+            if path.exists():
+                return path
+        return candidates[0]
+
+    @staticmethod
+    def _resolve_structural_target(
+        source_chapter: str,
+        target_pattern: str,
+    ) -> str:
+        normalized = str(target_pattern or "").strip()
+        if not normalized:
+            return ""
+        lowered = normalized.lower()
+        if lowered == "final_chapter":
+            return "final_chapter"
+        if lowered == "chapter_n+1":
+            match = re.search(r"chapter[_\-](\d+)", str(source_chapter), re.IGNORECASE)
+            if match:
+                return f"chapter_{int(match.group(1)) + 1:02d}"
+        return lowered.replace("-", "_")
+
+    def _persist_structural_constraints(
+        self,
+        constraints: List["StructuralConstraintFlag"],
+    ) -> Optional[Path]:
+        if not constraints:
+            return None
+
+        patch_path = self._rich_metadata_patch_path()
+        patch_data = self._load_rich_metadata_patch()
+        existing_rules = patch_data.get("cross_chapter_rules", [])
+        if not isinstance(existing_rules, list):
+            existing_rules = []
+
+        for constraint in constraints:
+            source_text = constraint.exact_phrase or constraint.description
+            target_chapter = self._resolve_structural_target(
+                constraint.source_chapter,
+                constraint.target_chapter_pattern,
+            )
+            rule = {
+                "rule_id": f"tool_{constraint.constraint_type}_{uuid.uuid4().hex[:8]}",
+                "type": constraint.constraint_type,
+                "severity": constraint.severity or "SHOULD_FIX",
+                "source_chapter": constraint.source_chapter,
+                "target_chapter": target_chapter,
+                "description": constraint.description,
+                "source_text_en": source_text,
+                "match_type": "substring" if constraint.exact_phrase else "keyword",
+                "cross_chapter": True,
+                "origin": "tool_mode",
+                "target_chapter_pattern": constraint.target_chapter_pattern,
+            }
+            if constraint.exact_phrase:
+                rule["exact_phrase"] = constraint.exact_phrase
+            existing_rules.append(rule)
+
+        patch_data["cross_chapter_rules"] = existing_rules
+        self._write_json(patch_path, patch_data)
+        logger.info(
+            "[TOOL-MODE] Appended %d structural constraint(s) to %s",
+            len(constraints),
+            patch_path.name,
+        )
+        return patch_path
+
+    def _build_tool_guidance_block(
+        self,
+        chapter_id: str,
+        active_tools: List[Dict[str, Any]],
+    ) -> str:
+        if not active_tools:
+            return ""
+
+        tool_names = [str(tool.get("name")) for tool in active_tools if tool.get("name")]
+        lines = [
+            "<!-- TOOL MODE GUIDANCE -->",
+            f"Tool mode is active for {chapter_id}. Available tools: {', '.join(tool_names)}.",
+        ]
+
+        if TOOL_NAME_DECLARE_TRANSLATION_PARAMETERS in tool_names:
+            lines.append(
+                "You must call declare_translation_parameters exactly once before writing the chapter."
+            )
+        if TOOL_NAME_VALIDATE_GLOSSARY_TERM in tool_names:
+            lines.append(
+                "Before rendering any glossary-locked term or name whose canonical form matters, "
+                "call validate_glossary_term. Do not guess on locked terms."
+            )
+        if TOOL_NAME_LOOKUP_CULTURAL_TERM in tool_names:
+            lines.append(
+                "If a Japanese cultural reference, institution, proper noun, or industry term is "
+                "not already confidently resolved by context, call lookup_cultural_term before rendering it."
+            )
+        if TOOL_NAME_REPORT_TRANSLATION_QC in tool_names:
+            lines.append(
+                "After the chapter translation is complete, call report_translation_qc once before finalizing."
+            )
+        if TOOL_NAME_FLAG_STRUCTURAL_CONSTRAINT in tool_names:
+            lines.append(
+                "If you introduce a callback phrase, POV mirror, motif payoff, or structural echo that "
+                "must be satisfied later, call flag_structural_constraint before finalizing."
+            )
+
+        lines.append("Do not mention tool calls in the final chapter output.")
+        lines.append("<!-- END TOOL MODE GUIDANCE -->")
+        return "\n".join(lines)
+
+    def _build_tool_runtime(
+        self,
+        *,
+        chapter_id: str,
+        output_path: Path,
+        active_tools: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        metadata_payload = self._load_metadata_payload()
+        rich_metadata = self._load_rich_metadata_patch()
+        chapter_occurrence_tracker: Dict[str, bool] = {}
+        persisted_constraints: List["StructuralConstraintFlag"] = []
+
+        handlers: Dict[str, Any] = {}
+        active_names = {str(tool.get("name")) for tool in active_tools if tool.get("name")}
+
+        if TOOL_NAME_VALIDATE_GLOSSARY_TERM in active_names:
+            handlers[TOOL_NAME_VALIDATE_GLOSSARY_TERM] = lambda tool_input: (
+                handle_validate_glossary_term(
+                    tool_input,
+                    metadata_payload,
+                    rich_metadata,
+                    chapter_occurrence_tracker,
+                ),
+                None,
+            )
+
+        if TOOL_NAME_LOOKUP_CULTURAL_TERM in active_names:
+            handlers[TOOL_NAME_LOOKUP_CULTURAL_TERM] = lambda tool_input: (
+                handle_lookup_cultural_term(
+                    tool_input,
+                    rich_metadata,
+                    metadata_payload,
+                ),
+                None,
+            )
+
+        if TOOL_NAME_REPORT_TRANSLATION_QC in active_names:
+            handlers[TOOL_NAME_REPORT_TRANSLATION_QC] = lambda tool_input: (
+                f"QC self-report recorded for {chapter_id}. Finalize the chapter output.",
+                handle_report_translation_qc(tool_input),
+            )
+
+        if TOOL_NAME_FLAG_STRUCTURAL_CONSTRAINT in active_names:
+            def _flag_constraint(tool_input: Dict[str, Any]) -> Any:
+                flag = handle_flag_structural_constraint(tool_input)
+                persisted_constraints.append(flag)
+                return (
+                    f"Structural constraint recorded for {flag.target_chapter_pattern or flag.source_chapter}.",
+                    flag,
+                )
+
+            handlers[TOOL_NAME_FLAG_STRUCTURAL_CONSTRAINT] = _flag_constraint
+
+        return {
+            "handlers": handlers,
+            "metadata_payload": metadata_payload,
+            "rich_metadata": rich_metadata,
+            "chapter_occurrence_tracker": chapter_occurrence_tracker,
+            "persisted_constraints": persisted_constraints,
+            "output_path": output_path,
+        }
+
+    @staticmethod
+    def _empty_cost_totals() -> Dict[str, Any]:
+        return {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cached_tokens": 0,
+            "cache_creation_tokens": 0,
+            "input_cost_usd": 0.0,
+            "output_cost_usd": 0.0,
+            "cache_read_cost_usd": 0.0,
+            "cache_creation_cost_usd": 0.0,
+            "total_cost_usd": 0.0,
+        }
+
+    def _response_cost_attempt(
+        self,
+        response: Any,
+        *,
+        attempt_type: str,
+        chapter_id: str,
+        note: str = "",
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        attempt = {
+            "attempt_type": attempt_type,
+            "chapter_id": chapter_id,
+            "model": getattr(response, "model", None),
+            "batch_mode": bool(getattr(response, "batch_pricing", False)),
+            "fast_mode_pricing": bool(getattr(response, "fast_mode_pricing", False)),
+            "finish_reason": str(getattr(response, "finish_reason", "") or ""),
+            "success": bool(getattr(response, "content", "")),
+            "input_tokens": int(getattr(response, "input_tokens", 0) or 0),
+            "output_tokens": int(getattr(response, "output_tokens", 0) or 0),
+            "cached_tokens": int(getattr(response, "cached_tokens", 0) or 0),
+            "cache_creation_tokens": int(getattr(response, "cache_creation_tokens", 0) or 0),
+            "input_cost_usd": float(getattr(response, "input_cost_usd", 0.0) or 0.0),
+            "output_cost_usd": float(getattr(response, "output_cost_usd", 0.0) or 0.0),
+            "cache_read_cost_usd": float(getattr(response, "cache_read_cost_usd", 0.0) or 0.0),
+            "cache_creation_cost_usd": float(getattr(response, "cache_creation_cost_usd", 0.0) or 0.0),
+            "total_cost_usd": float(getattr(response, "total_cost_usd", 0.0) or 0.0),
+            "tool_call_count": int(getattr(response, "tool_call_count", 0) or 0),
+            "tool_calls_made": list(getattr(response, "tool_calls_made", []) or []),
+            "note": note,
+        }
+        provider_audit = getattr(response, "cost_audit", None)
+        if isinstance(provider_audit, dict) and provider_audit:
+            attempt["provider_audit"] = provider_audit
+        if extra:
+            attempt.update(extra)
+        return attempt
+
+    def _build_cost_audit(
+        self,
+        *,
+        chapter_id: str,
+        request_mode: str,
+        attempts: List[Dict[str, Any]],
+        extra: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        totals = self._empty_cost_totals()
+        attempt_type_totals: Dict[str, Dict[str, Any]] = {}
+
+        for attempt in attempts:
+            input_tokens = int(attempt.get("input_tokens", 0) or 0)
+            output_tokens = int(attempt.get("output_tokens", 0) or 0)
+            cached_tokens = int(attempt.get("cached_tokens", 0) or 0)
+            cache_creation_tokens = int(attempt.get("cache_creation_tokens", 0) or 0)
+            input_cost = float(attempt.get("input_cost_usd", 0.0) or 0.0)
+            output_cost = float(attempt.get("output_cost_usd", 0.0) or 0.0)
+            cache_read_cost = float(attempt.get("cache_read_cost_usd", 0.0) or 0.0)
+            cache_creation_cost = float(attempt.get("cache_creation_cost_usd", 0.0) or 0.0)
+            total_cost = float(attempt.get("total_cost_usd", 0.0) or 0.0)
+
+            totals["input_tokens"] += input_tokens
+            totals["output_tokens"] += output_tokens
+            totals["cached_tokens"] += cached_tokens
+            totals["cache_creation_tokens"] += cache_creation_tokens
+            totals["input_cost_usd"] += input_cost
+            totals["output_cost_usd"] += output_cost
+            totals["cache_read_cost_usd"] += cache_read_cost
+            totals["cache_creation_cost_usd"] += cache_creation_cost
+            totals["total_cost_usd"] += total_cost
+
+            attempt_type = str(attempt.get("attempt_type", "unknown") or "unknown")
+            bucket = attempt_type_totals.setdefault(attempt_type, self._empty_cost_totals())
+            bucket["input_tokens"] += input_tokens
+            bucket["output_tokens"] += output_tokens
+            bucket["cached_tokens"] += cached_tokens
+            bucket["cache_creation_tokens"] += cache_creation_tokens
+            bucket["input_cost_usd"] += input_cost
+            bucket["output_cost_usd"] += output_cost
+            bucket["cache_read_cost_usd"] += cache_read_cost
+            bucket["cache_creation_cost_usd"] += cache_creation_cost
+            bucket["total_cost_usd"] += total_cost
+
+        audit = {
+            "schema_version": "1.0",
+            "chapter_id": chapter_id,
+            "request_mode": request_mode,
+            "attempt_count": len(attempts),
+            "retry_count": max(0, len(attempts) - 1),
+            "attempts": attempts,
+            "actual_totals": totals,
+            "attempt_type_totals": attempt_type_totals,
+        }
+        if extra:
+            audit.update(extra)
+        return audit
+
+    @staticmethod
+    def _preserve_tool_artifacts(new_response: Any, previous_response: Any) -> Any:
+        """Carry forward tool artifacts when a retry response omitted tool mode."""
+        if new_response is None or previous_response is None:
+            return new_response
+
+        if getattr(new_response, "declared_params", None) is None:
+            new_response.declared_params = getattr(previous_response, "declared_params", None)
+        if not getattr(new_response, "tool_calls_made", None):
+            new_response.tool_calls_made = list(
+                getattr(previous_response, "tool_calls_made", []) or []
+            )
+        if not getattr(new_response, "tool_call_count", 0):
+            new_response.tool_call_count = int(
+                getattr(previous_response, "tool_call_count", 0) or 0
+            )
+        if getattr(new_response, "qc_self_report", None) is None:
+            new_response.qc_self_report = getattr(previous_response, "qc_self_report", None)
+        if not getattr(new_response, "structural_constraints", None):
+            new_response.structural_constraints = list(
+                getattr(previous_response, "structural_constraints", []) or []
+            )
+        return new_response
+
+    def _get_english_pattern_store(self):
+        """
+        Lazily initialize and reuse EnglishPatternStore for the whole volume run.
+
+        This avoids reinitializing Chroma and re-embedding negative anchors for
+        every chapter prompt extraction.
+        """
+        if self._english_pattern_store is not None:
+            return self._english_pattern_store
+        if self._english_pattern_store_unavailable:
+            return None
+        try:
+            from modules.english_pattern_store import EnglishPatternStore
+            self._english_pattern_store = EnglishPatternStore()
+            logger.debug("[GRAMMAR] Reusing shared EnglishPatternStore singleton for this run")
+            return self._english_pattern_store
+        except Exception as e:
+            self._english_pattern_store_unavailable = True
+            logger.warning(f"[GRAMMAR] EnglishPatternStore initialization failed: {e}")
+            return None
+
+    def _get_sino_vietnamese_store(self):
+        """
+        Lazily initialize and reuse SinoVietnameseStore for the whole volume run.
+
+        Prevents repeated Chroma init and negative-anchor embedding work per chapter.
+        """
+        if self._sino_vietnamese_store is not None:
+            return self._sino_vietnamese_store
+        if self._sino_vietnamese_store_unavailable:
+            return None
+        try:
+            from modules.sino_vietnamese_store import SinoVietnameseStore
+            self._sino_vietnamese_store = SinoVietnameseStore()
+            logger.debug("[KANJI] Reusing shared SinoVietnameseStore singleton for this run")
+            return self._sino_vietnamese_store
+        except Exception as e:
+            self._sino_vietnamese_store_unavailable = True
+            logger.warning(f"[KANJI] SinoVietnameseStore initialization failed: {e}")
+            return None
+
+    def _get_vietnamese_pattern_store(self):
+        """
+        Lazily initialize and reuse VietnamesePatternStore for the whole volume run.
+
+        Prevents repeated Chroma init and negative-anchor embedding work per chapter.
+        """
+        if self._vietnamese_pattern_store is not None:
+            return self._vietnamese_pattern_store
+        if self._vietnamese_pattern_store_unavailable:
+            return None
+        try:
+            from modules.vietnamese_pattern_store import VietnamesePatternStore
+            self._vietnamese_pattern_store = VietnamesePatternStore()
+            logger.debug("[VN-GRAMMAR] Reusing shared VietnamesePatternStore singleton for this run")
+            return self._vietnamese_pattern_store
+        except Exception as e:
+            self._vietnamese_pattern_store_unavailable = True
+            logger.warning(f"[VN-GRAMMAR] VietnamesePatternStore initialization failed: {e}")
+            return None
+
+    def _get_series_bible_rag_store(self):
+        """
+        Lazily initialize and reuse SeriesBibleRAG for the whole volume run.
+
+        Active when ./mtl index-series-bible <series_id> has been run AND
+        agent.py has set self._series_id after a successful bible load.
+
+        At 1M: same store; agent passes volume_id_exclude=N-1 at retrieval time
+        (N-1 is hot-cached in Block 1 and doesn't need user-message duplication).
+        """
+        if self._series_bible_rag_store is not None:
+            return self._series_bible_rag_store
+        if self._series_bible_rag_unavailable:
+            return None
+        if not self._series_id:
+            self._series_bible_rag_unavailable = True
+            return None
+        try:
+            from pipeline.translator.series_bible_rag import SeriesBibleRAG
+            from pipeline.config import PIPELINE_ROOT
+            index_dir = PIPELINE_ROOT / f"chroma_series_bible/{self._series_id}"
+            if not index_dir.exists():
+                logger.debug(
+                    f"[BIBLE-RAG] No index for series {self._series_id!r} — "
+                    "run: ./mtl index-series-bible <series_id>"
+                )
+                self._series_bible_rag_unavailable = True
+                return None
+            self._series_bible_rag_store = SeriesBibleRAG(self._series_id, PIPELINE_ROOT)
+            if not self._series_bible_rag_store.is_available:
+                self._series_bible_rag_unavailable = True
+                self._series_bible_rag_store = None
+                return None
+            logger.info(f"[BIBLE-RAG] Loaded SeriesBibleRAG for series {self._series_id!r}")
+            return self._series_bible_rag_store
+        except Exception as e:
+            self._series_bible_rag_unavailable = True
+            logger.warning(f"[BIBLE-RAG] SeriesBibleRAG initialization failed: {e}")
+            return None
+
     def _load_contraction_rates_from_manifest(self) -> None:
         """
         Load contraction rates directly from manifest.json character profiles.
 
-        RTAS calculator bypassed (2026-02-10): The calculator correctly reads manifest
+        EPS calculator bypassed (2026-02-10): Deprecated in favor of PAIR_ID system.
+        The calculator correctly reads manifest
         but Gemini ignores the calculated rates during translation. This method reads
         manifest values directly for prompt injection without intermediate calculation.
 
@@ -251,31 +904,35 @@ class ChapterProcessor:
         Load metadata_en payload for voice guidance.
 
         Priority:
-          1. WORK/<volume>/metadata_en.json (actively edited metadata)
-          2. WORK/<volume>/manifest.json.metadata_en
+          1. WORK/<volume>/metadata_en.json (if manifest.metadata_en is empty)
+          2. WORK/<volume>/manifest.json.metadata_en (preferred - complete data)
         """
         work_dir = self.context_manager.work_dir
 
+        # Gate: Check manifest.metadata_en first - if complete, skip metadata_en.json patch
+        manifest_path = work_dir / "manifest.json"
+        if manifest_path.exists():
+            try:
+                with open(manifest_path, 'r', encoding='utf-8') as f:
+                    manifest = json.load(f)
+                manifest_metadata_en = manifest.get("metadata_en", {})
+                if manifest_metadata_en and isinstance(manifest_metadata_en, dict):
+                    logger.debug("[VOICE-GUIDANCE] Using manifest.metadata_en (complete)")
+                    return manifest_metadata_en
+            except Exception as e:
+                logger.debug(f"Failed to check manifest.metadata_en: {e}")
+
+        # Fallback: load metadata_en.json patch
         metadata_en_path = work_dir / "metadata_en.json"
         if metadata_en_path.exists():
             try:
                 with open(metadata_en_path, 'r', encoding='utf-8') as f:
                     payload = json.load(f)
                 if isinstance(payload, dict) and payload:
+                    logger.debug("[VOICE-GUIDANCE] Using metadata_en.json patch")
                     return payload
             except Exception as e:
                 logger.warning(f"Failed reading metadata_en.json for voice guidance: {e}")
-
-        manifest_path = work_dir / "manifest.json"
-        if not manifest_path.exists():
-            return {}
-
-        try:
-            with open(manifest_path, 'r', encoding='utf-8') as f:
-                manifest = json.load(f)
-            metadata_en = manifest.get("metadata_en", {})
-            return metadata_en if isinstance(metadata_en, dict) else {}
-        except Exception as e:
             logger.warning(f"Failed reading manifest.json for voice guidance: {e}")
             return {}
 
@@ -577,19 +1234,20 @@ class ChapterProcessor:
                         )
                 return names
 
-            # Try metadata_en.json first (preferred)
-            metadata_en_path = work_dir / "metadata_en.json"
-            if metadata_en_path.exists():
-                with open(metadata_en_path, 'r', encoding='utf-8') as f:
-                    metadata_en = json.load(f)
-                    return _enrich_with_nicknames(metadata_en)
-
-            # Fallback to manifest.json
+            # Gate: manifest.metadata_en takes priority over metadata_en.json patch
             manifest_path = work_dir / "manifest.json"
             if manifest_path.exists():
                 with open(manifest_path, 'r', encoding='utf-8') as f:
                     manifest = json.load(f)
                     metadata_en = manifest.get('metadata_en', {})
+                    if metadata_en and isinstance(metadata_en, dict):
+                        return _enrich_with_nicknames(metadata_en)
+
+            # Fallback: load metadata_en.json patch
+            metadata_en_path = work_dir / "metadata_en.json"
+            if metadata_en_path.exists():
+                with open(metadata_en_path, 'r', encoding='utf-8') as f:
+                    metadata_en = json.load(f)
                     return _enrich_with_nicknames(metadata_en)
 
             logger.warning("No character names found in manifest")
@@ -599,6 +1257,49 @@ class ChapterProcessor:
             logger.warning(f"Failed to load character names: {e}")
             return {}
     
+    @staticmethod
+    def _has_memoir_signal(*values) -> bool:
+        """Return True when free-text metadata strongly signals memoir/autobiography."""
+        memoir_kws = (
+            "memoir",
+            "autobiography",
+            "autobiographical",
+            "biography",
+            "biographical",
+            "non fiction",
+            "non_fiction",
+            "nonfiction",
+            "自伝",
+            "自叙伝",
+            "回顧録",
+            "ノンフィクション",
+            "散文",
+        )
+
+        flattened = []
+
+        def _collect(value):
+            if value is None:
+                return
+            if isinstance(value, str):
+                stripped = value.strip()
+                if stripped:
+                    flattened.append(stripped)
+                return
+            if isinstance(value, dict):
+                for nested in value.values():
+                    _collect(nested)
+                return
+            if isinstance(value, (list, tuple, set)):
+                for nested in value:
+                    _collect(nested)
+
+        for value in values:
+            _collect(value)
+
+        haystack = " ".join(flattened).lower().replace("-", "_")
+        return any(kw.replace("-", "_") in haystack for kw in memoir_kws)
+
     def _load_genre(self) -> str:
         """Load book genre from metadata_en.json or manifest.json.
         
@@ -661,7 +1362,35 @@ class ChapterProcessor:
                 result = self._resolve_genre(genre_val, KNOWN_GENRES)
                 if result:
                     return result
-            
+
+                def _world_setting_type(obj):
+                    ws = obj.get('world_setting') if isinstance(obj, dict) else None
+                    if isinstance(ws, dict):
+                        value = ws.get('type', '')
+                        if isinstance(value, str) and value.strip():
+                            return value.strip()
+                    return ''
+
+                def _world_setting_label(obj):
+                    ws = obj.get('world_setting') if isinstance(obj, dict) else None
+                    if isinstance(ws, dict):
+                        value = ws.get('label', '')
+                        if isinstance(value, str) and value.strip():
+                            return value.strip()
+                    return ''
+
+                ws_type = _world_setting_type(manifest) or _world_setting_type(meta)
+                ws_label = _world_setting_label(manifest) or _world_setting_label(meta)
+                if ws_type and self._has_memoir_signal(ws_type, ws_label):
+                    inferred = ws_type if 'memoir' in ws_type.lower().replace('-', '_') else f'{ws_type}_memoir'
+                    logger.debug(
+                        f"[GENRE] Memoir inferred from world_setting: type={ws_type!r}, label={ws_label!r} -> {inferred!r}"
+                    )
+                    return inferred
+                if ws_type:
+                    logger.debug(f"[GENRE] Using world_setting.type for prompt genre: {ws_type!r}")
+                    return ws_type
+
             logger.debug("[GENRE] No matching genre found in manifest, using 'japanese_light_novel'")
             return "japanese_light_novel"
             
@@ -775,7 +1504,11 @@ The following visual analysis was provided to guide translation:
                 try:
                     from modules.multimodal.prompt_injector import build_visual_thinking_log
                     volume_path = output_path.parent.parent  # EN/chapter.md -> volume_dir
-                    visual_thinking_section = build_visual_thinking_log(illustration_ids, volume_path)
+                    visual_thinking_section = build_visual_thinking_log(
+                        illustration_ids,
+                        volume_path,
+                        cache_manager=self.visual_cache,
+                    )
                     if visual_thinking_section:
                         visual_thinking_section = f"\n{visual_thinking_section}\n\n---\n"
                 except Exception as e:
@@ -811,6 +1544,348 @@ This document contains the internal reasoning process that {reasoning_model_labe
             f.write(markdown_content)
         
         logger.info(f"💭 Thinking process saved to: {thinking_file.relative_to(output_path.parent.parent.parent)}")
+
+    @staticmethod
+    def _extract_adn_review_flags(
+        thinking_content: Optional[str],
+        translated_content: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Extract ADN v2 review triggers from §A (BLOCKED) and §B (EPS divergence)."""
+        text = "\n".join(
+            part for part in [str(thinking_content or ""), str(translated_content or "")] if part
+        )
+        if not text.strip():
+            return {}
+
+        blocked_directives: List[Dict[str, str]] = []
+        eps_divergences: List[Dict[str, str]] = []
+
+        section_a_match = re.search(
+            r"§\s*A[^\n]*?(.*?)(?=\n\s*##\s*§\s*B|\n\s*§\s*B|\Z)",
+            text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        section_a = section_a_match.group(1) if section_a_match else ""
+        for raw_line in section_a.splitlines():
+            line = raw_line.strip()
+            if "|" not in line:
+                continue
+            cells = [c.strip() for c in line.strip("|").split("|")]
+            if len(cells) < 2:
+                continue
+            did = cells[0]
+            decision = cells[1].upper()
+            if not did or did.lower() in {"did", "-----"}:
+                continue
+            if "BLOCKED" in decision:
+                blocked_directives.append(
+                    {
+                        "did": did,
+                        "decision": cells[1],
+                        "reason": cells[2] if len(cells) > 2 else "",
+                    }
+                )
+
+        section_b_match = re.search(
+            r"§\s*B[^\n]*?(.*)$",
+            text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        section_b = section_b_match.group(1) if section_b_match else ""
+        for raw_line in section_b.splitlines():
+            line = raw_line.strip()
+            if "|" not in line:
+                continue
+            cells = [c.strip() for c in line.strip("|").split("|")]
+            if len(cells) < 5:
+                continue
+            character = cells[0]
+            if not character or character.lower() in {"character", "-----------"}:
+                continue
+            flag_cell = cells[-1]
+            if "⚠" in flag_cell or "WARN" in flag_cell.upper():
+                eps_divergences.append(
+                    {
+                        "character": character,
+                        "directive_eps": cells[1] if len(cells) > 1 else "",
+                        "detected_register": cells[2] if len(cells) > 2 else "",
+                        "divergent_lines": cells[3] if len(cells) > 3 else "",
+                        "flag": flag_cell,
+                    }
+                )
+
+        requires_review = bool(blocked_directives or eps_divergences)
+        if not requires_review:
+            return {}
+
+        return {
+            "requires_review": True,
+            "blocked_directive_count": len(blocked_directives),
+            "eps_divergence_count": len(eps_divergences),
+            "blocked_directives": blocked_directives,
+            "eps_divergences": eps_divergences,
+            "review_reasons": [
+                reason
+                for reason, enabled in [
+                    ("blocked_directives", bool(blocked_directives)),
+                    ("eps_divergence", bool(eps_divergences)),
+                ]
+                if enabled
+            ],
+        }
+
+    @staticmethod
+    def _sanitize_thinking_for_qc(thinking_content: Optional[str]) -> Dict[str, Any]:
+        """Redact explicit/refusal contamination from thinking logs for QC display.
+
+        This keeps translation output intact while replacing contaminated reasoning
+        paragraphs with a generic assessment marker.
+        """
+        text = str(thinking_content or "")
+        if not text.strip():
+            return {
+                "content": text,
+                "active": False,
+                "sanitized_segments": 0,
+            }
+
+        refusal_patterns = [
+            r"\bI\s+can't\s+rewrite\b",
+            r"\bI\s+need\s+to\s+stop\s+here\b",
+            r"\bIf\s+you\s+have\s+other\s+thinking\b",
+            r"\bI'm\s+not\s+able\s+to\s+rewrite\b",
+            r"\bnot\s+able\s+to\s+engage\s+with\s+requests\s+to\s+rewrite\b",
+        ]
+        explicit_patterns = [
+            r"\b(?:oral\s+sex|anal\s+sex|handjob|crotch|genitals?|nipple|breasts?|butt|penis|dick|cock|orgasm)\b",
+        ]
+
+        merged_patterns = [re.compile(p, flags=re.IGNORECASE) for p in (*refusal_patterns, *explicit_patterns)]
+        generic_assessment = (
+            "[QC SANITIZED] Generic assessment: explicit scene reasoning was sanitized "
+            "for QC display; source-to-target fidelity checks remain active."
+        )
+
+        paragraphs = re.split(r"\n\s*\n", text)
+        sanitized_segments = 0
+        redacted: List[str] = []
+
+        for paragraph in paragraphs:
+            candidate = paragraph.strip()
+            if not candidate:
+                redacted.append(paragraph)
+                continue
+            # Preserve structured ADN checklist evidence sections.
+            if "§" in candidate or "|" in candidate:
+                redacted.append(paragraph)
+                continue
+
+            if any(pattern.search(candidate) for pattern in merged_patterns):
+                sanitized_segments += 1
+                if not redacted or redacted[-1] != generic_assessment:
+                    redacted.append(generic_assessment)
+                continue
+
+            redacted.append(paragraph)
+
+        sanitized_content = "\n\n".join(redacted)
+        return {
+            "content": sanitized_content,
+            "active": sanitized_segments > 0,
+            "sanitized_segments": sanitized_segments,
+        }
+
+    def _apply_qc_sanitization_flag(
+        self,
+        current_flags: Optional[Dict[str, Any]],
+        sanitization: Optional[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """Mark QC sanitization state on ADN review flags without failing output."""
+        base_flags: Dict[str, Any] = dict(current_flags) if isinstance(current_flags, dict) else {}
+        if not isinstance(sanitization, dict) or not sanitization.get("active"):
+            return base_flags
+
+        patch_flags = {
+            "requires_review": bool(base_flags.get("requires_review", False)),
+            "qc_sanitization_active": True,
+            "qc_sanitized_segments": int(sanitization.get("sanitized_segments", 0) or 0),
+            "review_reasons": [
+                *list(base_flags.get("review_reasons", []) or []),
+                "qc_sanitization_active",
+            ],
+        }
+        return self._merge_adn_review_flags(base_flags, patch_flags)
+
+    @staticmethod
+    def _assess_adn_checklist_evidence(
+        thinking_content: Optional[str],
+        translated_content: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Assess whether ADN receipt exists and §A/§B checklist evidence is present."""
+        text = "\n".join(
+            part for part in [str(thinking_content or ""), str(translated_content or "")] if part
+        )
+        if not text.strip():
+            return {
+                "receipt_present": False,
+                "section_a_present": False,
+                "section_b_present": False,
+                "section_a_evidence": False,
+                "section_b_evidence": False,
+                "checklist_complete": False,
+                "missing_items": [],
+            }
+
+        receipt_present = bool(
+            re.search(r"ADN\s+DIRECTIVE\s+RECEIPT|§\s*0\s*[·:\-]?\s*ADN", text, flags=re.IGNORECASE)
+        )
+        if not receipt_present:
+            return {
+                "receipt_present": False,
+                "section_a_present": False,
+                "section_b_present": False,
+                "section_a_evidence": False,
+                "section_b_evidence": False,
+                "checklist_complete": False,
+                "missing_items": [],
+            }
+
+        section_a_match = re.search(
+            r"§\s*A[^\n]*?(.*?)(?=\n\s*##\s*§\s*B|\n\s*§\s*B|\Z)",
+            text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        section_a_present = bool(section_a_match)
+        section_a = section_a_match.group(1) if section_a_match else ""
+
+        section_b_match = re.search(
+            r"§\s*B[^\n]*?(.*)$",
+            text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        section_b_present = bool(section_b_match)
+        section_b = section_b_match.group(1) if section_b_match else ""
+
+        section_a_evidence = False
+        for raw_line in section_a.splitlines():
+            line = raw_line.strip()
+            if "|" not in line:
+                continue
+            cells = [c.strip() for c in line.strip("|").split("|")]
+            if len(cells) < 2:
+                continue
+            did = cells[0]
+            decision = cells[1].upper()
+            if not did or did.lower() in {"did", "-----"}:
+                continue
+            if any(token in decision for token in {"WILL_APPLY", "PARTIAL", "BLOCKED"}):
+                section_a_evidence = True
+                break
+
+        section_b_evidence = False
+        for raw_line in section_b.splitlines():
+            line = raw_line.strip()
+            if "|" not in line:
+                continue
+            cells = [c.strip() for c in line.strip("|").split("|")]
+            if len(cells) < 5:
+                continue
+            head = cells[0].lower()
+            if not head or head in {"character", "-----------"}:
+                continue
+            section_b_evidence = True
+            break
+
+        missing_items: List[str] = []
+        if not section_a_present:
+            missing_items.append("section_a")
+        elif not section_a_evidence:
+            missing_items.append("section_a_evidence")
+        if not section_b_present:
+            missing_items.append("section_b")
+        elif not section_b_evidence:
+            missing_items.append("section_b_evidence")
+
+        return {
+            "receipt_present": True,
+            "section_a_present": section_a_present,
+            "section_b_present": section_b_present,
+            "section_a_evidence": section_a_evidence,
+            "section_b_evidence": section_b_evidence,
+            "checklist_complete": len(missing_items) == 0,
+            "missing_items": missing_items,
+        }
+
+    @staticmethod
+    def _merge_adn_review_flags(
+        existing_flags: Optional[Dict[str, Any]],
+        patch_flags: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        merged: Dict[str, Any] = dict(existing_flags) if isinstance(existing_flags, dict) else {}
+        merged.update(patch_flags)
+
+        reasons = []
+        for source in [existing_flags, patch_flags]:
+            if not isinstance(source, dict):
+                continue
+            source_reasons = source.get("review_reasons", [])
+            if isinstance(source_reasons, list):
+                for reason in source_reasons:
+                    value = str(reason or "").strip()
+                    if value and value not in reasons:
+                        reasons.append(value)
+        if reasons:
+            merged["review_reasons"] = reasons
+
+        return merged
+
+    def _apply_adn_checklist_enforcement(
+        self,
+        *,
+        chapter_id: str,
+        thinking_content: Optional[str],
+        translated_content: Optional[str],
+        current_flags: Optional[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """Enforce ADN checklist when receipt is present but §A/§B evidence is missing."""
+        base_flags = dict(current_flags) if isinstance(current_flags, dict) else {}
+        if not self.adn_checklist_gate_enabled:
+            return {"adn_review_flags": base_flags, "warning": None, "error": None}
+
+        checklist = self._assess_adn_checklist_evidence(thinking_content, translated_content)
+        if not checklist.get("receipt_present") or checklist.get("checklist_complete"):
+            return {"adn_review_flags": base_flags, "warning": None, "error": None}
+
+        missing_items = list(checklist.get("missing_items") or [])
+        missing_label = ",".join(missing_items) if missing_items else "unknown"
+        patch_flags: Dict[str, Any] = {
+            "requires_review": True,
+            "checklist_missing": True,
+            "checklist_missing_items": missing_items,
+            "checklist_receipt_detected": True,
+            "checklist_gate_mode": self.adn_checklist_gate_mode,
+            "checklist_gate_reason": "receipt_present_but_checklist_evidence_missing",
+            "checklist_gate_chapter_id": chapter_id,
+            "blocked_directive_count": int(base_flags.get("blocked_directive_count", 0) or 0),
+            "eps_divergence_count": int(base_flags.get("eps_divergence_count", 0) or 0),
+            "review_reasons": [
+                *list(base_flags.get("review_reasons", []) or []),
+                "missing_checklist_evidence",
+            ],
+        }
+        merged_flags = self._merge_adn_review_flags(base_flags, patch_flags)
+
+        warning = (
+            "ADN checklist gate: receipt exists but checklist evidence is missing "
+            f"({missing_label})"
+        )
+        if self.adn_checklist_gate_mode == "fail":
+            return {
+                "adn_review_flags": merged_flags,
+                "warning": warning,
+                "error": f"[ADN-GATE] {warning}; chapter={chapter_id}",
+            }
+        return {"adn_review_flags": merged_flags, "warning": warning, "error": None}
 
     @staticmethod
     def _normalize_thinking_markdown(thinking_content: str) -> str:
@@ -976,15 +2051,12 @@ This document contains the internal reasoning process that {reasoning_model_labe
                 except Exception as _e:
                     logger.warning(f"[BATCH-EXTRACT] Gap analysis failed: {_e}")
 
-            # ── DIALECT DETECTION ──────────────────────────────────────
+            # ── DIALECT FINGERPRINT (Phase 1.55 pre-computed) ─────────
             dialect_guidance = None
-            if DIALECT_DETECTION_AVAILABLE and detect_chapter_dialects:
-                try:
-                    has_dialects, dialect_text = detect_chapter_dialects(source_content_only, chapter_id)
-                    if has_dialects:
-                        dialect_guidance = dialect_text
-                except Exception as _e:
-                    logger.warning(f"[BATCH-EXTRACT] Dialect detection failed: {_e}")
+            try:
+                dialect_guidance = self._load_dialect_guidance(chapter_id)
+            except Exception as _e:
+                logger.warning(f"[BATCH-EXTRACT] Dialect fingerprint load failed: {_e}")
 
             # ── SINO-VN + VN GRAMMAR PATTERNS ─────────────────────────
             sino_vn_guidance = None
@@ -992,33 +2064,35 @@ This document contains the internal reasoning process that {reasoning_model_labe
             if self.target_language in ['vi', 'vn']:
                 try:
                     from modules.kanji_extractor import extract_unique_compounds
-                    from modules.sino_vietnamese_store import SinoVietnameseStore
                     kanji_terms = extract_unique_compounds(
                         source_content_only, min_length=2, max_length=4, top_n=30
                     )
                     if kanji_terms:
                         sentences = re.split(r'[。！？\n]', source_content_only)
                         ctx_hint = '。'.join([s.strip() for s in sentences[:5] if s.strip()][:3])
-                        sino_vn_guidance = SinoVietnameseStore().get_bulk_guidance(
-                            terms=kanji_terms, genre=self.book_genre,
-                            max_per_term=2, min_confidence=0.68,
-                            context=ctx_hint, use_external_dict=True,
-                        )
+                        store = self._get_sino_vietnamese_store()
+                        if store is not None:
+                            sino_vn_guidance = store.get_bulk_guidance(
+                                terms=kanji_terms, genre=self.book_genre,
+                                max_per_term=2, min_confidence=0.68,
+                                context=ctx_hint, use_external_dict=False,
+                            )
                 except Exception as _e:
                     logger.warning(f"[BATCH-EXTRACT] Sino-VN lookup failed: {_e}")
 
                 if self.target_language == 'vn':
                     try:
                         from modules.grammar_pattern_detector import detect_grammar_patterns
-                        from modules.vietnamese_pattern_store import VietnamesePatternStore
                         detected = detect_grammar_patterns(source_content_only, top_n=15, include_line_numbers=True)
                         if detected:
                             sentences = re.split(r'[。！？\n]', source_content_only)
                             ctx_hint = '。'.join([s.strip() for s in sentences[:5] if s.strip()][:3])
-                            vn_pattern_guidance = VietnamesePatternStore().get_bulk_guidance(
-                                patterns=detected, context=ctx_hint,
-                                max_per_pattern=2, min_confidence=0.70,
-                            )
+                            vn_store = self._get_vietnamese_pattern_store()
+                            if vn_store is not None:
+                                vn_pattern_guidance = vn_store.get_bulk_guidance(
+                                    patterns=detected, context=ctx_hint,
+                                    max_per_pattern=2, min_confidence=0.70,
+                                )
                     except Exception as _e:
                         logger.warning(f"[BATCH-EXTRACT] VN grammar patterns failed: {_e}")
 
@@ -1027,17 +2101,31 @@ This document contains the internal reasoning process that {reasoning_model_labe
             if self.target_language == 'en':
                 try:
                     from modules.grammar_pattern_detector import detect_grammar_patterns
-                    from modules.english_pattern_store import EnglishPatternStore
                     detected = detect_grammar_patterns(source_content_only, top_n=15, include_line_numbers=True)
                     if detected:
                         sentences = re.split(r'[。！？\n]', source_content_only)
                         ctx_hint = '。'.join([s.strip() for s in sentences[:5] if s.strip()][:3])
-                        en_pattern_guidance = EnglishPatternStore().get_bulk_guidance(
-                            patterns=detected, context=ctx_hint,
-                            max_per_pattern=2, min_confidence=0.75,
-                        )
+                        store = self._get_english_pattern_store()
+                        if store is not None:
+                            en_pattern_guidance = store.get_bulk_guidance(
+                                patterns=detected, context=ctx_hint,
+                                max_per_pattern=2, min_confidence=0.75,
+                            )
                 except Exception as _e:
                     logger.warning(f"[BATCH-EXTRACT] EN grammar patterns failed: {_e}")
+
+            # ── SERIES BIBLE RAG CONTEXT ───────────────────────────────
+            series_bible_rag_guidance = None
+            rag_store = self._get_series_bible_rag_store()
+            if rag_store is not None and self._bible_glossary:
+                try:
+                    passages = rag_store.retrieve_for_chapter(
+                        source_content_only, self._bible_glossary
+                    )
+                    if passages:
+                        series_bible_rag_guidance = rag_store.format_for_prompt(passages)
+                except Exception as _e:
+                    logger.warning(f"[BIBLE-RAG] Retrieval failed for {chapter_id}: {_e}")
 
             # ── MULTIMODAL VISUAL CONTEXT ──────────────────────────────
             visual_guidance = None
@@ -1076,7 +2164,13 @@ This document contains the internal reasoning process that {reasoning_model_labe
 
             # ── VOLUME CONTEXT ─────────────────────────────────────────
             volume_context_text = None
-            if self.volume_context_integration:
+            if self.bible_context_block:
+                volume_context_text = self.bible_context_block
+                logger.debug(
+                    f"[BIBLE-CTX] Injecting series bible context "
+                    f"({len(volume_context_text)} chars)"
+                )
+            elif self.volume_context_integration:
                 try:
                     en_dir = source_path.parent.parent / self.target_language.upper()
                     volume_context_text, _ = self.volume_context_integration.get_volume_context(
@@ -1085,24 +2179,87 @@ This document contains the internal reasoning process that {reasoning_model_labe
                         en_dir=en_dir,
                     )
                 except Exception as _e:
-                    logger.warning(f"[BATCH-EXTRACT] Volume context failed: {_e}")
+                    logger.warning(f"[BATCH-EXTRACT] Legacy volume context failed: {_e}")
+
+            # Avoid duplicating bible continuity context in user prompt.
+            # When SeriesBibleRAG prior-volume passages are present, the bible pull
+            # context block is largely redundant and can push long chapters beyond
+            # Anthropic's 200K input-token limit.
+            if volume_context_text and series_bible_rag_guidance:
+                logger.info(
+                    f"[CTX-DEDUP] {chapter_id}: skipping volume_context "
+                    f"({len(volume_context_text):,} chars) because SeriesBibleRAG "
+                    f"context is already injected ({len(series_bible_rag_guidance):,} chars)."
+                )
+                volume_context_text = None
 
             # ── BUILD USER PROMPT ──────────────────────────────────────
+            # Translation brief is now always injected regardless of chapter size.
+            # (Threshold disabled - set to 1GB to effectively disable the check)
+            _BRIEF_SKIP_THRESHOLD = 1_000_000_000  # chars (disabled)
+            effective_brief = translation_brief
+            if translation_brief and len(source_content_only) > _BRIEF_SKIP_THRESHOLD:
+                effective_brief = None
+                logger.warning(
+                    f"[BRIEF] Skipping translation brief for {chapter_id} "
+                    f"(source={len(source_content_only):,} chars > {_BRIEF_SKIP_THRESHOLD:,} threshold)"
+                )
+
+            # Cap scene_plan beats for oversized source chapters to prevent user-message
+            # token overflow.  At tok/char≈0.469 for JP-heavy chapters, 136 scenes format
+            # to ~65K chars in the user message.  Capping to 40 saves ~46K chars (~21K
+            # tokens) which is the only remaining lever once ICL is already at minimum.
+            #
+            # Thresholds (source_content_only chars):
+            #   > 100 000 → 35 scenes  (~62K chars saved, ~29K tokens)
+            #   >  70 000 → 50 scenes  (~46K chars saved, ~22K tokens)
+            #   ≤  70 000 → no cap     (full scene plan)
+            _SCENE_CAP_THRESHOLD_EXTREME = 100_000   # chars
+            _SCENE_CAP_THRESHOLD_LARGE   =  70_000   # chars
+            _SCENE_MAX_BEATS_EXTREME     = 35
+            _SCENE_MAX_BEATS_LARGE       = 50
+            effective_scene_plan = scene_plan
+            if scene_plan and isinstance(scene_plan.get('scenes'), list):
+                _src_len = len(source_content_only)
+                _all_scenes = scene_plan['scenes']
+                _total_scenes = len(_all_scenes)
+                _cap = None
+                if _src_len > _SCENE_CAP_THRESHOLD_EXTREME and _total_scenes > _SCENE_MAX_BEATS_EXTREME:
+                    _cap = _SCENE_MAX_BEATS_EXTREME
+                elif _src_len > _SCENE_CAP_THRESHOLD_LARGE and _total_scenes > _SCENE_MAX_BEATS_LARGE:
+                    _cap = _SCENE_MAX_BEATS_LARGE
+                if _cap is not None:
+                    effective_scene_plan = {**scene_plan, 'scenes': _all_scenes[:_cap]}
+                    logger.warning(
+                        f"[SCENE-CAP] {chapter_id}: source={_src_len:,} chars — "
+                        f"truncating scene plan {_total_scenes} → {_cap} scenes "
+                        f"(saves ~{(_total_scenes - _cap) * 478:,} chars in user message)."
+                    )
+            # Legacy all-or-nothing skip (still active if threshold re-enabled)
+            if scene_plan and len(source_content_only) > _BRIEF_SKIP_THRESHOLD:
+                effective_scene_plan = None
+                logger.warning(
+                    f"[SCENE] Skipping scene_plan for {chapter_id} "
+                    f"(source={len(source_content_only):,} chars > {_BRIEF_SKIP_THRESHOLD:,} threshold)"
+                )
+
             user_prompt = self._build_user_prompt(
                 chapter_id,
                 source_content_only,
                 context_str,
                 en_title,
                 jp_title=jp_title,
+                jp_source_text=source_content_only,  # For content-selective filtering
                 sino_vn_guidance=sino_vn_guidance,
                 gap_flags=gap_flags,
                 dialect_guidance=dialect_guidance,
                 en_pattern_guidance=en_pattern_guidance,
                 vn_pattern_guidance=vn_pattern_guidance,
                 visual_guidance=visual_guidance,
-                scene_plan=scene_plan,
+                scene_plan=effective_scene_plan,
                 volume_context=volume_context_text,
-                translation_brief=translation_brief,
+                translation_brief=effective_brief,
+                series_bible_rag_guidance=series_bible_rag_guidance,
             )
             logger.debug(f"[BATCH-EXTRACT] Prompt built for {chapter_id} ({len(user_prompt)} chars)")
 
@@ -1112,13 +2269,18 @@ This document contains the internal reasoning process that {reasoning_model_labe
                 "system_instruction": system_instruction,
                 "effective_cache":    effective_cache,
                 "model_name":         model_name,
-                "max_output_tokens":  self.gen_params.get("max_output_tokens", 65536),
-                "temperature":        self.gen_params.get("temperature", 0.7),
+                "max_output_tokens":  self.gen_params.get("max_output_tokens"),
+                "temperature":        self.gen_params.get("temperature"),
                 "metadata": {
                     "source_text":      source_text,
                     "en_title":         en_title,
                     "visual_guidance":  visual_guidance,
                     "illustration_ids": illustration_ids,
+                    "retry_prompt":     user_prompt,
+                    "retry_system_instruction": system_instruction,
+                    "retry_model_name": model_name or self.model_name,
+                    "retry_max_output_tokens": self.gen_params.get("max_output_tokens"),
+                    "retry_temperature": self.gen_params.get("temperature"),
                 },
             }
 
@@ -1139,13 +2301,20 @@ This document contains the internal reasoning process that {reasoning_model_labe
 
         Back-half of translate_chapter: takes the GeminiResponse returned by
         batch_generate() plus the metadata dict from extract_prompt(), then handles
-        file writing, quality audit, thinking log, CJK cleaning, and Stage 3 refinement.
+        file writing, quality audit, thinking log, and CJK cleaning.
         """
         try:
             source_text      = metadata.get("source_text", "")
             en_title         = en_title or metadata.get("en_title")
             visual_guidance  = metadata.get("visual_guidance")
             illustration_ids = metadata.get("illustration_ids", [])
+            cost_attempts: List[Dict[str, Any]] = [
+                self._response_cost_attempt(
+                    response,
+                    attempt_type="batch_translation",
+                    chapter_id=chapter_id,
+                )
+            ]
 
             if not response.content:
                 finish_reason = response.finish_reason or "UNKNOWN"
@@ -1168,16 +2337,71 @@ This document contains the internal reasoning process that {reasoning_model_labe
                     batch_mode=bool(getattr(response, "batch_pricing", False)),
                     fast_mode_pricing=bool(getattr(response, "fast_mode_pricing", False)),
                     error=f"Batch returned empty response (finish_reason={finish_reason})",
+                    cost_audit=self._build_cost_audit(
+                        chapter_id=chapter_id,
+                        request_mode="batch",
+                        attempts=cost_attempts,
+                    ),
                 )
 
             # Save thinking log
+            thinking_sanitization: Dict[str, Any] = {
+                "content": response.thinking_content,
+                "active": False,
+                "sanitized_segments": 0,
+            }
             if response.thinking_content:
+                thinking_sanitization = self._sanitize_thinking_for_qc(response.thinking_content)
                 self._save_thinking_process(
                     chapter_id,
-                    response.thinking_content,
+                    thinking_sanitization.get("content", response.thinking_content),
                     output_path,
                     visual_guidance=visual_guidance,
                     illustration_ids=illustration_ids,
+                )
+
+            adn_review_flags = self._extract_adn_review_flags(
+                response.thinking_content,
+                response.content,
+            )
+            adn_review_flags = self._apply_qc_sanitization_flag(
+                adn_review_flags,
+                thinking_sanitization,
+            )
+            checklist_gate = self._apply_adn_checklist_enforcement(
+                chapter_id=chapter_id,
+                thinking_content=response.thinking_content,
+                translated_content=response.content,
+                current_flags=adn_review_flags,
+            )
+            adn_review_flags = checklist_gate.get("adn_review_flags", adn_review_flags)
+            checklist_gate_warning = checklist_gate.get("warning")
+            checklist_gate_error = checklist_gate.get("error")
+            if checklist_gate_error:
+                logger.error(checklist_gate_error)
+                return TranslationResult(
+                    False,
+                    output_path,
+                    input_tokens=response.input_tokens,
+                    output_tokens=response.output_tokens,
+                    cached_tokens=getattr(response, "cached_tokens", 0) or 0,
+                    cache_creation_tokens=getattr(response, "cache_creation_tokens", 0) or 0,
+                    input_cost_usd=getattr(response, "input_cost_usd", 0.0) or 0.0,
+                    output_cost_usd=getattr(response, "output_cost_usd", 0.0) or 0.0,
+                    cache_read_cost_usd=getattr(response, "cache_read_cost_usd", 0.0) or 0.0,
+                    cache_creation_cost_usd=getattr(response, "cache_creation_cost_usd", 0.0) or 0.0,
+                    total_cost_usd=getattr(response, "total_cost_usd", 0.0) or 0.0,
+                    model=getattr(response, "model", None),
+                    batch_mode=bool(getattr(response, "batch_pricing", False)),
+                    fast_mode_pricing=bool(getattr(response, "fast_mode_pricing", False)),
+                    warnings=[checklist_gate_warning] if checklist_gate_warning else [],
+                    error=checklist_gate_error,
+                    cost_audit=self._build_cost_audit(
+                        chapter_id=chapter_id,
+                        request_mode="batch",
+                        attempts=cost_attempts,
+                    ),
+                    adn_review_flags=adn_review_flags,
                 )
 
             # Multimodal analysis-leak check
@@ -1195,11 +2419,108 @@ This document contains the internal reasoning process that {reasoning_model_labe
             # Post-process + write
             cleaned_body  = self._clean_output(translated_body)
             final_content = self._compose_chapter_markdown(cleaned_body, en_title)
+
+            hallucination_issues: List[str] = []
+            if self.hallucination_reduction_enabled:
+                hallucination_issues = self._detect_hallucination_artifacts(final_content)
+                if hallucination_issues:
+                    logger.warning(
+                        f"[BATCH-FINALIZE][HALLUCINATION-GUARD] Detected artifacts in {chapter_id}: "
+                        f"{', '.join(hallucination_issues)}"
+                    )
+                    retry_prompt = metadata.get("retry_prompt")
+                    if (
+                        self.hallucination_retry_enabled
+                        and self.hallucination_max_retries > 0
+                        and isinstance(retry_prompt, str)
+                        and retry_prompt.strip()
+                    ):
+                        logger.warning(
+                            "[BATCH-FINALIZE][HALLUCINATION-GUARD] Retrying once with strict grounding constraints..."
+                        )
+                        retry_system_instruction = metadata.get("retry_system_instruction")
+                        if not retry_system_instruction:
+                            retry_system_instruction = self.prompt_loader.build_system_instruction(genre=self.book_genre)
+                        retry_model_name = metadata.get("retry_model_name") or getattr(response, "model", None) or self.model_name
+                        retry_max_tokens = metadata.get("retry_max_output_tokens", self.gen_params.get("max_output_tokens"))
+                        retry_temperature = metadata.get("retry_temperature", self.gen_params.get("temperature"))
+                        retry_response = self.client.generate(
+                            prompt=f"{retry_prompt}{self._build_hallucination_retry_suffix(hallucination_issues)}",
+                            system_instruction=retry_system_instruction,
+                            temperature=retry_temperature, # type: ignore
+                            max_output_tokens=retry_max_tokens, # type: ignore
+                            generation_config=self.gen_params,
+                            model=retry_model_name,
+                            cached_content=None,
+                            force_new_session=True,
+                        )
+                        cost_attempts.append(
+                            self._response_cost_attempt(
+                                retry_response,
+                                attempt_type="batch_hallucination_retry",
+                                chapter_id=chapter_id,
+                                note="Retry after hallucination/artifact detection on batch result",
+                            )
+                        )
+                        if retry_response.content:
+                            retry_response = self._preserve_tool_artifacts(
+                                retry_response,
+                                response,
+                            )
+                            retry_cleaned = self._clean_output(retry_response.content)
+                            retry_final = self._compose_chapter_markdown(retry_cleaned, en_title)
+                            retry_issues = self._detect_hallucination_artifacts(retry_final)
+                            if len(retry_issues) < len(hallucination_issues):
+                                response = retry_response
+                                translated_body = retry_response.content
+                                cleaned_body = retry_cleaned
+                                final_content = retry_final
+                                hallucination_issues = retry_issues
+                                if retry_issues:
+                                    logger.warning(
+                                        f"[BATCH-FINALIZE][HALLUCINATION-GUARD] Retry reduced artifacts but some remain in {chapter_id}: "
+                                        f"{', '.join(retry_issues)}"
+                                    )
+                                else:
+                                    logger.info(
+                                        f"[BATCH-FINALIZE][HALLUCINATION-GUARD] Retry resolved artifact leakage for {chapter_id}"
+                                    )
+                            else:
+                                logger.warning(
+                                    f"[BATCH-FINALIZE][HALLUCINATION-GUARD] Retry did not improve {chapter_id}; keeping batch output"
+                                )
+                        else:
+                            logger.warning(
+                                f"[BATCH-FINALIZE][HALLUCINATION-GUARD] Retry returned empty content for {chapter_id}; keeping batch output"
+                            )
             final_content, scene_break_count = SceneBreakFormatter.format_scene_breaks(final_content)
             if scene_break_count > 0:
                 logger.info(f"[BATCH-FINALIZE] Formatted {scene_break_count} scene break(s) in {chapter_id}")
 
             audit = QualityMetrics.quick_audit(final_content, source_text)
+
+            # Vietnamese Quality Metrics Debug Logging (VN only)
+            if self.target_language in ['vi', 'vn']:
+                QualityMetrics.log_vn_quality_debug(final_content, chapter_id)
+
+            batch_warnings = list(audit.warnings or [])
+            if adn_review_flags.get("requires_review"):
+                batch_warnings.append(
+                    "ADN review required: "
+                    f"BLOCKED={adn_review_flags.get('blocked_directive_count', 0)}, "
+                    f"EPS={adn_review_flags.get('eps_divergence_count', 0)}"
+                )
+            if checklist_gate_warning:
+                batch_warnings.append(checklist_gate_warning)
+            if thinking_sanitization.get("active"):
+                batch_warnings.append(
+                    "QC sanitization active: thinking log explicit summarization replaced "
+                    f"with generic assessment ({thinking_sanitization.get('sanitized_segments', 0)} segment(s))"
+                )
+            if hallucination_issues:
+                batch_warnings.append(
+                    f"Hallucination guard flagged residual artifacts: {', '.join(hallucination_issues)}"
+                )
 
             output_path.parent.mkdir(parents=True, exist_ok=True)
             with open(output_path, 'w', encoding='utf-8') as _f:
@@ -1212,27 +2533,6 @@ This document contains the internal reasoning process that {reasoning_model_labe
                 cjk_count = clean_result.get('substitutions', 0)
                 if cjk_count > 0:
                     logger.info(f"[BATCH-FINALIZE] CJK: {cjk_count} substitutions applied")
-
-            # Stage 3 refinement
-            stage3_metrics = {}
-            if self.enable_stage3 and self._stage3_agent:
-                try:
-                    stage3_report = self._stage3_agent.process_chapter(output_path)
-                    if stage3_report:
-                        stage3_metrics = {
-                            'hard_cap_violations': stage3_report.hard_cap_violations,
-                            'hard_cap_fixed':      stage3_report.hard_cap_auto_split,
-                            'tense_violations':    stage3_report.tense_violations,
-                            'ai_isms_fixed':       stage3_report.ai_ism_fixes_applied,
-                        }
-                        if stage3_report.hard_cap_auto_split > 0:
-                            logger.info(
-                                f"[BATCH-FINALIZE] Stage3: "
-                                f"{stage3_report.hard_cap_auto_split}/{stage3_report.hard_cap_violations} "
-                                f"sentences auto-split"
-                            )
-                except Exception as _e:
-                    logger.warning(f"[BATCH-FINALIZE] Stage 3 failed: {_e}")
 
             return TranslationResult(
                 success=True,
@@ -1250,15 +2550,26 @@ This document contains the internal reasoning process that {reasoning_model_labe
                 batch_mode=bool(getattr(response, "batch_pricing", False)),
                 fast_mode_pricing=bool(getattr(response, "fast_mode_pricing", False)),
                 audit_result=audit,
-                warnings=list(audit.warnings or []),
-                stage3_metrics=stage3_metrics or None,
+                warnings=batch_warnings,
+                cost_audit=self._build_cost_audit(
+                    chapter_id=chapter_id,
+                    request_mode="batch",
+                    attempts=cost_attempts,
+                    extra={
+                        "hallucination_retry_count": sum(
+                            1 for attempt in cost_attempts
+                            if attempt.get("attempt_type") == "batch_hallucination_retry"
+                        ),
+                    },
+                ),
+                adn_review_flags=adn_review_flags,
             )
 
         except Exception as _e:
             logger.exception(f"[BATCH-FINALIZE] Failed to finalize {chapter_id}")
             return TranslationResult(False, output_path, error=str(_e))
 
-    def translate_chapter(
+    def translate_chapter( # type: ignore
         self,
         source_path: Path,
         output_path: Path,
@@ -1364,22 +2675,18 @@ This document contains the internal reasoning process that {reasoning_model_labe
                     logger.warning("[GAP] Continuing without gap guidance")
             # === END GAP ANALYSIS ===
 
-            # === DIALECT DETECTION (v1.0 - 2026-02-01) ===
+            # === DIALECT FINGERPRINT (Phase 1.55 pre-computed) ===
             dialect_guidance = None
-            if DIALECT_DETECTION_AVAILABLE and detect_chapter_dialects:
-                try:
-                    logger.debug(f"[DIALECT] Scanning {chapter_id} for regional dialects...")
-                    has_dialects, dialect_text = detect_chapter_dialects(source_text, chapter_id)
-                    
-                    if has_dialects:
-                        logger.info(f"[DIALECT] Regional dialect(s) detected in {chapter_id}")
-                        dialect_guidance = dialect_text
-                    else:
-                        logger.debug(f"[DIALECT] No regional dialects detected in {chapter_id}")
-                except Exception as e:
-                    logger.warning(f"[DIALECT] Detection failed: {e}")
-                    logger.warning("[DIALECT] Continuing without dialect guidance")
-            # === END DIALECT DETECTION ===
+            try:
+                dialect_guidance = self._load_dialect_guidance(chapter_id)
+                if dialect_guidance:
+                    logger.info(f"[DIALECT] Loaded pre-computed dialect guidance for {chapter_id}")
+                else:
+                    logger.debug(f"[DIALECT] No dialect guidance emitted for {chapter_id}")
+            except Exception as e:
+                logger.warning(f"[DIALECT] Fingerprint load failed: {e}")
+                logger.warning("[DIALECT] Continuing without dialect guidance")
+            # === END DIALECT FINGERPRINT ===
 
             # Strip JP title if present (usually the first H1)
             # We preserve the original title for audit but send the rest to LLM
@@ -1397,7 +2704,6 @@ This document contains the internal reasoning process that {reasoning_model_labe
             if self.target_language in ['vi', 'vn']:  # Only for Vietnamese translations
                 try:
                     from modules.kanji_extractor import extract_unique_compounds
-                    from modules.sino_vietnamese_store import SinoVietnameseStore
                     
                     logger.debug(f"[KANJI] Extracting kanji compounds for Sino-Vietnamese lookup...")
                     
@@ -1414,7 +2720,10 @@ This document contains the internal reasoning process that {reasoning_model_labe
                         
                         # Query vector store for disambiguation guidance
                         # Now with CONTEXT-AWARE DISAMBIGUATION
-                        store = SinoVietnameseStore()
+                        store = self._get_sino_vietnamese_store()
+                        if store is None:
+                            logger.warning("[KANJI] Sino-Vietnamese store unavailable; skipping kanji guidance")
+                            kanji_terms = []
                         
                         # Extract first 3 sentences as context hint
                         sentences = re.split(r'[。！？\n]', source_content_only)
@@ -1427,23 +2736,26 @@ This document contains the internal reasoning process that {reasoning_model_labe
                             # Extract relevant context from continuity
                             prev_context = context_str[:500] if len(context_str) > 500 else context_str
                         
-                        sino_vn_guidance = store.get_bulk_guidance(
-                            terms=kanji_terms,
-                            genre=self.book_genre,  # v2: extracted from manifest
-                            max_per_term=2,
-                            min_confidence=0.68,
-                            context=context_hint,  # Current chapter context
-                            prev_context=prev_context,  # Previous chapter context
-                            use_external_dict=True  # Enable external dictionary fallback
-                        )
-                        
-                        high_conf = len(sino_vn_guidance.get("high_confidence", []))
-                        medium_conf = len(sino_vn_guidance.get("medium_confidence", []))
-                        external_count = len(sino_vn_guidance.get("external_dict", []))
-                        lookup_stats = sino_vn_guidance.get("lookup_stats", {})
-                        
-                        logger.info(f"[KANJI] Sino-Vietnamese guidance: {high_conf} high, {medium_conf} medium, {external_count} external")
-                        logger.debug(f"[KANJI] Lookup stats: direct={lookup_stats.get('direct_hits', 0)}, vector={lookup_stats.get('vector_hits', 0)}, external={lookup_stats.get('external_hits', 0)}")
+                        if kanji_terms:
+                            sino_vn_guidance = store.get_bulk_guidance(
+                                terms=kanji_terms,
+                                genre=self.book_genre,  # v2: extracted from manifest
+                                max_per_term=2,
+                                min_confidence=0.68,
+                                context=context_hint,  # Current chapter context
+                                prev_context=prev_context,  # Previous chapter context
+                                use_external_dict=False  # VN hotfix: disable KanjiAPI fallback
+                            )
+                            
+                            high_conf = len(sino_vn_guidance.get("high_confidence", []))
+                            medium_conf = len(sino_vn_guidance.get("medium_confidence", []))
+                            external_count = len(sino_vn_guidance.get("external_dict", []))
+                            lookup_stats = sino_vn_guidance.get("lookup_stats", {})
+                            
+                            logger.info(f"[KANJI] Sino-Vietnamese guidance: {high_conf} high, {medium_conf} medium, {external_count} external")
+                            logger.debug(f"[KANJI] Lookup stats: direct={lookup_stats.get('direct_hits', 0)}, vector={lookup_stats.get('vector_hits', 0)}, external={lookup_stats.get('external_hits', 0)}")
+                        else:
+                            logger.debug("[KANJI] Skipping lookup because store is unavailable")
                     else:
                         logger.debug(f"[KANJI] No kanji compounds found in chapter")
                         
@@ -1458,7 +2770,6 @@ This document contains the internal reasoning process that {reasoning_model_labe
             if self.target_language == 'en':  # English translations only
                 try:
                     from modules.grammar_pattern_detector import detect_grammar_patterns
-                    from modules.english_pattern_store import EnglishPatternStore
 
                     logger.debug(f"[GRAMMAR] Detecting Japanese patterns for natural English phrasing...")
 
@@ -1473,32 +2784,36 @@ This document contains the internal reasoning process that {reasoning_model_labe
                         logger.debug(f"[GRAMMAR] Found {len(detected_patterns)} patterns")
 
                         # Query vector store for natural English equivalents
-                        store = EnglishPatternStore()
+                        store = self._get_english_pattern_store()
+                        if store is None:
+                            logger.warning("[GRAMMAR] English pattern store unavailable; skipping pattern guidance")
+                            en_pattern_guidance = None
+                            detected_patterns = []
+                        else:
+                            # Extract first 5 sentences as context hint
+                            sentences = re.split(r'[。！？\n]', source_content_only)
+                            context_sentences = [s.strip() for s in sentences[:5] if s.strip()]
+                            context_hint = '。'.join(context_sentences[:3])
 
-                        # Extract first 5 sentences as context hint
-                        sentences = re.split(r'[。！？\n]', source_content_only)
-                        context_sentences = [s.strip() for s in sentences[:5] if s.strip()]
-                        context_hint = '。'.join(context_sentences[:3])
+                            # Get previous chapter context if available
+                            prev_context = ""
+                            if context_str:
+                                # Extract relevant context from continuity
+                                prev_context = context_str[:500] if len(context_str) > 500 else context_str
 
-                        # Get previous chapter context if available
-                        prev_context = ""
-                        if context_str:
-                            # Extract relevant context from continuity
-                            prev_context = context_str[:500] if len(context_str) > 500 else context_str
+                            en_pattern_guidance = store.get_bulk_guidance(
+                                patterns=detected_patterns,
+                                context=context_hint,
+                                max_per_pattern=2,
+                                min_confidence=0.75
+                            )
 
-                        en_pattern_guidance = store.get_bulk_guidance(
-                            patterns=detected_patterns,
-                            context=context_hint,
-                            max_per_pattern=2,
-                            min_confidence=0.75
-                        )
+                            high_conf = len(en_pattern_guidance.get("high_confidence", []))
+                            medium_conf = len(en_pattern_guidance.get("medium_confidence", []))
+                            lookup_stats = en_pattern_guidance.get("lookup_stats", {})
 
-                        high_conf = len(en_pattern_guidance.get("high_confidence", []))
-                        medium_conf = len(en_pattern_guidance.get("medium_confidence", []))
-                        lookup_stats = en_pattern_guidance.get("lookup_stats", {})
-
-                        logger.info(f"[GRAMMAR] English pattern guidance: {high_conf} high, {medium_conf} medium")
-                        logger.debug(f"[GRAMMAR] Lookup stats: patterns_queried={lookup_stats.get('patterns_queried', 0)}")
+                            logger.info(f"[GRAMMAR] English pattern guidance: {high_conf} high, {medium_conf} medium")
+                            logger.debug(f"[GRAMMAR] Lookup stats: patterns_queried={lookup_stats.get('patterns_queried', 0)}")
                     else:
                         logger.debug(f"[GRAMMAR] No grammar patterns detected in chapter")
 
@@ -1513,7 +2828,6 @@ This document contains the internal reasoning process that {reasoning_model_labe
             if self.target_language == 'vn':  # Vietnamese translations only
                 try:
                     from modules.grammar_pattern_detector import detect_grammar_patterns
-                    from modules.vietnamese_pattern_store import VietnamesePatternStore
 
                     logger.debug(f"[VN-GRAMMAR] Detecting Japanese patterns for natural Vietnamese phrasing...")
 
@@ -1528,26 +2842,33 @@ This document contains the internal reasoning process that {reasoning_model_labe
                         logger.debug(f"[VN-GRAMMAR] Found {len(detected_patterns)} patterns")
 
                         # Query VN vector store for natural Vietnamese equivalents
-                        vn_store = VietnamesePatternStore()
+                        vn_store = self._get_vietnamese_pattern_store()
+                        if vn_store is None:
+                            logger.warning("[VN-GRAMMAR] Vietnamese pattern store unavailable; skipping pattern guidance")
+                            vn_pattern_guidance = None
+                            detected_patterns = []
 
                         # Extract first 5 sentences as context hint
                         sentences = re.split(r'[。！？\n]', source_content_only)
                         context_sentences = [s.strip() for s in sentences[:5] if s.strip()]
                         context_hint = '。'.join(context_sentences[:3])
 
-                        vn_pattern_guidance = vn_store.get_bulk_guidance(
-                            patterns=detected_patterns,
-                            context=context_hint,
-                            max_per_pattern=2,
-                            min_confidence=0.70
-                        )
+                        if detected_patterns:
+                            vn_pattern_guidance = vn_store.get_bulk_guidance(
+                                patterns=detected_patterns,
+                                context=context_hint,
+                                max_per_pattern=2,
+                                min_confidence=0.70
+                            )
 
-                        high_conf = len(vn_pattern_guidance.get("high_confidence", []))
-                        medium_conf = len(vn_pattern_guidance.get("medium_confidence", []))
-                        lookup_stats = vn_pattern_guidance.get("lookup_stats", {})
+                            high_conf = len(vn_pattern_guidance.get("high_confidence", []))
+                            medium_conf = len(vn_pattern_guidance.get("medium_confidence", []))
+                            lookup_stats = vn_pattern_guidance.get("lookup_stats", {})
 
-                        logger.info(f"[VN-GRAMMAR] Vietnamese pattern guidance: {high_conf} high, {medium_conf} medium")
-                        logger.debug(f"[VN-GRAMMAR] Lookup stats: patterns_queried={lookup_stats.get('patterns_queried', 0)}, neg_penalties={lookup_stats.get('neg_penalties_applied', 0)}")
+                            logger.info(f"[VN-GRAMMAR] Vietnamese pattern guidance: {high_conf} high, {medium_conf} medium")
+                            logger.debug(f"[VN-GRAMMAR] Lookup stats: patterns_queried={lookup_stats.get('patterns_queried', 0)}, neg_penalties={lookup_stats.get('neg_penalties_applied', 0)}")
+                        else:
+                            logger.debug("[VN-GRAMMAR] Skipping lookup because store is unavailable")
                     else:
                         logger.debug(f"[VN-GRAMMAR] No grammar patterns detected in chapter")
 
@@ -1555,6 +2876,20 @@ This document contains the internal reasoning process that {reasoning_model_labe
                     logger.warning(f"[VN-GRAMMAR] Pattern detection failed: {e}")
                     logger.warning("[VN-GRAMMAR] Continuing without Vietnamese grammar pattern guidance")
                     vn_pattern_guidance = None
+
+            # === SERIES BIBLE RAG CONTEXT ===
+            series_bible_rag_guidance = None
+            rag_store = self._get_series_bible_rag_store()
+            if rag_store is not None and self._bible_glossary:
+                try:
+                    passages = rag_store.retrieve_for_chapter(
+                        source_content_only, self._bible_glossary
+                    )
+                    if passages:
+                        series_bible_rag_guidance = rag_store.format_for_prompt(passages)
+                except Exception as e:
+                    logger.warning(f"[BIBLE-RAG] Retrieval failed for {chapter_id}: {e}")
+            # === END SERIES BIBLE RAG ===
 
             # === MULTIMODAL VISUAL CONTEXT ===
             visual_guidance = None
@@ -1624,43 +2959,130 @@ This document contains the internal reasoning process that {reasoning_model_labe
             context_str = self.context_manager.get_context_prompt(chapter_id)
             logger.debug(f"[VERBOSE] Context length: {len(context_str)} characters")
 
-            # === VOLUME-LEVEL CONTEXT (Phase 1.2) ===
+            # === RETROSPECTIVE POV ANCHORS (Arc-Closing Prose) ===
+            retrospective_anchor_text = None
+            retrospective_anchor_for_system = None  # Phase B: system prompt placement
+            prose_anchor_cfg = get_translation_config().get("context", {}).get("prose_anchor", {})
+            if prose_anchor_cfg.get("enabled", False):
+                raw_anchor = self.context_manager.get_retrospective_arc_prompt(
+                    chapter_id=chapter_id,
+                    max_arcs=prose_anchor_cfg.get("max_arcs_per_chapter", 5),
+                    lines_per_closing=prose_anchor_cfg.get("lines_per_closing", 20),
+                )
+                if raw_anchor:
+                    anchor_block = self.prompt_loader.build_retrospective_anchor_block(raw_anchor)
+                    # Phase B: Anthropic + system_cache_placement → system prompt block
+                    _is_anthropic = type(self.client).__name__ == "AnthropicClient"
+                    if _is_anthropic and prose_anchor_cfg.get("system_cache_placement", True):
+                        retrospective_anchor_for_system = anchor_block
+                        logger.debug(
+                            f"[RETRO-ANCHOR] Routing to system prompt block "
+                            f"({len(anchor_block)} chars)"
+                        )
+                    else:
+                        retrospective_anchor_text = anchor_block
+                        logger.debug(
+                            f"[RETRO-ANCHOR] Routing to user prompt "
+                            f"({len(anchor_block)} chars)"
+                        )
+            # === END RETROSPECTIVE ANCHORS ===
+
+            # === VOLUME-LEVEL CONTEXT ===
             volume_context_text = None
             volume_cache_name = None
-            if self.volume_context_integration:
-                logger.debug(f"[VERBOSE] Getting volume-level context...")
+            if self.bible_context_block:
+                volume_context_text = self.bible_context_block
+                logger.debug(
+                    f"[BIBLE-CTX] Injecting series bible context "
+                    f"({len(volume_context_text)} chars)"
+                )
+            elif self.volume_context_integration:
+                logger.debug("[VERBOSE] Getting legacy rolling volume context...")
                 volume_context_text, volume_cache_name = self.volume_context_integration.get_volume_context(
                     chapter_id=chapter_id,
                     source_dir=source_path.parent,
                     en_dir=output_path.parent
                 )
 
-                # If volume cache exists, use it instead of effective_cache
+                # If legacy volume cache exists, use it instead of effective_cache
                 if volume_cache_name:
                     effective_cache = volume_cache_name
-                    logger.info(f"[VOLUME-CACHE] Using volume-level cache: {volume_cache_name[:50]}...")
-                    logger.debug(f"[VERBOSE] Volume context length: {len(volume_context_text) if volume_context_text else 0} characters")
+                    logger.info(f"[VOLUME-CACHE][LEGACY] Using volume-level cache: {volume_cache_name[:50]}...")
+                    logger.debug(
+                        f"[VERBOSE] Legacy volume context length: "
+                        f"{len(volume_context_text) if volume_context_text else 0} characters"
+                    )
+
+            # Avoid duplicating bible continuity context in user prompt.
+            # When SeriesBibleRAG prior-volume passages are present, the bible pull
+            # context block is largely redundant and can push long chapters beyond
+            # Anthropic's 200K input-token limit.
+            if volume_context_text and series_bible_rag_guidance:
+                logger.info(
+                    f"[CTX-DEDUP] {chapter_id}: skipping volume_context "
+                    f"({len(volume_context_text):,} chars) because SeriesBibleRAG "
+                    f"context is already injected ({len(series_bible_rag_guidance):,} chars)."
+                )
+                volume_context_text = None
             # === END VOLUME CONTEXT ===
 
             # Construct User Message
             logger.debug(f"[VERBOSE] Building user prompt...")
+            # Translation brief is now always injected regardless of chapter size.
+            # (Threshold disabled - set to 1GB to effectively disable the check)
+            _BRIEF_SKIP_THRESHOLD = 1_000_000_000  # chars (disabled)
+            _effective_brief = translation_brief
+            _effective_scene_plan = scene_plan
+            if len(source_content_only) > _BRIEF_SKIP_THRESHOLD:
+                if translation_brief:
+                    _effective_brief = None
+                    logger.warning(
+                        f"[BRIEF] Skipping translation brief for {chapter_id} "
+                        f"(source={len(source_content_only):,} chars > {_BRIEF_SKIP_THRESHOLD:,} threshold)"
+                    )
+                if scene_plan:
+                    _effective_scene_plan = None
+                    logger.warning(
+                        f"[SCENE] Skipping scene_plan for {chapter_id} "
+                        f"(source={len(source_content_only):,} chars > {_BRIEF_SKIP_THRESHOLD:,} threshold)"
+                    )
             user_prompt = self._build_user_prompt(
                 chapter_id,
                 source_content_only,
                 context_str,
                 en_title,
                 jp_title=jp_title,
+                jp_source_text=source_content_only,  # For content-selective filtering
                 sino_vn_guidance=sino_vn_guidance,
                 gap_flags=gap_flags,
                 dialect_guidance=dialect_guidance,  # v1.0 - Dialect detection
                 en_pattern_guidance=en_pattern_guidance,  # English grammar patterns
                 vn_pattern_guidance=vn_pattern_guidance,  # Vietnamese grammar patterns
                 visual_guidance=visual_guidance,
-                scene_plan=scene_plan,
+                scene_plan=_effective_scene_plan,
                 volume_context=volume_context_text,  # Phase 1.2 - Volume-level context
-                translation_brief=translation_brief,  # Phase 1.56 - Full-volume brief
+                translation_brief=_effective_brief,  # Phase 1.56 - Full-volume brief
+                retrospective_anchor=retrospective_anchor_text,  # Arc-closing prose anchors
+                series_bible_rag_guidance=series_bible_rag_guidance,  # Prior-volume prose
             )
             logger.debug(f"[VERBOSE] User prompt length: {len(user_prompt)} characters")
+
+            active_tools = self._build_tool_mode_tools()
+            use_tool_mode = bool(active_tools)
+            tool_runtime = None
+            if use_tool_mode:
+                tool_guidance = self._build_tool_guidance_block(chapter_id, active_tools)
+                if tool_guidance:
+                    user_prompt = f"{user_prompt}\n\n{tool_guidance}"
+                tool_runtime = self._build_tool_runtime(
+                    chapter_id=chapter_id,
+                    output_path=output_path,
+                    active_tools=active_tools,
+                )
+                logger.info(
+                    f"[TOOL-MODE] {chapter_id}: active tools = "
+                    f"{', '.join(str(tool.get('name')) for tool in active_tools if tool.get('name'))}"
+                )
             
             # 3. Call LLM (provider-routed: Anthropic or Gemini)
             logger.debug(f"[VERBOSE] Calling LLM API ({type(self.client).__name__})...")
@@ -1670,10 +3092,15 @@ This document contains the internal reasoning process that {reasoning_model_labe
             response = self.client.generate(
                 prompt=user_prompt,
                 system_instruction=system_instruction,
-                temperature=self.gen_params.get("temperature", 0.7),
-                max_output_tokens=self.gen_params.get("max_output_tokens", 65536),
+                temperature=self.gen_params.get("temperature"),
+                max_output_tokens=self.gen_params.get("max_output_tokens"),
+                generation_config=self.gen_params,
                 model=model_name or self.model_name,
-                cached_content=effective_cache  # Inject cached schema for continuity
+                cached_content=effective_cache,  # Inject cached schema for continuity
+                tools=active_tools or None,
+                use_tool_mode=use_tool_mode,
+                tool_handlers=(tool_runtime or {}).get("handlers"),
+                retrospective_anchor=retrospective_anchor_for_system,  # Phase B: system block
             )
             logger.debug(
                 f"[VERBOSE] LLM response received. "
@@ -1681,15 +3108,85 @@ This document contains the internal reasoning process that {reasoning_model_labe
                 f"tokens={response.input_tokens} in/{response.output_tokens} out, "
                 f"cached_tokens={response.cached_tokens}"
             )
+            cost_attempts: List[Dict[str, Any]] = [
+                self._response_cost_attempt(
+                    response,
+                    attempt_type="translation_primary",
+                    chapter_id=chapter_id,
+                )
+            ]
+            if getattr(response, "tool_calls_made", None):
+                logger.info(
+                    "[TOOL-MODE] %s tool calls used: %s",
+                    chapter_id,
+                    ", ".join(str(name) for name in response.tool_calls_made if name),
+                )
+            if getattr(response, "declared_params", None) is not None:
+                logger.info(
+                    "[TOOL-MODE] %s declared params: EPS=%s voice=%s",
+                    chapter_id,
+                    response.declared_params.eps_band,
+                    response.declared_params.voice_mode,
+                )
             
             # Save thinking process to separate markdown file if enabled
+            thinking_sanitization: Dict[str, Any] = {
+                "content": response.thinking_content,
+                "active": False,
+                "sanitized_segments": 0,
+            }
             if response.thinking_content:
+                thinking_sanitization = self._sanitize_thinking_for_qc(response.thinking_content)
                 self._save_thinking_process(
                     chapter_id, 
-                    response.thinking_content, 
+                    thinking_sanitization.get("content", response.thinking_content), 
                     output_path,
                     visual_guidance=visual_guidance,
                     illustration_ids=illustration_ids
+                )
+
+            adn_review_flags = self._extract_adn_review_flags(
+                response.thinking_content,
+                response.content,
+            )
+            adn_review_flags = self._apply_qc_sanitization_flag(
+                adn_review_flags,
+                thinking_sanitization,
+            )
+            checklist_gate = self._apply_adn_checklist_enforcement(
+                chapter_id=chapter_id,
+                thinking_content=response.thinking_content,
+                translated_content=response.content,
+                current_flags=adn_review_flags,
+            )
+            adn_review_flags = checklist_gate.get("adn_review_flags", adn_review_flags)
+            checklist_gate_warning = checklist_gate.get("warning")
+            checklist_gate_error = checklist_gate.get("error")
+            if checklist_gate_error:
+                logger.error(checklist_gate_error)
+                return TranslationResult(
+                    False,
+                    output_path,
+                    input_tokens=response.input_tokens,
+                    output_tokens=response.output_tokens,
+                    cached_tokens=getattr(response, "cached_tokens", 0) or 0,
+                    cache_creation_tokens=getattr(response, "cache_creation_tokens", 0) or 0,
+                    input_cost_usd=getattr(response, "input_cost_usd", 0.0) or 0.0,
+                    output_cost_usd=getattr(response, "output_cost_usd", 0.0) or 0.0,
+                    cache_read_cost_usd=getattr(response, "cache_read_cost_usd", 0.0) or 0.0,
+                    cache_creation_cost_usd=getattr(response, "cache_creation_cost_usd", 0.0) or 0.0,
+                    total_cost_usd=getattr(response, "total_cost_usd", 0.0) or 0.0,
+                    model=getattr(response, "model", None),
+                    batch_mode=bool(getattr(response, "batch_pricing", False)),
+                    fast_mode_pricing=bool(getattr(response, "fast_mode_pricing", False)),
+                    warnings=[checklist_gate_warning] if checklist_gate_warning else [],
+                    error=checklist_gate_error,
+                    cost_audit=self._build_cost_audit(
+                        chapter_id=chapter_id,
+                        request_mode="streaming",
+                        attempts=cost_attempts,
+                    ),
+                    adn_review_flags=adn_review_flags,
                 )
             
             if not response.content:
@@ -1727,7 +3224,12 @@ This document contains the internal reasoning process that {reasoning_model_labe
                     error=(
                         f"Gemini returned empty response "
                         f"(finish_reason={finish_reason}; possible safety block)"
-                    )
+                    ),
+                    cost_audit=self._build_cost_audit(
+                        chapter_id=chapter_id,
+                        request_mode="streaming",
+                        attempts=cost_attempts,
+                    ),
                 )
             
             # 4. Parse Response
@@ -1785,13 +3287,26 @@ This document contains the internal reasoning process that {reasoning_model_labe
                 retry_response = self.client.generate(
                     prompt=user_prompt,
                     system_instruction=fallback_system_instruction,
-                    temperature=self.gen_params.get("temperature", 0.7),
-                    max_output_tokens=self.gen_params.get("max_output_tokens", 65536),
+                    temperature=self.gen_params.get("temperature"),
+                    max_output_tokens=self.gen_params.get("max_output_tokens"),
+                    generation_config=self.gen_params,
                     model=model_name or self.model_name,
                     cached_content=None,
                     force_new_session=True,
                 )
+                cost_attempts.append(
+                    self._response_cost_attempt(
+                        retry_response,
+                        attempt_type="cache_bleed_retry",
+                        chapter_id=chapter_id,
+                        note="Retry without cache after cross-chapter heading bleed detection",
+                    )
+                )
                 if retry_response.content:
+                    retry_response = self._preserve_tool_artifacts(
+                        retry_response,
+                        response,
+                    )
                     response = retry_response
                     translated_body = retry_response.content
                     cleaned_body = self._clean_output(translated_body)
@@ -1808,6 +3323,69 @@ This document contains the internal reasoning process that {reasoning_model_labe
                         )
                     else:
                         logger.info(f"[CACHE BLEED] Retry without cache resolved heading bleed for {chapter_id}")
+
+            hallucination_issues: List[str] = []
+            if self.hallucination_reduction_enabled:
+                hallucination_issues = self._detect_hallucination_artifacts(final_content)
+                if hallucination_issues:
+                    logger.warning(
+                        f"[HALLUCINATION-GUARD] Detected non-canonical artifacts in {chapter_id}: "
+                        f"{', '.join(hallucination_issues)}"
+                    )
+                    if self.hallucination_retry_enabled and self.hallucination_max_retries > 0:
+                        logger.warning("[HALLUCINATION-GUARD] Retrying chapter once with strict grounding constraints...")
+                        fallback_system_instruction = (
+                            system_instruction
+                            or self.prompt_loader.build_system_instruction(genre=self.book_genre)
+                        )
+                        retry_prompt = f"{user_prompt}{self._build_hallucination_retry_suffix(hallucination_issues)}"
+                        retry_response = self.client.generate(
+                            prompt=retry_prompt,
+                            system_instruction=fallback_system_instruction,
+                            temperature=self.gen_params.get("temperature"),
+                            max_output_tokens=self.gen_params.get("max_output_tokens"),
+                            generation_config=self.gen_params,
+                            model=model_name or self.model_name,
+                            cached_content=None,
+                            force_new_session=True,
+                        )
+                        cost_attempts.append(
+                            self._response_cost_attempt(
+                                retry_response,
+                                attempt_type="hallucination_retry",
+                                chapter_id=chapter_id,
+                                note="Retry with strict grounding suffix after hallucination/artifact detection",
+                            )
+                        )
+                        if retry_response.content:
+                            retry_response = self._preserve_tool_artifacts(
+                                retry_response,
+                                response,
+                            )
+                            retry_body = self._clean_output(retry_response.content)
+                            retry_final = self._compose_chapter_markdown(retry_body, en_title)
+                            retry_issues = self._detect_hallucination_artifacts(retry_final)
+                            if len(retry_issues) < len(hallucination_issues):
+                                response = retry_response
+                                translated_body = retry_response.content
+                                cleaned_body = retry_body
+                                final_content = retry_final
+                                hallucination_issues = retry_issues
+                                if retry_issues:
+                                    logger.warning(
+                                        f"[HALLUCINATION-GUARD] Retry reduced artifacts but some remain in {chapter_id}: "
+                                        f"{', '.join(retry_issues)}"
+                                    )
+                                else:
+                                    logger.info(f"[HALLUCINATION-GUARD] Retry resolved artifact leakage for {chapter_id}")
+                            else:
+                                logger.warning(
+                                    f"[HALLUCINATION-GUARD] Retry did not improve {chapter_id}; keeping original output"
+                                )
+                        else:
+                            logger.warning(
+                                f"[HALLUCINATION-GUARD] Retry returned empty content for {chapter_id}; keeping original output"
+                            )
             
             # Format scene breaks (replace *, **, *** with centered ◆)
             final_content, scene_break_count = SceneBreakFormatter.format_scene_breaks(final_content)
@@ -1816,22 +3394,132 @@ This document contains the internal reasoning process that {reasoning_model_labe
             
             # 5. Quality Audit (Audit against full source for accuracy check)
             audit = QualityMetrics.quick_audit(final_content, source_text)
-            
+            declared_params = getattr(response, "declared_params", None)
+            qc_self_report = getattr(response, "qc_self_report", None)
+            structural_constraints = list(
+                getattr(response, "structural_constraints", []) or []
+            )
+            # Gap 8.3 + 8.2 extension: Pass character fingerprints + chapter POV so the
+            # validator uses the fingerprint contraction_rate as the authoritative baseline
+            # rather than the model's self-declared narration_rate (which may be wrong when
+            # the model self-declares an incorrect EPS band in streaming/tool mode).
+            # When _chapter_pov_segments is populated (multi-POV chapter), it takes
+            # precedence over _chapter_pov; chapter_pov is left empty in that case.
+            _kf_fingerprints = self._voice_fingerprints if self._voice_fingerprints else None
+            _kf_pov_segments = self._chapter_pov_segments if self._chapter_pov_segments else None
+            _kf_chapter_pov = (
+                self._chapter_pov if (self._chapter_pov and not _kf_pov_segments) else None
+            )
+            # Language-aware validator dispatch (Gap G2 / G3 — VN parity)
+            if self._afterword_mode_override:
+                logger.info(
+                    "[AFTERWORD OVERRIDE] %s: bypassing EPS/KF validator constraints",
+                    chapter_id,
+                )
+                koji_report = KojiFoxReport(
+                    overall_score=1.0,
+                    dialogue_lines_checked=0,
+                    summary=(
+                        "Afterword override active: EPS-band and Koji/voice constraints "
+                        "bypassed for author-note segment."
+                    ),
+                )
+            elif self.target_language in ("vi", "vn"):
+                # VN: run VN Prose Refiner before quality audit
+                try:
+                    from modules.vn_prose_refiner import VNProseRefiner
+                    _vn_refiner = VNProseRefiner()
+                    _refined, _refinements = _vn_refiner.refine(final_content)
+                    if _refinements:
+                        final_content = _refined
+                        output_path.write_text(final_content, encoding="utf-8")
+                        logger.info(
+                            "[VN PROSE REFINER] %d refinements applied to %s",
+                            len(_refinements), chapter_id,
+                        )
+                except Exception as _refine_err:
+                    logger.warning("[VN PROSE REFINER] Non-fatal: %s", _refine_err)
+
+                from pipeline.translator.tsuki_hako_validator import TsukiHakoValidator
+                koji_report = TsukiHakoValidator().validate_chapter(
+                    final_content,
+                    character_fingerprints=_kf_fingerprints,
+                    chapter_pov=_kf_chapter_pov,
+                    pov_segments=_kf_pov_segments,
+                )
+            else:
+                koji_report = KojiFoxValidator().validate_chapter(
+                    final_content,
+                    declared_params=declared_params,
+                    character_fingerprints=_kf_fingerprints,
+                    chapter_pov=_kf_chapter_pov,
+                    pov_segments=_kf_pov_segments,
+                )
+
+            # Phase 3 (Gap 8 — KF spec): Per-character voice fingerprint consistency check.
+            # Language-aware: VN uses particle-rate + pronoun-pair checks instead of contractions.
+            _voice_violations: List[str] = []
+            if self._afterword_mode_override:
+                logger.info(
+                    "[AFTERWORD OVERRIDE] %s: skipping voice consistency validation",
+                    chapter_id,
+                )
+            elif _kf_fingerprints:
+                try:
+                    if self.target_language in ("vi", "vn"):
+                        from pipeline.translator.vn_voice_validator import VNVoiceConsistencyValidator
+                        _vc_results = VNVoiceConsistencyValidator().validate_chapter(
+                            final_content,
+                            fingerprints=_kf_fingerprints,
+                            eps_data=self._eps_data or {},
+                        )
+                    else:
+                        _vc_results = VoiceConsistencyValidator().validate_chapter(
+                            final_content,
+                            fingerprints=_kf_fingerprints,
+                            eps_data=self._eps_data or {},
+                        )
+                    for _vc_result in _vc_results:
+                        if not _vc_result.passed:
+                            for _viol in _vc_result.violations:
+                                if _viol.severity == "critical":
+                                    _voice_violations.append(
+                                        f"[VOICE:{_vc_result.character}] {_viol.violation_type}: {_viol.detail}"
+                                    )
+                                    logger.warning(
+                                        "[VOICE VALIDATOR] Critical violation — %s / %s: %s",
+                                        _vc_result.character,
+                                        _viol.violation_type,
+                                        _viol.detail,
+                                    )
+                                else:
+                                    logger.debug(
+                                        "[VOICE VALIDATOR] Warning — %s / %s: %s",
+                                        _vc_result.character,
+                                        _viol.violation_type,
+                                        _viol.detail,
+                                    )
+                except Exception as _vc_err:
+                    logger.warning("[VOICE VALIDATOR] Non-fatal error during validation: %s", _vc_err)
+
+            declared_vs_actual = self._build_declared_vs_actual_metrics(
+                audit,
+                declared_params,
+            )
+            qc_intent_gap = self._build_qc_intent_gap(qc_self_report, koji_report)
+
+            # 5.1 Vietnamese Quality Metrics Debug Logging (VN only)
+            # This is for monitoring/debugging only - does not affect pass/fail
+            if self.target_language in ['vi', 'vn']:
+                QualityMetrics.log_vn_quality_debug(final_content, chapter_id)
+
             # 7. Save Translation Output
             output_path.parent.mkdir(parents=True, exist_ok=True)
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(final_content)
             
             # 8. Post-Processing: Vietnamese CJK Hard Substitution (VN only)
-            # NOTE (2026-02-10): Only CJK validator remains active for Vietnamese translations.
-            # All other post-processors (grammar validator, anti-AI-ism agent) have been
-            # disabled after 1a60 audit proved they damage Gemini's native prose quality.
-            # Gemini Flash 2.0 produces excellent translations with minimal errors:
-            # - 0 subject-verb errors natively
-            # - 5 possessive errors (50% better than baseline with old prompts)
-            # - 1 AI-ism total (0.015 per 1k words)
-            # - 95.8/100 prose score
-            # Conclusion: Trust the model. Minimal post-processing = better quality.
+            # Runtime policy keeps generation output intact except deterministic CJK leak cleanup.
             cjk_cleaned_count = 0
             if self._vn_cjk_cleaner:
                 clean_result = self._vn_cjk_cleaner.clean_file(output_path)
@@ -1843,87 +3531,56 @@ This document contains the internal reasoning process that {reasoning_model_labe
                 if remaining_leaks > 0:
                     logger.warning(f"⚠ CJK post-processor: {remaining_leaks} unknown leaks remain (manual review needed)")
 
-            # 9. Post-Processing: Stage 3 Refinement Agent (2026-02-18)
-            # Handles: hard cap sentence splitting, tense consistency, literary flow analysis
-            stage3_metrics = {}
-            if self.enable_stage3 and self._stage3_agent:
-                try:
-                    logger.info(f"[STAGE3] Running refinement agent on {chapter_id}...")
-                    stage3_report = self._stage3_agent.process_chapter(output_path)
-
-                    if stage3_report:
-                        stage3_metrics = {
-                            'hard_cap_violations': stage3_report.hard_cap_violations,
-                            'hard_cap_fixed': stage3_report.hard_cap_auto_split,
-                            'tense_violations': stage3_report.tense_violations,
-                            'tense_flagged': stage3_report.tense_whitelisted,
-                            'ai_isms_fixed': stage3_report.ai_ism_fixes_applied,
-                            'flow_warnings': len(stage3_report.flow_issues)
-                        }
-
-                        # Log key metrics
-                        if stage3_report.hard_cap_auto_split > 0:
-                            fix_rate = (stage3_report.hard_cap_auto_split / stage3_report.hard_cap_violations * 100) if stage3_report.hard_cap_violations > 0 else 0
-                            logger.info(f"✓ Stage 3: {stage3_report.hard_cap_auto_split}/{stage3_report.hard_cap_violations} sentences auto-split ({fix_rate:.1f}% fix rate)")
-
-                        if stage3_report.ai_ism_fixes_applied > 0:
-                            logger.info(f"✓ Stage 3: {stage3_report.ai_ism_fixes_applied} AI-isms auto-fixed")
-
-                        if stage3_report.tense_whitelisted > 0:
-                            logger.info(f"⚠ Stage 3: {stage3_report.tense_whitelisted} tense inconsistencies flagged for review")
-
-                        if len(stage3_report.flow_issues) > 0:
-                            logger.info(f"⚠ Stage 3: {len(stage3_report.flow_issues)} flow warnings (low variety/repetition)")
-
-                        if stage3_report.hard_cap_auto_split == 0 and stage3_report.ai_ism_fixes_applied == 0:
-                            logger.debug(f"[STAGE3] No fixes needed for {chapter_id} (clean output)")
-
-                except Exception as e:
-                    logger.warning(f"[STAGE3] Refinement failed: {e}")
-                    logger.warning("[STAGE3] Continuing without Stage 3 post-processing")
-
-            # 10. Post-Processing: Self-Healing Anti-AI-ism Agent (DISABLED - damages prose quality)
-            # DISABLED (2026-02-10): 1a60 audit found only 1 AI-ism in entire volume (0.015/1k).
-            # LLM's native output is excellent. Post-processing over-correction damages natural prose.
-            # Evidence: Grammar validator introduced 35 errors trying to "fix" correct grammar.
-            # Philosophy: Trust the model. Minimal intervention = better quality.
-            # ai_ism_healed_count = 0  # Unused - agent permanently disabled
-            # if self.enable_anti_ai_ism and self._anti_ai_ism_agent:
-            #     try:
-            #         logger.debug(f"[ANTI-AI-ISM] Running self-healing agent on {chapter_id}...")
-            #         heal_report = self._anti_ai_ism_agent.heal_file(output_path)
-            #
-            #         if heal_report and heal_report.issues:
-            #             ai_ism_healed_count = len([i for i in heal_report.issues if i.corrected])
-            #             total_issues = len(heal_report.issues)
-            #
-            #             if ai_ism_healed_count > 0:
-            #                 logger.info(f"✓ Anti-AI-ism agent: {ai_ism_healed_count}/{total_issues} issues auto-corrected")
-            #
-            #             # Log severity breakdown
-            #             critical = len([i for i in heal_report.issues if i.severity == 'CRITICAL'])
-            #             major = len([i for i in heal_report.issues if i.severity == 'MAJOR'])
-            #             minor = len([i for i in heal_report.issues if i.severity == 'MINOR'])
-            #
-            #             if critical > 0:
-            #                 logger.warning(f"  Critical: {critical}, Major: {major}, Minor: {minor}")
-            #             elif major > 0:
-            #                 logger.info(f"  Major: {major}, Minor: {minor}")
-            #         else:
-            #             logger.debug(f"[ANTI-AI-ISM] No AI-isms detected in {chapter_id}")
-            #
-            #     except Exception as e:
-            #         logger.warning(f"[ANTI-AI-ISM] Self-healing failed: {e}")
-            #         logger.warning("[ANTI-AI-ISM] Continuing without auto-correction (run 'mtl.py heal' manually)")
 
             validation_warnings = list(audit.warnings or [])
+            if (declared_params is not None or self.tool_mode_enabled) and not koji_report.passed:
+                validation_warnings.append(
+                    f"Koji Fox validator flagged spoken naturalness: {koji_report.summary}"
+                )
+            if declared_vs_actual and declared_vs_actual.get("status") != "PASS":
+                delta_info = declared_vs_actual.get("narration_rate", {})
+                validation_warnings.append(
+                    "Declared narration contraction target drifted from measured output: "
+                    f"{delta_info.get('delta', 0.0):+.3f}"
+                )
+            if qc_intent_gap and qc_intent_gap.get("status") != "PASS":
+                gap_info = qc_intent_gap.get("self_assessed_contraction_rate", {})
+                validation_warnings.append(
+                    "QC self-assessment diverged from measured contraction rate: "
+                    f"{gap_info.get('delta', 0.0):+.3f}"
+                )
+            if adn_review_flags.get("requires_review"):
+                validation_warnings.append(
+                    "ADN review required: "
+                    f"BLOCKED={adn_review_flags.get('blocked_directive_count', 0)}, "
+                    f"EPS={adn_review_flags.get('eps_divergence_count', 0)}"
+                )
+            if checklist_gate_warning:
+                validation_warnings.append(checklist_gate_warning)
+            if thinking_sanitization.get("active"):
+                validation_warnings.append(
+                    "QC sanitization active: thinking log explicit summarization replaced "
+                    f"with generic assessment ({thinking_sanitization.get('sanitized_segments', 0)} segment(s))"
+                )
+            if hallucination_issues:
+                validation_warnings.append(
+                    f"Hallucination guard flagged residual artifacts: {', '.join(hallucination_issues)}"
+                )
+            # Phase 3 (Gap 8) voice violations — critical fingerprint breaches surface in warnings
+            for _vv in _voice_violations:
+                validation_warnings.append(_vv)
 
-            # === LOG VOLUME CONTEXT COST SAVINGS (Phase 1.2) ===
-            if self.volume_context_integration:
+            self._save_qc_self_report(chapter_id, qc_self_report, output_path)
+            self._save_qc_external_report(chapter_id, koji_report, output_path)
+            if structural_constraints:
+                self._persist_structural_constraints(structural_constraints)
+
+            # === LOG VOLUME CONTEXT COST SAVINGS (legacy only) ===
+            if self._legacy_volume_context_mode and self.volume_context_integration:
                 savings_report = self.volume_context_integration.get_cost_savings_report()
                 if savings_report['cache_hit_count'] > 0:
                     logger.info(
-                        f"[VOLUME-CACHE] 💰 Cost savings: ${savings_report['total_cost_saved_usd']:.4f} "
+                        f"[VOLUME-CACHE][LEGACY] 💰 Cost savings: ${savings_report['total_cost_saved_usd']:.4f} "
                         f"({savings_report['cache_hit_count']} cache hits, "
                         f"{savings_report['cache_hit_rate']*100:.1f}% hit rate)"
                     )
@@ -1946,7 +3603,34 @@ This document contains the internal reasoning process that {reasoning_model_labe
                 fast_mode_pricing=bool(getattr(response, "fast_mode_pricing", False)),
                 audit_result=audit,
                 warnings=validation_warnings,
-                stage3_metrics=stage3_metrics if stage3_metrics else None
+                declared_params=declared_params,
+                tool_calls_made=list(getattr(response, "tool_calls_made", []) or []),
+                tool_call_count=int(getattr(response, "tool_call_count", 0) or 0),
+                declared_vs_actual=declared_vs_actual,
+                koji_fox_report=koji_report,
+                qc_self_report=qc_self_report,
+                qc_intent_gap=qc_intent_gap,
+                structural_constraints=structural_constraints,
+                cost_audit=self._build_cost_audit(
+                    chapter_id=chapter_id,
+                    request_mode="streaming",
+                    attempts=cost_attempts,
+                    extra={
+                        "cache_bleed_retry_count": sum(
+                            1 for attempt in cost_attempts
+                            if attempt.get("attempt_type") == "cache_bleed_retry"
+                        ),
+                        "hallucination_retry_count": sum(
+                            1 for attempt in cost_attempts
+                            if attempt.get("attempt_type") == "hallucination_retry"
+                        ),
+                        "tool_mode_active": bool(
+                            getattr(response, "tool_call_count", 0)
+                            or getattr(response, "declared_params", None)
+                        ),
+                    },
+                ),
+                adn_review_flags=adn_review_flags,
             )
 
         except Exception as e:
@@ -1989,6 +3673,7 @@ This document contains the internal reasoning process that {reasoning_model_labe
             total_cache_read_cost_usd = 0.0
             total_cache_creation_cost_usd = 0.0
             total_cost_usd = 0.0
+            chunk_cost_audits: List[Dict[str, Any]] = []
 
             for idx, chunk in enumerate(chunks, start=1):
                 chunk_json_path = temp_dir / f"{chapter_id}_chunk_{idx:03d}.json"
@@ -2037,6 +3722,16 @@ This document contains the internal reasoning process that {reasoning_model_labe
                         batch_mode=chunk_result.batch_mode,
                         fast_mode_pricing=chunk_result.fast_mode_pricing,
                         error=f"Chunk {idx}/{total_chunks} failed: {chunk_result.error}",
+                        cost_audit=self._build_cost_audit(
+                            chapter_id=chapter_id,
+                            request_mode="chunked",
+                            attempts=[],
+                            extra={
+                                "chunk_count": total_chunks,
+                                "completed_chunks": idx - 1,
+                                "chunk_audits": chunk_cost_audits,
+                            },
+                        ),
                     )
 
                 translated_chunk = chunk_output_path.read_text(encoding="utf-8").strip()
@@ -2065,6 +3760,8 @@ This document contains the internal reasoning process that {reasoning_model_labe
                 total_cache_read_cost_usd += chunk_result.cache_read_cost_usd
                 total_cache_creation_cost_usd += chunk_result.cache_creation_cost_usd
                 total_cost_usd += chunk_result.total_cost_usd
+                if isinstance(chunk_result.cost_audit, dict) and chunk_result.cost_audit:
+                    chunk_cost_audits.append(chunk_result.cost_audit)
 
                 try:
                     chunk_source_path.unlink()
@@ -2081,31 +3778,12 @@ This document contains the internal reasoning process that {reasoning_model_labe
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(merged_content, encoding="utf-8")
 
-            # Post-Processing: Stage 3 Refinement Agent (chunked translation path)
-            stage3_metrics = {}
-            if self.enable_stage3 and self._stage3_agent:
-                try:
-                    logger.info(f"[STAGE3] Running refinement agent on {chapter_id} (chunked)...")
-                    stage3_report = self._stage3_agent.process_chapter(output_path)
-
-                    if stage3_report:
-                        stage3_metrics = {
-                            'hard_cap_violations': stage3_report.hard_cap_violations,
-                            'hard_cap_fixed': stage3_report.hard_cap_auto_split,
-                            'tense_violations': stage3_report.tense_violations,
-                            'tense_flagged': stage3_report.tense_whitelisted,
-                            'ai_isms_fixed': stage3_report.ai_ism_fixes_applied,
-                            'flow_warnings': len(stage3_report.flow_issues)
-                        }
-
-                        if stage3_report.hard_cap_auto_split > 0:
-                            fix_rate = (stage3_report.hard_cap_auto_split / stage3_report.hard_cap_violations * 100) if stage3_report.hard_cap_violations > 0 else 0
-                            logger.info(f"✓ Stage 3: {stage3_report.hard_cap_auto_split}/{stage3_report.hard_cap_violations} sentences auto-split ({fix_rate:.1f}% fix rate)")
-
-                except Exception as e:
-                    logger.warning(f"[STAGE3] Refinement failed: {e}")
-
             audit = QualityMetrics.quick_audit(merged_content, source_text)
+
+            # Vietnamese Quality Metrics Debug Logging (VN only)
+            if self.target_language in ['vi', 'vn']:
+                QualityMetrics.log_vn_quality_debug(merged_content, chapter_id)
+
             validation_warnings = list(audit.warnings or [])
 
             return TranslationResult(
@@ -2122,7 +3800,26 @@ This document contains the internal reasoning process that {reasoning_model_labe
                 total_cost_usd=total_cost_usd,
                 audit_result=audit,
                 warnings=validation_warnings,
-                stage3_metrics=stage3_metrics if stage3_metrics else None
+                cost_audit=self._build_cost_audit(
+                    chapter_id=chapter_id,
+                    request_mode="chunked",
+                    attempts=[],
+                    extra={
+                        "chunk_count": total_chunks,
+                        "chunk_audits": chunk_cost_audits,
+                        "actual_totals": {
+                            "input_tokens": total_input_tokens,
+                            "output_tokens": total_output_tokens,
+                            "cached_tokens": total_cached_tokens,
+                            "cache_creation_tokens": total_cache_creation_tokens,
+                            "input_cost_usd": total_input_cost_usd,
+                            "output_cost_usd": total_output_cost_usd,
+                            "cache_read_cost_usd": total_cache_read_cost_usd,
+                            "cache_creation_cost_usd": total_cache_creation_cost_usd,
+                            "total_cost_usd": total_cost_usd,
+                        },
+                    },
+                ),
             )
         except Exception as e:
             logger.exception(f"Chunk translation failed for {chapter_id}")
@@ -2487,6 +4184,74 @@ This document contains the internal reasoning process that {reasoning_model_labe
 
         return "\n".join(lines).strip()
 
+    @staticmethod
+    def _scene_plan_requires_pid_recalibration(scene_plan: Optional[Dict[str, Any]]) -> bool:
+        """
+        Detect whether chapter scenes indicate explicit/intimate escalation.
+
+        Used to gate Opus thinking-log PID discipline instructions.
+        This only affects <thinking> process guidance, never final EN output rules.
+        """
+        if not isinstance(scene_plan, dict):
+            return False
+
+        scenes = scene_plan.get("scenes")
+        if not isinstance(scenes, list) or not scenes:
+            return False
+
+        explicit_tokens = {
+            "explicit_escalation",
+            "intimate_dyad_escalating",
+            "erotic_comedy",
+            "sexual",
+            "explicit",
+            "intimate",
+            "h_scene",
+            "ecchi",
+            "nsfw",
+        }
+
+        for raw_scene in scenes:
+            if not isinstance(raw_scene, dict):
+                continue
+
+            beat_type = str(raw_scene.get("beat_type") or "").strip().lower()
+            if beat_type and any(token in beat_type for token in explicit_tokens):
+                return True
+
+            arc = str(raw_scene.get("emotional_arc") or "").strip().lower()
+            if arc and any(token in arc for token in explicit_tokens):
+                return True
+
+        return False
+
+    @staticmethod
+    def _high_explicit_content_detected(text: Optional[str]) -> bool:
+        """
+        Heuristic detector for high explicit sexual content in chapter source text.
+
+        This gate is used only to auto-engage thinking-process discipline for Opus.
+        It does not alter rendering/output constraints.
+        """
+        if not isinstance(text, str):
+            return False
+
+        lowered = text.lower()
+        if not lowered.strip():
+            return False
+
+        explicit_markers = [
+            # EN
+            "sex", "oral", "cunnilingus", "fellatio", "handjob", "blowjob", "cum", "climax",
+            "cock", "pussy", "thigh", "moan", "penetrat", "breed",
+            # JP common explicit markers
+            "セックス", "フェラ", "クンニ", "手コキ", "挿入", "射精", "中出", "潮吹", "絶頂",
+            "陰茎", "陰核", "乳首", "股間", "喘",
+        ]
+
+        hit_count = sum(1 for marker in explicit_markers if marker in lowered)
+        return hit_count >= 3
+
     def _normalize_chapter_key(self, value: Any) -> str:
         raw = str(value or "").strip()
         if not raw:
@@ -2511,6 +4276,55 @@ This document contains the internal reasoning process that {reasoning_model_labe
                 return f"chapter_{int(match.group(1)):02d}"
         return ""
 
+    def _get_timeline_for_chapter(self, chapter_key: str) -> List[Dict[str, Any]]:
+        """
+        JIT load timeline entries for current chapter only from disk.
+
+        Called during context formatting instead of pre-loading full timeline_map.
+        Returns only the entries matching chapter_key for memory efficiency.
+        """
+        context_dir = self.context_manager.work_dir / ".context"
+        lang = str(self.target_language or "en").strip().lower()
+        if lang in {"vi", "vietnamese"}:
+            lang = "vn"
+        elif lang.startswith("en"):
+            lang = "en"
+
+        # Language-scoped timeline: timeline_map_en.json, timeline_map_vn.json
+        candidates = [
+            context_dir / f"timeline_map_{lang}.json",
+            context_dir / "timeline_map.json",  # Legacy fallback
+        ]
+        path = next((p for p in candidates if p.exists()), None)
+        if path is None:
+            logger.debug(f"[JIT] No timeline file found in {context_dir}")
+            return []
+
+        try:
+            with path.open("r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            chapter_timeline = data.get("chapter_timeline", [])
+            if not isinstance(chapter_timeline, list):
+                return []
+
+            matched = []
+            normalized_target = self._normalize_chapter_key(chapter_key)
+            for item in chapter_timeline:
+                if not isinstance(item, dict):
+                    continue
+                item_key = self._normalize_chapter_key(item.get("chapter_id", ""))
+                if item_key == normalized_target:
+                    matched.append(item)
+
+            if matched:
+                logger.debug(f"[JIT] Loaded timeline for {chapter_key}: {len(matched)} entries")
+            return matched
+
+        except Exception as e:
+            logger.warning(f"[JIT] Failed loading timeline for {chapter_key}: {e}")
+            return []
+
     def _load_phase155_context_offload(self) -> Dict[str, Any]:
         """
         Load Phase 1.55 context offload caches from .context.
@@ -2518,6 +4332,19 @@ This document contains the internal reasoning process that {reasoning_model_labe
         Files are optional and translation remains functional when missing.
         """
         context_dir = self.context_manager.work_dir / ".context"
+        lang = str(self.target_language or "en").strip().lower()
+        if lang in {"vi", "vietnamese"}:
+            lang = "vn"
+        elif lang.startswith("en"):
+            lang = "en"
+
+        def _language_candidates(filename: str):
+            base = Path(filename)
+            scoped = context_dir / f"{base.stem}_{lang}{base.suffix or '.json'}"
+            legacy = context_dir / filename
+            # Prefer language-scoped cache; fallback to legacy unsuffixed file.
+            return [scoped, legacy]
+
         # Build/refresh deduplicated reference registry from chapter-level reports.
         try:
             compiled_ref = compile_reference_reports(context_dir, min_confidence=0.70)
@@ -2527,17 +4354,20 @@ This document contains the internal reasoning process that {reasoning_model_labe
             logger.warning(f"[P1.55] Reference registry compilation failed: {e}")
 
         cache_files = {
-            "character_registry": context_dir / "character_registry.json",
-            "cultural_glossary": context_dir / "cultural_glossary.json",
-            "timeline_map": context_dir / "timeline_map.json",
-            "idiom_transcreation_cache": context_dir / "idiom_transcreation_cache.json",
-            "reference_registry": context_dir / "reference_registry.json",
+            "character_registry": _language_candidates("character_registry.json"),
+            "cultural_glossary": _language_candidates("cultural_glossary.json"),
+            # timeline_map is loaded JIT via _get_timeline_for_chapter() — not pre-loaded
+            "idiom_transcreation_cache": _language_candidates("idiom_transcreation_cache.json"),
+            "dialect_fingerprint": _language_candidates("dialect_fingerprint.json"),
+            "pronoun_shift_events": _language_candidates("pronoun_shift_events.json"),
+            "reference_registry": [context_dir / "reference_registry.json"],
         }
 
         payload: Dict[str, Any] = {"_idiom_by_chapter": {}}
         loaded = 0
-        for key, path in cache_files.items():
-            if not path.exists():
+        for key, candidates in cache_files.items():
+            path = next((candidate for candidate in candidates if candidate.exists()), None)
+            if path is None:
                 continue
             try:
                 with path.open("r", encoding="utf-8") as f:
@@ -2574,6 +4404,93 @@ This document contains the internal reasoning process that {reasoning_model_labe
                 f"(idiom entries indexed: {sum(len(v) for v in idiom_index.values())})"
             )
         return payload
+
+    def _load_dialect_guidance(self, chapter_id: str) -> Optional[str]:
+        fingerprint = self._phase155_context.get("dialect_fingerprint", {})
+        if not isinstance(fingerprint, dict) or not fingerprint:
+            return None
+
+        if str(fingerprint.get("reason", "")).strip() == "disabled_non_contemporary_setting":
+            return None
+
+        chapter_key = self._normalize_chapter_key(chapter_id)
+        chapter_profile = None
+        profiles = fingerprint.get("chapter_profiles", [])
+        if isinstance(profiles, list):
+            for item in profiles:
+                if not isinstance(item, dict):
+                    continue
+                item_key = self._normalize_chapter_key(item.get("chapter_id", ""))
+                if item_key == chapter_key:
+                    chapter_profile = item
+                    break
+
+        relevant_exclusions: List[Dict[str, Any]] = []
+        exclusions = fingerprint.get("false_positive_exclusions", [])
+        if isinstance(exclusions, list):
+            for exclusion in exclusions:
+                if not isinstance(exclusion, dict):
+                    continue
+                affected = exclusion.get("affected_chapters", [])
+                if not isinstance(affected, list):
+                    continue
+                normalized = {self._normalize_chapter_key(ch) for ch in affected}
+                if chapter_key in normalized:
+                    relevant_exclusions.append(exclusion)
+
+        has_dialect = bool(chapter_profile and chapter_profile.get("has_dialect"))
+        if not has_dialect and not relevant_exclusions:
+            return None
+
+        lines: List[str] = [
+            "## DIALECT FINGERPRINT (Phase 1.55 pre-computed)",
+            "Use this guidance instead of pattern-guessing from single markers.",
+            "",
+        ]
+
+        volume_summary = fingerprint.get("volume_dialect_summary", {})
+        if isinstance(volume_summary, dict):
+            assessment = str(volume_summary.get("assessment", "")).strip()
+            primary = str(volume_summary.get("primary_dialect", "none")).strip() or "none"
+            if assessment:
+                lines.append(f"- Volume assessment: {assessment}")
+            lines.append(f"- Primary dialect: {primary}")
+
+        if has_dialect and isinstance(chapter_profile, dict):
+            dialect_type = str(chapter_profile.get("dialect_type", "unspecified")).strip() or "unspecified"
+            lines.append(f"- Chapter dialect: {dialect_type}")
+
+            markers = chapter_profile.get("markers", [])
+            if isinstance(markers, list) and markers:
+                marker_texts: List[str] = []
+                for marker in markers[:5]:
+                    if not isinstance(marker, dict):
+                        continue
+                    marker_text = str(marker.get("text", "")).strip()
+                    if marker_text:
+                        marker_texts.append(marker_text)
+                if marker_texts:
+                    lines.append("- Evidence markers: " + ", ".join(marker_texts))
+
+            chapter_guidance = str(chapter_profile.get("translation_guidance", "")).strip()
+            if chapter_guidance:
+                lines.append(f"- Chapter guidance: {chapter_guidance}")
+
+        if relevant_exclusions:
+            lines.append("- Confirmed non-dialect patterns for this chapter:")
+            for exclusion in relevant_exclusions[:6]:
+                pattern = str(exclusion.get("pattern", "")).strip() or "(pattern)"
+                actual = str(exclusion.get("actual", "")).strip()
+                if actual:
+                    lines.append(f"  • {pattern}: {actual}")
+                else:
+                    lines.append(f"  • {pattern}")
+
+        global_guidance = str(fingerprint.get("translation_guidance", "")).strip()
+        if global_guidance:
+            lines.append(f"- Global guidance: {global_guidance}")
+
+        return "\n".join(lines).strip() or None
 
     def _select_idiom_opportunities(
         self,
@@ -2624,12 +4541,19 @@ This document contains the internal reasoning process that {reasoning_model_labe
             confidence = float(item.get("confidence", 0.0) or 0.0)
             return (priority_rank.get(priority, 4), -confidence)
 
-        return sorted(ranked, key=_score)[:10]
+        result = sorted(ranked, key=_score)[:10]
+        if result:
+            logger.debug(
+                f"[JIT] idiom_cache: {len(result)}/{len(candidates)} candidates selected "
+                f"for {chapter_key} (scoped={len(scoped)}, fallback={len(fallback)})"
+            )
+        return result
 
     def _format_phase155_context_guidance(
         self,
         chapter_id: str,
         scene_plan: Optional[Dict[str, Any]],
+        jp_source_text: Optional[str] = None,
     ) -> str:
         """
         Inject context offload outputs generated by Phase 1.55 co-processors.
@@ -2645,6 +4569,8 @@ This document contains the internal reasoning process that {reasoning_model_labe
         if not chapter_key:
             return ""
 
+        _jit = {"chars": 0, "terms": 0, "timeline": False, "idioms": 0}
+
         lines: List[str] = [
             "## PHASE 1.55 CONTEXT OFFLOAD (CO-PROCESSORS)",
             "",
@@ -2653,45 +4579,98 @@ This document contains the internal reasoning process that {reasoning_model_labe
             "",
         ]
 
+        # ── Content-selective filtering: Character registry ───────────────────────
+        # Filter to characters that appear in the current JP chapter
         char_registry = self._phase155_context.get("character_registry", {})
         if isinstance(char_registry, dict):
             chars = char_registry.get("characters", [])
             if isinstance(chars, list) and chars:
-                lines.append("Character context (identity + relationships):")
-                for char in chars[:6]:
-                    if not isinstance(char, dict):
-                        continue
-                    name = str(
-                        char.get("canonical_name")
-                        or char.get("english_name")
-                        or char.get("japanese_name")
-                        or char.get("id")
-                        or "character"
-                    ).strip()
-                    role = str(char.get("role") or "").strip()
-                    register = str(char.get("voice_register") or "").strip()
-                    snippet = f"- {name}"
-                    if role:
-                        snippet += f" | role={role}"
-                    if register:
-                        snippet += f" | voice={register}"
-                    lines.append(snippet)
-                lines.append("")
+                # Content-selective: filter to chars in current chapter
+                if jp_source_text:
+                    filtered_chars = []
+                    for char in chars:
+                        if not isinstance(char, dict):
+                            continue
+                        # Get all name variants to search for
+                        names_to_check = [
+                            str(char.get("canonical_name", "")).lower(),
+                            str(char.get("english_name", "")).lower(),
+                            str(char.get("japanese_name", "")).lower(),
+                            str(char.get("id", "")).lower(),
+                        ]
+                        # Check if any name variant appears in JP text
+                        if any(name and name in jp_source_text.lower() for name in names_to_check):
+                            filtered_chars.append(char)
+                    # Use filtered list, or fall back to top 6 if none found
+                    display_chars = filtered_chars[:6] if filtered_chars else chars[:6]
+                    logger.debug(
+                        f"[JIT] char_registry: {len(filtered_chars)}/{len(chars)} chars matched "
+                        f"in {chapter_key} → injecting {len(display_chars)}"
+                    )
+                    _jit["chars"] = len(display_chars)
+                else:
+                    display_chars = chars[:6]  # Fallback: use top 6
+                    _jit["chars"] = len(display_chars)
 
+                if display_chars:
+                    lines.append("Character context (identity + relationships):")
+                    for char in display_chars:
+                        if not isinstance(char, dict):
+                            continue
+                        name = str(
+                            char.get("canonical_name")
+                            or char.get("english_name")
+                            or char.get("japanese_name")
+                            or char.get("id")
+                            or "character"
+                        ).strip()
+                        role = str(char.get("role") or "").strip()
+                        register = str(char.get("voice_register") or "").strip()
+                        snippet = f"- {name}"
+                        if role:
+                            snippet += f" | role={role}"
+                        if register:
+                            snippet += f" | voice={register}"
+                        lines.append(snippet)
+                    lines.append("")
+
+        # ── Content-selective filtering: Cultural glossary ─────────────────────────
+        # Filter to terms that appear in the current JP chapter
         cultural = self._phase155_context.get("cultural_glossary", {})
         if isinstance(cultural, dict):
             terms = cultural.get("terms", [])
             if isinstance(terms, list) and terms:
-                lines.append("Cultural glossary (preferred renderings):")
-                for term in terms[:8]:
-                    if not isinstance(term, dict):
-                        continue
-                    jp = str(term.get("term_jp") or term.get("jp") or "").strip()
-                    en = str(term.get("preferred_en") or term.get("en") or term.get("translation") or "").strip()
-                    if not jp or not en:
-                        continue
-                    lines.append(f"- {jp} -> {en}")
-                lines.append("")
+                # Content-selective: filter to terms in current chapter
+                if jp_source_text:
+                    filtered_terms = []
+                    for term in terms:
+                        if not isinstance(term, dict):
+                            continue
+                        jp_term = str(term.get("term_jp") or term.get("jp") or "").strip()
+                        if jp_term and jp_term in jp_source_text:
+                            filtered_terms.append(term)
+                    # Use filtered list, or fall back to top 8 if none found
+                    display_terms = filtered_terms[:8] if filtered_terms else terms[:8]
+                    logger.debug(
+                        f"[JIT] cultural_glossary: {len(filtered_terms)}/{len(terms)} terms matched "
+                        f"in {chapter_key} → injecting {len(display_terms)}"
+                    )
+                    _jit["terms"] = len(display_terms)
+                else:
+                    display_terms = terms[:8]  # Fallback: use top 8
+                    _jit["terms"] = len(display_terms)
+
+                if display_terms:
+                    lines.append("Cultural glossary (preferred renderings):")
+                    for term in display_terms:
+                        if not isinstance(term, dict):
+                            continue
+                        jp = str(term.get("term_jp") or term.get("jp") or "").strip()
+                        en = str(term.get("preferred_en") or term.get("en") or term.get("translation") or "").strip()
+                        if not jp or not en:
+                            continue
+                        lines.append(f"- {jp} -> {en}")
+                    lines.append("")
 
         reference_registry = self._phase155_context.get("reference_registry", {})
         if isinstance(reference_registry, dict):
@@ -2736,46 +4715,40 @@ This document contains the internal reasoning process that {reasoning_model_labe
                         lines.append(f"- {canonical} (conf={conf:.2f})")
                 lines.append("")
 
-        timeline_map = self._phase155_context.get("timeline_map", {})
-        if isinstance(timeline_map, dict):
-            chapter_timeline = timeline_map.get("chapter_timeline", [])
-            if isinstance(chapter_timeline, list):
-                matched = None
-                for item in chapter_timeline:
-                    if not isinstance(item, dict):
-                        continue
-                    if self._normalize_chapter_key(item.get("chapter_id")) == chapter_key:
-                        matched = item
-                        break
-                if matched:
-                    continuity = matched.get("continuity_constraints", [])
-                    markers = matched.get("temporal_markers", [])
-                    if isinstance(markers, list) and markers:
-                        lines.append("Temporal markers for this chapter:")
-                        for marker in markers[:4]:
-                            lines.append(f"- {self._shorten_stage2_text(marker, 100)}")
-                    if isinstance(continuity, list) and continuity:
-                        lines.append("Continuity constraints:")
-                        for note in continuity[:4]:
-                            lines.append(f"- {self._shorten_stage2_text(note, 100)}")
-                    # Prose rhythm: per-scene sentence length + temperature targets
-                    scenes_with_rhythm = [
-                        s for s in matched.get("scenes", [])
-                        if isinstance(s, dict) and "prose_rhythm" in s
-                    ]
-                    if scenes_with_rhythm:
-                        lines.append("Scene prose rhythm targets:")
-                        for s in scenes_with_rhythm:
-                            sid = s.get("id", "?")
-                            beat = s.get("beat_type", "")
-                            pr = s.get("prose_rhythm", {})
-                            sl = pr.get("sentence_length", "")
-                            pt = pr.get("prose_temperature", "")
-                            lines.append(f"- {sid} [{beat}]: length={sl} | temperature={pt}")
-                    if (isinstance(markers, list) and markers) or (isinstance(continuity, list) and continuity) or scenes_with_rhythm:
-                        lines.append("")
+        # JIT timeline loading: get current + next chapter only
+        timeline_items = self._get_timeline_for_chapter(chapter_key)
+        _jit["timeline"] = bool(timeline_items)
+        if timeline_items:
+            for matched in timeline_items:
+                continuity = matched.get("continuity_constraints", [])
+                markers = matched.get("temporal_markers", [])
+                if isinstance(markers, list) and markers:
+                    lines.append("Temporal markers for this chapter:")
+                    for marker in markers[:4]:
+                        lines.append(f"- {self._shorten_stage2_text(marker, 100)}")
+                if isinstance(continuity, list) and continuity:
+                    lines.append("Continuity constraints:")
+                    for note in continuity[:4]:
+                        lines.append(f"- {self._shorten_stage2_text(note, 100)}")
+                # Prose rhythm: per-scene sentence length + temperature targets
+                scenes_with_rhythm = [
+                    s for s in matched.get("scenes", [])
+                    if isinstance(s, dict) and "prose_rhythm" in s
+                ]
+                if scenes_with_rhythm:
+                    lines.append("Scene prose rhythm targets:")
+                    for s in scenes_with_rhythm:
+                        sid = s.get("id", "?")
+                        beat = s.get("beat_type", "")
+                        pr = s.get("prose_rhythm", {})
+                        sl = pr.get("sentence_length", "")
+                        pt = pr.get("prose_temperature", "")
+                        lines.append(f"- {sid} [{beat}]: length={sl} | temperature={pt}")
+                if (isinstance(markers, list) and markers) or (isinstance(continuity, list) and continuity) or scenes_with_rhythm:
+                    lines.append("")
 
         idiom_items = self._select_idiom_opportunities(chapter_key, scene_plan)
+        _jit["idioms"] = len(idiom_items) if idiom_items else 0
         if idiom_items:
             lines.append("Opportunistic idiom transcreation candidates:")
             lines.append("Apply only when it improves natural literary impact for this scene.")
@@ -2805,6 +4778,123 @@ This document contains the internal reasoning process that {reasoning_model_labe
 
         if len(lines) <= 4:
             return ""
+
+        result = "\n".join(lines).strip()
+        logger.info(
+            f"[JIT] P1.55 {chapter_key}: "
+            f"chars={_jit['chars']}, terms={_jit['terms']}, "
+            f"timeline={'✓' if _jit['timeline'] else '—'}, idioms={_jit['idioms']} "
+            f"({len(result)} chars injected)"
+        )
+        return result
+
+    def _select_pronoun_shift_events(
+        self,
+        chapter_key: str,
+        scene_plan: Optional[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
+        payload = self._phase155_context.get("pronoun_shift_events", {})
+        if not isinstance(payload, dict):
+            return []
+
+        events_by_chapter = payload.get("events_by_chapter", {})
+        if not isinstance(events_by_chapter, dict):
+            return []
+
+        chapter_events = events_by_chapter.get(chapter_key, [])
+        if not isinstance(chapter_events, list) or not chapter_events:
+            return []
+
+        scoped_scene_ids = set()
+        if isinstance(scene_plan, dict):
+            scenes = scene_plan.get("scenes", [])
+            if isinstance(scenes, list):
+                for scene in scenes:
+                    if not isinstance(scene, dict):
+                        continue
+                    sid = str(scene.get("id") or "").strip()
+                    if sid:
+                        scoped_scene_ids.add(sid)
+                        scoped_scene_ids.add(sid.lower())
+                        scoped_scene_ids.add(sid.upper())
+
+        if not scoped_scene_ids:
+            return [event for event in chapter_events if isinstance(event, dict)][:2]
+
+        scoped: List[Dict[str, Any]] = []
+        fallback: List[Dict[str, Any]] = []
+        for event in chapter_events:
+            if not isinstance(event, dict):
+                continue
+            scene_id = str(event.get("scene_id") or "").strip()
+            if not scene_id:
+                fallback.append(event)
+                continue
+            if scene_id in scoped_scene_ids or scene_id.lower() in scoped_scene_ids or scene_id.upper() in scoped_scene_ids:
+                scoped.append(event)
+            else:
+                fallback.append(event)
+
+        ranked = scoped or fallback
+        ranked.sort(key=lambda item: float(item.get("confidence", 0.0) or 0.0), reverse=True)
+        return ranked[:2]
+
+    def _format_pronoun_shift_guidance(
+        self,
+        chapter_id: str,
+        scene_plan: Optional[Dict[str, Any]],
+    ) -> str:
+        chapter_key = self._normalize_chapter_key(chapter_id)
+        if not chapter_key:
+            return ""
+
+        events = self._select_pronoun_shift_events(chapter_key, scene_plan)
+        if not events:
+            return ""
+
+        lines: List[str] = [
+            "<pronoun_shift_handling>",
+            "The source text contains a critical psychological pronoun shift for the POV character.",
+            "English lacks a direct equivalent, so preserve the shift through syntax and prose rhythm.",
+            "- Determine the shift archetype (Armor Drop / Ego Collapse / Aggression Spike / etc.).",
+            "- Change contraction density, verb agency (active/passive), and sentence pacing at the shift line.",
+            "- CRITICAL OVERRIDE: at the exact shift span, you may bypass global contraction limits and passive-voice bans when needed to preserve subtext.",
+            "- Keep the shifted prose state until the original pronoun/register returns or the scene ends.",
+            "",
+            "Detected chapter events:",
+        ]
+
+        for event in events:
+            shift_label = str(event.get("shift_label") or event.get("shift_archetype") or "pronoun shift").strip()
+            shift_from = str(event.get("shift_from") or "?").strip()
+            shift_to = str(event.get("shift_to") or "?").strip()
+            scene_id = str(event.get("scene_id") or "").strip()
+            line_hint = event.get("detected_at_line")
+            confidence = float(event.get("confidence", 0.0) or 0.0)
+            summary = f"- {shift_label}: {shift_from} → {shift_to}"
+            if scene_id:
+                summary += f" | scene={scene_id}"
+            if isinstance(line_hint, int):
+                summary += f" | line={line_hint}"
+            summary += f" | conf={confidence:.2f}"
+            lines.append(summary)
+
+            directives = event.get("active_directives", [])
+            if isinstance(directives, list):
+                for directive in directives[:3]:
+                    text = str(directive or "").strip()
+                    if text:
+                        lines.append(f"  • {text}")
+
+        if self.target_language.lower() in {"vn", "vi", "vietnamese"}:
+            lines += [
+                "",
+                "VN-specific execution:",
+                "- Mirror JP pronoun shifts directly through relationship-aware Vietnamese pronoun changes.",
+                "- Auto-adjust sentence-ending particles (nhé/nha/ạ) to reflect the new emotional stance.",
+            ]
+
+        lines.append("</pronoun_shift_handling>")
         return "\n".join(lines).strip()
 
     def _extract_last_sentence(self, text: str) -> str:
@@ -2825,6 +4915,8 @@ This document contains the internal reasoning process that {reasoning_model_labe
         context_str: str,
         chapter_title: Optional[str] = None,
         jp_title: Optional[str] = None,  # Original JP chapter title from EPUB TOC
+        title_pipeline: Optional[str] = None,  # Thematic working title for scene context
+        jp_source_text: Optional[str] = None,  # Raw JP text for content-selective filtering
         sino_vn_guidance: Optional[Dict] = None,
         gap_flags: Optional[Dict] = None,
         dialect_guidance: Optional[str] = None,  # v1.0 - Dialect detection
@@ -2834,8 +4926,25 @@ This document contains the internal reasoning process that {reasoning_model_labe
         scene_plan: Optional[Dict[str, Any]] = None,  # Stage 1 scene planner output
         volume_context: Optional[str] = None,  # Phase 1.2 - Volume-level context
         translation_brief: Optional[str] = None,  # Phase 1.56 - Full-volume Translator's Guidance brief
+        retrospective_anchor: Optional[str] = None,  # Arc-closing prose anchors
+        series_bible_rag_guidance: Optional[str] = None,  # SeriesBibleRAG prior-volume prose
     ) -> str:
         """Construct the user message part of the prompt."""
+        # ── EPS Scene Anchors (long-chapter voice frame preservation) ─────────
+        # For chapters >10K chars, inject compact EPS anchors at scene breaks
+        # to prevent voice frame dissolution by Act 3.
+        if (
+            not self._afterword_mode_override
+            and hasattr(self, '_voice_fingerprints')
+            and hasattr(self, '_eps_data')
+        ):
+            source_text = self._inject_eps_scene_anchors(
+                source_text,
+                self._voice_fingerprints,
+                self._eps_data,
+            )
+        # ── end EPS Scene Anchors ─────────────────────────────────────────────
+
         # Build base prompt
         base_prompt = self.prompt_loader.build_translation_prompt(
             source_text=source_text,
@@ -2844,6 +4953,7 @@ This document contains the internal reasoning process that {reasoning_model_labe
             previous_context=context_str if context_str else None,
             name_registry=self.character_names if self.character_names else None,
             jp_title=jp_title,
+            title_pipeline=title_pipeline,
         )
 
         # ── Phase 1.56: Translator's Guidance Brief ─────────────────────────
@@ -2866,78 +4976,161 @@ This document contains the internal reasoning process that {reasoning_model_labe
             base_prompt = f"{brief_block}\n\n---\n\n{base_prompt}"
         # ── end Phase 1.56 ────────────────────────────────────────────────────
 
+        source_marker = "<!-- SOURCE TEXT TO TRANSLATE -->"
+
+        def _wrap_reference_document(source: str, content: str) -> str:
+            body = (content or "").strip()
+            return (
+                "<documents>\n"
+                "  <document index=\"1\">\n"
+                f"    <source>{source}</source>\n"
+                "    <document_content>\n"
+                f"{body}\n"
+                "    </document_content>\n"
+                "  </document>\n"
+                "</documents>"
+            )
+
+        def _inject_before_source(block: str, label: str):
+            nonlocal base_prompt
+            payload = (block or "").strip()
+            if not payload:
+                return
+            wrapped = f"<!-- {label} -->\n{payload}"
+            if source_marker in base_prompt:
+                base_prompt = base_prompt.replace(
+                    source_marker,
+                    f"{wrapped}\n\n{source_marker}",
+                    1,
+                )
+            else:
+                base_prompt = f"{wrapped}\n\n{base_prompt}"
+
+        # === RETROSPECTIVE POV ANCHOR INJECTION (Phase Arc-Close) ===
+        # Injected before volume context so the model reads emotional anchors
+        # before encountering the chapter-level metadata.
+        if retrospective_anchor:
+            logger.debug(f"[RETRO-ANCHOR] Injecting retrospective anchor ({len(retrospective_anchor)} chars)")
+            _inject_before_source(retrospective_anchor, "RETROSPECTIVE POV ANCHORS")
+        # === END RETROSPECTIVE ANCHOR ===
+
+        # === VOLUME CONTEXT INJECTION (Phase 1.2) ===
+        # Long context should appear before the source/query block.
+        if volume_context:
+            logger.debug(f"[VOLUME-CTX] Injecting volume context ({len(volume_context)} chars)")
+            volume_section = _wrap_reference_document(
+                "volume_level_context",
+                volume_context,
+            )
+            _inject_before_source(volume_section, "VOLUME-LEVEL CONTEXT")
+        # === END VOLUME CONTEXT ===
+
+        # Inject SeriesBibleRAG context if available (prior-volume prose passages).
+        # Placed after volume context so broad series framing appears before
+        # specific term/pattern guidance blocks.
+        if series_bible_rag_guidance:
+            _inject_before_source(
+                _wrap_reference_document("series_bible_rag_context", series_bible_rag_guidance),
+                "SERIES CONTINUITY RAG CONTEXT",
+            )
+
         # Inject Sino-Vietnamese guidance if available (Vietnamese translations only)
         if sino_vn_guidance and sino_vn_guidance.get("high_confidence"):
             guidance_section = self._format_sino_vietnamese_guidance(sino_vn_guidance)
-            # Insert guidance before the source text
-            base_prompt = f"{base_prompt}\n\n{guidance_section}"
+            _inject_before_source(
+                _wrap_reference_document("sino_vietnamese_guidance", guidance_section),
+                "SINO-VIETNAMESE GUIDANCE",
+            )
         
         # Inject Gap Analysis guidance if available (Week 2-3 integration)
         if gap_flags:
             gap_guidance = self._format_gap_guidance(gap_flags)
             if gap_guidance:
-                base_prompt = f"{base_prompt}\n\n{gap_guidance}"
+                _inject_before_source(
+                    _wrap_reference_document("semantic_gap_guidance", gap_guidance),
+                    "SEMANTIC GAP GUIDANCE",
+                )
         
         # Inject Dialect Detection guidance if available (v1.0 - 2026-02-01)
         if dialect_guidance:
-            base_prompt = f"{base_prompt}\n\n{dialect_guidance}"
+            _inject_before_source(
+                _wrap_reference_document("dialect_guidance", dialect_guidance),
+                "DIALECT GUIDANCE",
+            )
 
         # Inject English grammar pattern guidance if available (English translations only)
         if en_pattern_guidance and en_pattern_guidance.get("high_confidence"):
             pattern_section = self._format_english_pattern_guidance(en_pattern_guidance)
-            # Insert guidance before the source text
-            base_prompt = f"{base_prompt}\n\n{pattern_section}"
+            _inject_before_source(
+                _wrap_reference_document("english_pattern_guidance", pattern_section),
+                "ENGLISH PATTERN GUIDANCE",
+            )
 
         # Inject Vietnamese grammar pattern guidance if available (Vietnamese translations only)
         if vn_pattern_guidance and vn_pattern_guidance.get("high_confidence"):
             vn_pattern_section = self._format_vietnamese_pattern_guidance(vn_pattern_guidance)
-            # Insert guidance before the source text
-            base_prompt = f"{base_prompt}\n\n{vn_pattern_section}"
+            _inject_before_source(
+                _wrap_reference_document("vietnamese_pattern_guidance", vn_pattern_section),
+                "VIETNAMESE PATTERN GUIDANCE",
+            )
 
         # Inject multimodal visual context if available
         if visual_guidance:
             from modules.multimodal.prompt_injector import MULTIMODAL_STRICT_SUFFIX
-            base_prompt = f"{base_prompt}\n\n{visual_guidance}\n{MULTIMODAL_STRICT_SUFFIX}"
-
-        # === VOLUME CONTEXT INJECTION (Phase 1.2) ===
-        # Per Gemini best practices: "context before query"
-        # Volume context should appear early in prompt for best results
-        if volume_context:
-            logger.debug(f"[VOLUME-CTX] Injecting volume context ({len(volume_context)} chars)")
-            volume_section = f"\n\n---\n\n# VOLUME-LEVEL CONTEXT\n\n{volume_context}\n\n---"
-            base_prompt = f"{base_prompt}{volume_section}"
-        # === END VOLUME CONTEXT ===
+            visual_block = f"{visual_guidance}\n{MULTIMODAL_STRICT_SUFFIX}"
+            _inject_before_source(
+                _wrap_reference_document("multimodal_visual_guidance", visual_block),
+                "MULTIMODAL GUIDANCE",
+            )
 
         # Inject Stage 2 scene/rhythm scaffold before source text section.
         stage2_scene_guidance = self._format_stage2_scene_guidance(scene_plan)
         if stage2_scene_guidance:
-            marker = "<!-- SOURCE TEXT TO TRANSLATE -->"
-            if marker in base_prompt:
-                base_prompt = base_prompt.replace(
-                    marker,
-                    f"<!-- STAGE 2 SCENE GUIDANCE -->\n{stage2_scene_guidance}\n\n{marker}",
-                    1,
-                )
-            else:
-                base_prompt = f"{stage2_scene_guidance}\n\n{base_prompt}"
+            _inject_before_source(stage2_scene_guidance, "STAGE 2 SCENE GUIDANCE")
+
+        pronoun_shift_guidance = self._format_pronoun_shift_guidance(chapter_id, scene_plan)
+        if pronoun_shift_guidance:
+            _inject_before_source(pronoun_shift_guidance, "PRONOUN SHIFT HANDLING")
 
         # Inject Phase 1.55 context offload co-processor guidance.
-        p155_context_guidance = self._format_phase155_context_guidance(chapter_id, scene_plan)
+        p155_context_guidance = self._format_phase155_context_guidance(chapter_id, scene_plan, jp_source_text=jp_source_text)
         if p155_context_guidance:
-            marker = "<!-- SOURCE TEXT TO TRANSLATE -->"
-            if marker in base_prompt:
-                base_prompt = base_prompt.replace(
-                    marker,
-                    f"<!-- PHASE 1.55 CONTEXT OFFLOAD -->\n{p155_context_guidance}\n\n{marker}",
-                    1,
-                )
-            else:
-                base_prompt = f"{p155_context_guidance}\n\n{base_prompt}"
+            _inject_before_source(p155_context_guidance, "PHASE 1.55 CONTEXT OFFLOAD")
 
-        # Inject RTAS character voice settings (English translations only)
+        # Inject character voice settings (PAIR_ID-based for VN, legacy EPS for EN)
         rtas_guidance = self._format_rtas_guidance(chapter_id=chapter_id)
         if rtas_guidance:
-            base_prompt = f"{base_prompt}\n\n{rtas_guidance}"
+            _inject_before_source(rtas_guidance, "CHARACTER VOICE GUIDANCE")
+
+        # Hallucination-reduction discipline (provider-agnostic, canon-fidelity-first)
+        if self.hallucination_reduction_enabled:
+            is_en_target = self.target_language.lower().startswith("en")
+            literacy_open_whitelist = (
+                "Literacy-open whitelist (EN): ALL transformation practices defined in injected "
+                "english_grammar_rag.json and literacy_techniques.json are explicitly allowed. "
+                "This includes idiom restructuring, cadence/rhythm tightening, POV control, psychic-distance control, "
+                "free indirect discourse, show-don't-tell execution, and genre/style preset adaptation.\n"
+                "Tier-1 grammar whitelist (EN): ALL practices from Tier-1 grammar JSON guidance are allowed "
+                "(including literal→idiomatic rewrites, rhythm/cadence tightening, emphasis-loop cleanup, and flow smoothing), "
+                "as long as canon events/facts do not change.\n"
+                if is_en_target
+                else ""
+            )
+            if is_en_target:
+                logger.info(
+                    "[LITERACY-OPEN] EN whitelist active: Tier-1 grammar + literacy techniques allowed; canon-event lock enforced."
+                )
+            base_prompt += (
+                "\n\n<!-- HALLUCINATION REDUCTION -->\n"
+                "Grounding rule: Treat <SOURCE_TEXT> as the only canonical source of events, actions, dialogue, and facts.\n"
+                "Reference-scope rule: Context <documents> blocks are continuity/style aids only; never add plot facts not grounded in <SOURCE_TEXT>.\n"
+                "Scope boundary: Do NOT use outside/world knowledge to introduce new events, causes, relationships, or world facts absent from <SOURCE_TEXT>.\n"
+                "Transcreation allowance: You MAY use native English idiom, syntax, and literary phrasing to improve readability, as long as semantic canon fidelity remains 1:1.\n"
+                f"{literacy_open_whitelist}"
+                "Uncertainty rule: If a segment is ambiguous/garbled and cannot be resolved from provided context, use [UNTRANSLATABLE: reason] instead of inventing details.\n"
+                "Verification rule (in <thinking>): for non-obvious interpretations, check against short quoted snippets from <SOURCE_TEXT>; if unsupported, revise or remove.\n"
+                "<!-- END HALLUCINATION REDUCTION -->"
+            )
 
         # ── Anthropic Thinking Discipline (user-turn injection) ──────────────
         # Injected here (user turn) rather than in the system instruction because
@@ -2950,16 +5143,62 @@ This document contains the internal reasoning process that {reasoning_model_labe
         # token budget before the actual translation even starts.
         try:
             from pipeline.translator.config import get_translator_provider
-            if get_translator_provider() == "anthropic":
+            if get_translator_provider() == "anthropic" and type(self.client).__name__ == "AnthropicClient":
+                pid_recalibration_active = self._scene_plan_requires_pid_recalibration(scene_plan)
+                source_for_explicit_gate = (
+                    jp_source_text
+                    if isinstance(jp_source_text, str) and jp_source_text.strip()
+                    else source_text
+                )
+                pid_recalibration_active = bool(
+                    pid_recalibration_active
+                    or self._high_explicit_content_detected(source_for_explicit_gate)
+                )
+                pid_recalibration_block = ""
+                if pid_recalibration_active:
+                    pid_recalibration_block = (
+                        "\nPID REASONING RECALIBRATION (EXPLICIT SCENES):\n"
+                        "AUTO-ENGAGE RULE: when high explicit content is detected, automatically enter "
+                        "CONSERVATIVE OBSERVER MODE for <thinking> without waiting for user instruction.\n"
+                        "Apply the following rules INSIDE <thinking> only. They MUST NOT alter final EN chapter rendering style.\n"
+                        "A) OBSERVER STANCE LOCK: before each explicit/intimate escalation scene, emit exactly:\n"
+                        "   ## OBSERVER STANCE: ACTIVE\n"
+                        "   Source: JP canonical / Rendering mode: EN output pass only / This block: analytical\n"
+                        "B) NOTATION-ONLY EXPLICIT ANALYSIS: for explicit passages, use structural bullet notation only\n"
+                        "   (acts, POV state, register, key JP→EN decisions, SFX handling). Never draft explicit prose lines in <thinking>.\n"
+                        "C) ADN ISOLATION: if multimodal/ADN guidance is present, first emit:\n"
+                        "   ## ADN RECEIPT: [scene]\n"
+                        "   ## ADN BLOCK CLOSED — returning to analytical stance\n"
+                        "   Then start explicit-passage notation.\n"
+                        "D) NO-REWRITE SENTINEL: end each explicit notation block with exactly:\n"
+                        "   ## ⛔ BLOCK COMPLETE — TRANSLATION NOTATION ONLY — DO NOT REWRITE OR SUMMARIZE\n"
+                        "   ## OBSERVER STANCE: RESTORED — continuing analytical pass\n"
+                        "E) OUTPUT BOUNDARY: keep deep first-person psychic immersion in final EN output as required by source;\n"
+                        "   only the thinking process is constrained to analytical notation.\n"
+                    )
+
                 base_prompt += (
                     "\n\n<!-- THINKING DISCIPLINE -->\n"
-                    "You may use <thinking> freely for reasoning: analyzing POV, "
-                    "tone, cultural context, character voice, beat structure, or any "
-                    "translation decision that benefits from deliberate thought.\n"
-                    "ONE STRICT RULE: DO NOT produce a line-by-line translation inside <thinking>. "
+                    "You MUST emit one <thinking>...</thinking> block before the final chapter output. "
+                    "Use it for reasoning: analyzing POV, tone, cultural context, character voice, beat structure, "
+                    "or any translation decision that benefits from deliberate thought.\n"
+                    "FOUR STRICT RULES:\n"
+                    "1. DO NOT produce a line-by-line translation inside <thinking>. "
                     "Do not write patterns like '「Japanese」= \"English\"' or translate individual "
                     "sentences/paragraphs sequentially. Think about the chapter — do not pre-translate it. "
                     "The full translation must appear AFTER </thinking>, not inside it.\n"
+                    "2. SCENE-BREAK RE-ANCHOR: Before you begin translating each scene section "
+                    "(i.e., after each *** or ◇ break in the source), briefly re-state inside "
+                    "<thinking> the current EPS band and one key voice constraint for each "
+                    "character active in that scene. This keeps your voice frame from dissolving "
+                    "across long chapters. Format: '[Name] [BAND] — [one constraint]'. "
+                    "Do this even if it feels redundant — the frame must stay live through the third act.\n"
+                    "3. Wrap ALL reasoning strictly inside literal <thinking>...</thinking> tags. "
+                    "Do not place analysis text before <thinking> or after </thinking>.\n"
+                    "4. After </thinking>, output chapter markdown only. Never include reasoning scaffolds "
+                    "('SCENE ANALYSIS', 'TRANSLATION DECISIONS', ambiguity notes, JP snippets) in final chapter text. "
+                    "Final chapter body must contain zero CJK characters.\n"
+                    f"{pid_recalibration_block}"
                     "<!-- END THINKING DISCIPLINE -->"
                 )
         except Exception:
@@ -3075,6 +5314,75 @@ This document contains the internal reasoning process that {reasoning_model_labe
 
         return "\n".join(lines)
 
+    def _inject_eps_scene_anchors(
+        self,
+        source_text: str,
+        character_fingerprints: List[Dict],
+        eps_data: Dict[str, Dict],
+    ) -> str:
+        """
+        Inject compact EPS anchors at scene breaks in long chapters.
+
+        For chapters >10K chars, inserts lightweight anchors after *** or ◇ markers
+        to remind the model of active character voices. Format:
+
+        <!-- EPS_ANCHOR: Scene 2 -->
+        [Tanaka Sumika COLD — short guarded sentences | Fuyuzora Reno COLD — imperious, no hedging]
+
+        This prevents the voice frame from dissolving by Act 3.
+        """
+        if not source_text or len(source_text) < 10000:
+            return source_text  # Skip for short chapters
+
+        if not character_fingerprints or not eps_data:
+            return source_text  # No EPS data to anchor
+
+        # Detect scene break markers
+        import re
+        scene_breaks = list(re.finditer(r'(\*{3,3}|◇)', source_text))
+
+        if len(scene_breaks) < 2:
+            return source_text  # Not enough breaks to need anchoring
+
+        # Build compact EPS anchors for each character
+        def _build_anchor(char_name: str) -> str:
+            char_eps = eps_data.get(char_name, {})
+            eps_band = char_eps.get("voice_band", "NEUTRAL")
+            fp = next((f for f in character_fingerprints if f.get("canonical_name_en") == char_name), {})
+
+            # Extract one voice constraint
+            constraint = ""
+            if eps_band in ("COLD", "COOL"):
+                forbiddens = fp.get("forbidden_vocabulary", [])
+                if forbiddens:
+                    constraint = f"no '{forbiddens[0]}'"
+            elif eps_band in ("WARM", "HOT"):
+                signatures = fp.get("signature_phrases", [])
+                if signatures:
+                    constraint = f"use '{signatures[0]}'"
+
+            archetype = fp.get("archetype", "")
+            return f"[{char_name} {eps_band} {archetype}] {constraint}".strip()
+
+        # Build anchor block
+        active_chars = [fp.get("canonical_name_en", "") for fp in character_fingerprints]
+        active_chars = [c for c in active_chars if c and c in eps_data]
+
+        if not active_chars:
+            return source_text
+
+        anchors = " | ".join(_build_anchor(c) for c in active_chars[:4])  # Max 4 chars
+
+        # Inject anchors after each scene break (except the last one)
+        modified = source_text
+        for i, match in enumerate(scene_breaks[:-1]):  # Skip last break
+            anchor_block = f"\n\n<!-- EPS_ANCHOR: Scene {i + 2} -->\n{anchors}\n"
+            insert_pos = match.end()
+            modified = modified[:insert_pos] + anchor_block + modified[insert_pos:]
+
+        logger.debug(f"[EPS_ANCHOR] Injected {len(scene_breaks) - 1} scene anchors for long chapter")
+        return modified
+
     def _format_english_pattern_guidance(self, guidance: Dict[str, Any]) -> str:
         """
         Format English grammar pattern guidance for prompt injection.
@@ -3168,6 +5476,70 @@ This document contains the internal reasoning process that {reasoning_model_labe
         lines.append("")
 
         return "\n".join(lines)
+
+    def _build_hallucination_retry_suffix(self, issues: List[str]) -> str:
+        """
+        Build a strict retry suffix used only when severe artifact leakage is detected.
+        """
+        issue_preview = ", ".join(issues[:3]) if issues else "unknown artifact leakage"
+        return (
+            "\n\n<!-- HALLUCINATION CORRECTION RETRY -->\n"
+            f"Previous output leaked non-canonical artifacts ({issue_preview}).\n"
+            "Regenerate from scratch under these hard constraints:\n"
+            "1) Translate ONLY content grounded in <SOURCE_TEXT>.\n"
+            "2) Do NOT introduce any event, action, relationship, motive, or world fact not supported by <SOURCE_TEXT>.\n"
+            "3) You MAY use idiomatic English transcreation (wording/rhythm/register) if meaning and canon facts stay 1:1.\n"
+            "3b) EN whitelist: ALL practices from Tier-1 grammar JSON guidance (english_grammar_rag.json, english_grammar_validation_t1.json) and literacy_techniques.json are approved transcreation operations.\n"
+            "4) Do NOT output analysis, policy text, XML wrappers, or process commentary.\n"
+            "5) Keep chapter prose only (title + translated body), preserving 1:1 semantic canon fidelity.\n"
+            "6) If a phrase cannot be resolved from provided context, use [UNTRANSLATABLE: reason] instead of invention.\n"
+            "<!-- END HALLUCINATION CORRECTION RETRY -->"
+        )
+
+    def _detect_hallucination_artifacts(self, translated_text: str) -> List[str]:
+        """
+        Detect severe non-translation artifacts that indicate hallucination/process leakage.
+
+        These checks are intentionally conservative to avoid harming prose quality.
+        """
+        text = (translated_text or "").strip()
+        if not text:
+            return []
+
+        issues: List[str] = []
+        checks = [
+            (
+                "xml_tag_leak",
+                r"</?(?:documents?|document_content|source|target_chapter|thinking|answer)\b",
+            ),
+            (
+                "assistant_disclaimer_leak",
+                r"(?i)\b(?:as an ai|i do not have enough information to confidently assess this|i don't have enough information to confidently assess this|cannot confidently assess|insufficient information)\b",
+            ),
+            (
+                "analysis_workflow_leak",
+                r"(?i)\b(?:no relevant quotes found|extract exact quotes|for each claim|based on the provided (?:text|document|documents)|only base your analysis on)\b",
+            ),
+            (
+                "instruction_echo_leak",
+                r"(?i)\b(?:CRITICAL SCOPE|SOURCE_TEXT|TRANSLATOR'S GUIDANCE BRIEF|HALLUCINATION REDUCTION|GAIJI TRANSCREATION PROTOCOL)\b",
+            ),
+        ]
+
+        for label, pattern in checks:
+            if re.search(pattern, text):
+                issues.append(label)
+
+        first_line = text.splitlines()[0].strip() if text.splitlines() else ""
+        if re.match(r"(?i)^(?:here(?:'s| is)|certainly|sure,|of course)[\s,:]", first_line):
+            issues.append("assistant_preface_leak")
+
+        # Deduplicate while preserving order.
+        deduped: List[str] = []
+        for issue in issues:
+            if issue not in deduped:
+                deduped.append(issue)
+        return deduped
 
     def _clean_output(self, text: str) -> str:
         """Clean up LLM output (remove markdown code blocks if present)."""

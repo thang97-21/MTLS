@@ -40,9 +40,6 @@ from .image_extractor import ImageExtractor, ImageInfo, catalog_images, extract_
 # File Discovery
 from .file_discovery import FileDiscovery, ChapterInfo, discover_files, build_file_mappings, build_title_mappings
 
-# Main Agent
-from .agent import LibrarianAgent, Manifest, ChapterEntry, run_librarian
-
 __version__ = "1.0.0"
 
 __all__ = [
@@ -95,3 +92,18 @@ __all__ = [
     "ChapterEntry",
     "run_librarian",
 ]
+
+
+def __getattr__(name):
+    """Lazily expose agent symbols without preloading agent.py during package import."""
+    if name in {"LibrarianAgent", "Manifest", "ChapterEntry", "run_librarian"}:
+        from .agent import ChapterEntry, LibrarianAgent, Manifest, run_librarian
+
+        exports = {
+            "LibrarianAgent": LibrarianAgent,
+            "Manifest": Manifest,
+            "ChapterEntry": ChapterEntry,
+            "run_librarian": run_librarian,
+        }
+        return exports[name]
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

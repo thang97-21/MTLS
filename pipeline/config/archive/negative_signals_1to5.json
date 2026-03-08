@@ -1,0 +1,323 @@
+{
+  "_meta": {
+    "version": "1.0",
+    "description": "Series-specific negative signal database for 男女比1:5 — 男女比1-5の世界でも普通に生きられると思った? (Codes: 0824, 221f, 06a9). Derived from 22-chapter bilingual QC audit across 3 volumes (2026-02-25). Extends global negative_signals.json with series-specific patterns NOT already covered there.",
+    "source": "MTL Quality Evaluator — parallel subagent scan, Vol 1 includes FAN_TL comparative analysis",
+    "last_updated": "2026-02-25",
+    "series": "男女比1:5",
+    "volumes_audited": ["0824", "221f", "06a9"],
+    "total_chapters_scanned": 22,
+    "global_signals_complement": "negative_signals.json",
+    "note": "Patterns in global negative_signals.json (intensifier_elevation, show_dont_tell, bridging_sentence_insertion, contrastive_flattening, filter_word_overuse) are confirmed as active in this series. This file adds series-exclusive patterns only.",
+    "severity_counts": {
+      "CRITICAL": 3,
+      "MAJOR": 14
+    },
+    "frequency_summary": {
+      "exposition_dumps_world_premise": "3/7 chapters (Vol 1 primary, residual in Vol 2-3)",
+      "heroine_voice_homogenization": "4/7 (Vol 2), 4/8 (Vol 3)",
+      "masato_obliviousness_over_explained": "3/7 (Vol 1), 2/7 (Vol 2)",
+      "age_range_register_slippage": "2/7 (Vol 1), 1/7 (Vol 2), 2/8 (Vol 3)",
+      "mizuho_voice_collapse": "5/7 (Vol 2), 4/8 (Vol 3)"
+    }
+  },
+
+  "CRITICAL": {
+    "description": "Hard prohibitions specific to this series. These break fundamental translation contracts — the world premise reads as authorial intrusion, or the 5-heroine ensemble collapses into one voice.",
+    "categories": {
+
+      "exposition_dump_world_premise": {
+        "description": "The 1:5 gender ratio is this series' central premise. When it is front-loaded as a block of explanatory narration, the world feels constructed and announced rather than lived-in. Masato's POV should treat this world as normal — because to him, it is.",
+        "rule": "NEVER render the 1:5 world premise as a continuous expository block. Distribute across scene beats, dialogue, and casual observation. Masato does not explain the world to himself — he lives in it.",
+        "max_consecutive_world_explanation_sentences": 2,
+        "patterns": [
+          {
+            "id": "premise_block_dump",
+            "jp_trigger": "男女比 / 性比 / 一夫多妻 / ポリガミー / 世界が変わった explanatory passage",
+            "severity": "CRITICAL",
+            "bad": "The gender ratio in this world was skewed. For every one guy, there were five girls. There'd even been growing support for legalizing polygamy, and apparently the whole landscape of romance between men and women had shifted dramatically.",
+            "bad_reason": "3+ consecutive sentences explaining the world premise from MC's POV. He lives here — he doesn't narrate his own world to himself.",
+            "good": "The ratio was what it was. Five to one, and everyone had just... adapted. Even polygamy wasn't the scandal it used to be.",
+            "rule": "Break premise explanation into max 2-sentence shards. Distribute across action beats or dialogue reactions. Use casual, normalized register — not expository summary."
+          },
+          {
+            "id": "masato_world_commentary",
+            "jp_trigger": "俺の世界では / この世界の男女比 / 普通じゃない世界",
+            "severity": "CRITICAL",
+            "bad": "In this world, the gender ratio of 1:5 meant that men were highly sought after and relationships were far more competitive and complicated than in a normal world.",
+            "bad_reason": "Masato treating his world as abnormal is out of character. He was born here. The 1:5 ratio is his normal.",
+            "good": "Same as always. Five girls to every guy, relationships complicated by default. Nothing new.",
+            "rule": "Masato references the world ratio only with casualness and normalization. 'This world' framing breaks his POV — he doesn't see it as unusual."
+          }
+        ]
+      },
+
+      "heroine_voice_homogenization": {
+        "description": "This series has five heroines with distinct archetypes spanning ages 13–25+, backgrounds from student to OL, and personalities from tsundere to genki. When their internal monologue voices converge to generic introspection, the series' core appeal — the collision of five distinct personalities — is destroyed.",
+        "rule": "Each heroine must maintain distinct vocabulary, syntax, and internal-monologue register at all times. The same emotional state (jealousy, longing, frustration) must sound DIFFERENT depending on who is feeling it.",
+        "heroine_voice_matrix": {
+          "Seira": {
+            "archetype": "ツンデレOL (25, office worker)",
+            "internal_register": "Formal syntax, business-adjacent vocabulary, self-analytical, controlled",
+            "emotional_tells": "Involuntary physical reactions she immediately categorizes and suppresses",
+            "bad_pattern": "Generic emotion labels: 'I felt frustrated. I was jealous.'",
+            "good_pattern": "Clinical self-analysis that breaks down: 'Jealousy. Confirmed. I catalogued it and filed it away — which helped exactly nothing.'",
+            "forbidden_in_her_voice": ["piece of cake", "super cute", "OMG", "crazy about him"]
+          },
+          "Shiori": {
+            "archetype": "文学少女JK (17, literary girl)",
+            "internal_register": "Otome-game meta-commentary, theatrical self-narration, playful performative",
+            "emotional_tells": "Breaks into game/story framing when stressed: 'Heroine-sama has reached a critical juncture'",
+            "bad_pattern": "Dropping the theatrical framing in crisis: 'I was scared. I didn't know what to do.'",
+            "good_pattern": "Maintaining even in crisis: 'The heroine's health bar had hit red. Buffs exhausted. No save point available.'",
+            "forbidden_in_her_voice": ["I felt sad", "I was angry", "generic emotion labels without narrative framing"]
+          },
+          "Koumi": {
+            "archetype": "爽やか大学生 (20, sporty college student)",
+            "internal_register": "Confident, direct, athletic metaphors, casual contractions",
+            "emotional_tells": "Strategic framing: 外堀りから埋める (lay siege from outside in)",
+            "bad_pattern": "Passive or hesitant voice: 'I wondered if maybe...'",
+            "good_pattern": "Assertive, plan-based: 'If the front gate's locked, go around. Classic.'",
+            "forbidden_in_her_voice": ["formal/bookish vocabulary", "self-doubt spirals", "hesitant hedging"]
+          },
+          "Mizuho": {
+            "archetype": "社交的で罪悪感 (19, guilt-ridden social butterfly)",
+            "internal_register": "CRITICAL: MUST mark the contrast between her bright exterior and anxious interior",
+            "emotional_tells": "Cheerful speech tags + anxious interior: dialogue ends with 😊 register, then internal voice drops to tight, quiet, guilty",
+            "bad_pattern": "'She seemed sad.' / Describing Mizuho from outside without her interior voice",
+            "good_pattern": "'Sure!' she said. [And she meant it. She just also meant: please don't ask me why I know that. Please.]",
+            "forbidden_in_her_voice": ["describing her sadness from outside without interior contrast", "generic emotional labels"]
+          },
+          "Yuka": {
+            "archetype": "バスケ中学生 (13, competitive basketball player)",
+            "internal_register": "Competitive, possessive, basketball/sports vocabulary, youthful intensity",
+            "emotional_tells": "Jealousy expressed as competitive analysis: 'She's in my lane. Foul.'",
+            "bad_pattern": "'Piece of cake.' / adult idioms / 'I felt a complex mixture of emotions'",
+            "good_pattern": "'That was my spot. My lane. She didn't even notice she'd cut in.'",
+            "age_register_note": "13-year-old. No adult business vocabulary, no formal introspection. High energy, direct, competitive."
+          }
+        },
+        "patterns": [
+          {
+            "id": "seira_generic_emotion_label",
+            "jp_trigger": "セイラ POV — 感情表現",
+            "severity": "CRITICAL",
+            "bad": "I felt frustrated. I was angry. I was jealous.",
+            "bad_reason": "Three flat emotion labels in sequence. Seira is a 25-year-old OL who immediately categorizes and suppresses her own feelings — this is not her voice.",
+            "good": "Frustration. Anger. Jealousy. I ran through the list like a diagnostic, as if naming them would make them stop."
+          },
+          {
+            "id": "mizuho_exterior_only",
+            "jp_trigger": "瑞穂 POV or description — cheerful surface with hidden burden",
+            "severity": "CRITICAL",
+            "bad": "Mizuho seemed sad. She forced a smile.",
+            "bad_reason": "Outside observation only. Mizuho's entire arc requires the contrast between her broadcast exterior and her hidden guilt to be *felt from inside*.",
+            "good": "'Of course!' She let the brightness carry her face. [Inside: please don't ask. Please don't see it. Just let me keep this one thing normal.]"
+          },
+          {
+            "id": "yuka_adult_register",
+            "jp_trigger": "由佳 POV — 感情 / 独白",
+            "severity": "CRITICAL",
+            "bad": "piece of cake / extremely / I hold complicated feelings about this",
+            "bad_reason": "Adult/formal register for a 13-year-old basketball-obsessed middle schooler. Breaks her characterization.",
+            "good": "easy-peasy / wild / insane / crazy / I don't even wanna think about this"
+          }
+        ]
+      }
+    }
+  },
+
+  "MAJOR": {
+    "description": "Strong avoidances specific to this series. Each of these was confirmed across 2+ volumes or 3+ chapters within a volume.",
+    "categories": {
+
+      "masato_obliviousness_calibration": {
+        "description": "Masato's obliviousness to the heroines' romantic feelings is the series' engine. It must be genuine (he's not playing dumb) and consistent. When the EN translation adds narrator commentary explicitly stating that he is oblivious, or has him almost-notice before retreating, it breaks the contract.",
+        "rule": "Masato's unawareness must be shown through ACTION — he helps, he cares, he's present — without any internal narrator commentary flagging his unawareness. Do NOT add 'Of course, he didn't realize...', 'He hadn't caught on...', or 'As always, Masato...' narrator bridges.",
+        "patterns": [
+          {
+            "id": "obliviousness_announced",
+            "jp_trigger": "マサト POV — 女の子の気持ち passing by",
+            "severity": "MAJOR",
+            "bad": "He hadn't realized, of course, that Koumi was doing this because she liked him.",
+            "bad_reason": "Narrator announces his unawareness. The comedy requires the reader to see it while Masato doesn't — announcing it kills the gap.",
+            "good": "[Masato takes Koumi's offer at face value and responds naturally. Let the reader see the romantic intent he misses — don't annotate it.]"
+          },
+          {
+            "id": "masato_kindness_explained",
+            "jp_trigger": "マサトの優しさ / マサトのチャーム — explanatory passage",
+            "severity": "MAJOR",
+            "bad": "Masato's greatest charm was this kindness. Normally, if some middle-aged woman tried to pick you up, you'd show at least a flicker of disgust. Masato didn't have that in him.",
+            "bad_reason": "Trait label + behavioral example = tell-then-show. The behavioral example should stand completely alone.",
+            "good": "[The middle-aged woman's approach. His response without a flicker of discomfort. That's it — the reader infers the character without being told.]"
+          }
+        ]
+      },
+
+      "seira_voice_register": {
+        "description": "Seira is 25, an office worker (OL), and highly self-analytical. Her internal monologue should carry a formal-adjacent register even when she's emotionally overwhelmed — she processes feelings through categorization, not expression.",
+        "rule": "In Seira's POV, emotion is catalogued, suppressed, and re-examined. She does not say 'I feel' — she says 'I catalogued this feeling as' or shows physical reactions that she immediately attempts to analyze away.",
+        "patterns": [
+          {
+            "id": "seira_casual_speech_internal",
+            "jp_trigger": "セイラ 一人称 — 感情",
+            "severity": "MAJOR",
+            "bad": "Ugh, I was so into him it was embarrassing.",
+            "bad_reason": "Too casual for Seira's controlled OL register. She would never use 'ugh' in internal voice.",
+            "good": "It was embarrassing, how far gone I was. I noted it. Filed it. Did nothing useful with the information."
+          }
+        ]
+      },
+
+      "koumi_passive_internal": {
+        "description": "Koumi is sporty, direct, and strategically confident. Her internal voice should be assertive and plan-forward. Any passive, hesitant, or uncertain phrasing is a voice break.",
+        "rule": "Koumi's internal monologue defaults to action-plans, not emotional spirals. She processes setbacks as tactical problems, not personal wounds.",
+        "patterns": [
+          {
+            "id": "koumi_hesitant_voice",
+            "jp_trigger": "光海 一人称 — 悩み / 計画",
+            "severity": "MAJOR",
+            "bad": "I wondered if maybe there was something I could do to get closer to him...",
+            "bad_reason": "Passive wondering. Koumi doesn't wonder — she scouts, strategizes, and executes.",
+            "good": "Front gate's locked. Fine. I'd go around. Outer walls first, then work inward — 外堀りから埋める, just like the textbook says."
+          }
+        ]
+      },
+
+      "age_range_register_consistency": {
+        "description": "The series spans a 12+ year age range across heroines. Teen register (Yuka, Shiori) and adult register (Seira, Koumi, Mizuho) must remain consistent and never bleed into each other.",
+        "rule": "Check every intensifier, idiom, and emotional expression against the character's age and background. Teen vocab must not appear in adult POV and vice versa.",
+        "register_boundary_violations": [
+          {
+            "id": "teen_adult_crossover",
+            "severity": "MAJOR",
+            "bad_teen_getting_adult": ["piece of cake (Yuka)", "I found myself reflecting on (Yuka)", "complex emotions (Yuka)"],
+            "bad_adult_getting_teen": ["OMG (Seira)", "super into him (Seira)", "totally crazy (Seira internal)"],
+            "rule": "Teen characters (Yuka: 13, Shiori: 17) use: crazy/wild/insane/no way/ugh. Adult characters (Seira: 25, Koumi: 20, Mizuho: 19) use: ridiculously/impossibly/absolutely [casual] / genuinely [careful use]."
+          }
+        ]
+      },
+
+      "narrative_tense_slippage": {
+        "description": "All 3 volumes show occasional mixing of past-tense narrative with present-tense habitual statements within the same introspection block. This creates temporal confusion and breaks narrative voice.",
+        "rule": "Choose one temporal anchor per introspection block and hold it. Past narrative (I walked, she said) does not mix with present habitual (I always go, she usually smiles) in the same unbroken run of sentences.",
+        "patterns": [
+          {
+            "id": "past_present_tense_mix",
+            "jp_trigger": "回想 / 習慣的行動 mixed in narration",
+            "severity": "MAJOR",
+            "bad": "I walked to the fountain. I loved this place. Every day I sit there and watch the sky.",
+            "bad_reason": "Past-past-present slip. Breaks temporal coherence.",
+            "good": "I walked to the fountain — my spot, the one I always came back to when I needed to think."
+          }
+        ]
+      },
+
+      "emotion_labelling_climax": {
+        "description": "Climactic emotional beats in this series are undermined when the EN translation names the emotion rather than rendering it through body, behavior, or environment. This is especially damaging in the 5-heroine ensemble because each heroine's emotions must feel physically distinct.",
+        "rule": "In climactic emotional moments, DO NOT name the emotion. Render it through a physical response, an involuntary behavior, or an environmental detail that carries emotional weight.",
+        "patterns": [
+          {
+            "id": "triple_label_climax",
+            "jp_trigger": "感情の爆発 — 複数感情同時",
+            "severity": "MAJOR",
+            "bad": "I felt frustrated. I was angry. I was jealous.",
+            "bad_reason": "Three stacked emotion labels. The climax is announced, not felt.",
+            "good": "My hands had balled into fists at some point. My jaw ached. The mineral water sat there, untouched, perfectly placed."
+          },
+          {
+            "id": "chest_ache_filter",
+            "jp_trigger": "胸が痛い / 胸に痛みが走る / 胸がきゅっとする",
+            "severity": "MAJOR",
+            "bad": "I felt sadness welling up / A pang of jealousy hit me",
+            "bad_reason": "Filter verb + abstract noun. JP directly gives the physical ache — EN must too.",
+            "good": "My chest ached. Sharp, immediate, gone before I could name it."
+          }
+        ]
+      },
+
+      "shiori_mask_maintenance": {
+        "description": "Shiori's dual-persona structure (performative literary girl vs. scheming, lustful interior) is the series' most sophisticated character construction. The mask must never drop in her external presentation, and her internal voice must always retain its theatrical self-narration framing.",
+        "rule": "Shiori external voice = elegant, slightly archaic, performative. Shiori internal voice = otome-game meta-framing, scheming, dramatic. NEVER flatten either layer to generic teen speech.",
+        "patterns": [
+          {
+            "id": "shiori_mask_drop_external",
+            "jp_trigger": "栞 external dialogue — 感情的な場面",
+            "severity": "MAJOR",
+            "bad": "She panicked. 'W-what are you doing?!'",
+            "bad_reason": "Panicked external voice breaks her performed composure. Even under stress, Shiori performs.",
+            "good": "'My, how bold.' Her voice came out perfectly steady. [Her heart was doing something catastrophically undignified.]"
+          },
+          {
+            "id": "shiori_flat_internal",
+            "jp_trigger": "栞 内心 — 感情",
+            "severity": "MAJOR",
+            "bad": "I was scared. I didn't know what to do.",
+            "bad_reason": "Drops the theatrical meta-framing that defines her internal voice.",
+            "good": "The heroine's health bar had hit red. Buffs exhausted. No save point in sight. This was a game-over scenario."
+          }
+        ]
+      },
+
+      "fan_tl_exposition_lesson": {
+        "description": "Vol 1 FAN_TL comparative analysis revealed one area where the fan translation outperformed the MTL: exposition distribution. The FAN_TL weaves world-explanation through dialogue and reaction rather than block narration. This pattern should inform all 3 volumes.",
+        "rule": "When world-building information must be conveyed (1:5 ratio, polygamy trends, social changes), embed it in: (a) a character's casual reaction, (b) a passing dialogue line, (c) environmental detail — not block narration.",
+        "patterns": [
+          {
+            "id": "worldbuild_dialogue_embed",
+            "jp_trigger": "世界観説明 — 男女比 / 社会変化",
+            "severity": "MAJOR",
+            "bad": "The gender ratio had shifted, and society had adapted accordingly. Polygamy was now legal, and relationships were...",
+            "bad_reason": "Block narration. FAN_TL lesson: distribute this through character voice.",
+            "good": "'Three girlfriends,' he said, like he was ordering a coffee. [That was just Tuesday in this world.]"
+          }
+        ]
+      }
+    }
+  },
+
+  "series_positive_patterns": {
+    "description": "Translation moments that succeed at the series-specific level. These are the benchmark for what this series' translation sounds like at its best.",
+    "highlights": [
+      {
+        "id": "koumi_siege_transcreation",
+        "volume": "221f",
+        "chapter": 3,
+        "jp": "外堀りから埋める",
+        "en": "lay siege from outside in",
+        "note": "Perfect transcreation of Koumi's strategic romance vocabulary. Preserves the military/strategic register of the original while being immediately natural in English."
+      },
+      {
+        "id": "yuka_chest_sting",
+        "volume": "221f",
+        "chapter": 4,
+        "jp": "胸に痛みが走った (when hearing 'like a little sister')",
+        "en": "A sharp sting lanced through my chest.",
+        "note": "Series gold standard for physiological rendering. Anatomical, immediate, unmediated. Does not name the emotion (jealousy). Best show-don't-tell execution across all 3 volumes."
+      },
+      {
+        "id": "shiori_pin_down_explosion",
+        "volume": "221f",
+        "chapter": 5,
+        "jp": "いつか絶対押し倒してやるからなあああ",
+        "en": "SOMEDAY I'M GONNA PIN YOU DOWN",
+        "note": "Excellent frustration-explosion rendering. Caps + informal grammar matches the helpless intensity of the original. Shiori's mask fully breaking in internal voice."
+      },
+      {
+        "id": "seira_vomit_scene_fid",
+        "volume": "06a9",
+        "chapter": 2,
+        "jp": "嘔吐 scene — セイラ crisis",
+        "en": "Free-indirect-discourse execution in Seira's breakdown",
+        "note": "Physical crisis rendered without emotional labels. Body-first narration at its best. Model for all Seira-POV emotional scenes."
+      }
+    ]
+  },
+
+  "injection_template": {
+    "description": "Series-specific preamble block for system instruction injection. Inject AFTER global negative_signals.json block.",
+    "header": "## SERIES-SPECIFIC NEGATIVE SIGNALS — 男女比1:5 SERIES (QC-DERIVED v1.0)",
+    "preamble": "The following patterns are specific to the 男女比1:5 series (codes 0824, 221f, 06a9). They supplement global negative_signals.json. Apply in addition to global rules.",
+    "critical_note": "The 5-heroine voice matrix (heroine_voice_homogenization category) is the single most important series-specific rule. Each heroine MUST sound different in internal monologue. See the voice_matrix for per-character vocabulary and syntax requirements."
+  }
+}

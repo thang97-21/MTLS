@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class PromptLoader:
-    def __init__(self, target_language: str = None, prompts_dir: Path = None, modules_dir: Path = None):
+    def __init__(self, target_language: str = None, prompts_dir: Path = None, modules_dir: Path = None): # type: ignore
         """
         Initialize PromptLoader.
 
@@ -31,6 +31,7 @@ class PromptLoader:
         """
         self.target_language = target_language if target_language else get_target_language()
         self.lang_config = get_language_config(self.target_language)
+        self._genre = None  # Genre for JIT literacy_techniques injection
 
         self.prompts_path = prompts_dir if prompts_dir else get_master_prompt_path(self.target_language)
         self.modules_dir = modules_dir if modules_dir else get_modules_directory(self.target_language)
@@ -38,7 +39,8 @@ class PromptLoader:
         # Three-Tier RAG paths
         self.reference_dir = None
         self.reference_index_path = None
-        self.kanji_difficult_path = None
+        # DEPRECATED: kanji_difficult_path - replaced by vietnamese_grammar_rag.json for VN
+        # self.kanji_difficult_path = None
         self.cjk_prevention_path = None  # Initialize for all languages
         self.anti_ai_ism_path = None  # Anti-AI-ism pattern library (v3.5)
         self.english_grammar_rag_path = None  # English Grammar RAG (Tier 1) - EN only
@@ -53,11 +55,12 @@ class PromptLoader:
             if reference_dir_config:
                 self.reference_dir = PIPELINE_ROOT / reference_dir_config
             
-            # kanji_difficult.json and reference_index.json are in VN/ root
+            # DEPRECATED: kanji_difficult.json - replaced by vietnamese_grammar_rag.json
+            # reference_index.json is in VN/ root
             # cjk_prevention_schema_vn.json is in prompts/modules/rag/
             vn_root = PIPELINE_ROOT / 'VN'
             prompts_root = PIPELINE_ROOT / 'prompts' / 'modules' / 'rag'
-            self.kanji_difficult_path = vn_root / 'kanji_difficult.json'
+            # self.kanji_difficult_path = vn_root / 'kanji_difficult.json'  # DEPRECATED
             self.cjk_prevention_path = prompts_root / 'cjk_prevention_schema_vn.json'
             self.reference_index_path = vn_root / 'reference_index.json'
             # Vietnamese Grammar RAG (Tier 1) - Anti-AI-ism + particle system for JP→VN
@@ -72,24 +75,30 @@ class PromptLoader:
             self.anti_ai_ism_path = config_dir / 'anti_ai_ism_patterns.json'
             # English Grammar RAG (Tier 1) - Natural idiom patterns for JP→EN
             self.english_grammar_rag_path = config_dir / 'english_grammar_rag.json'
+            # Negative Signals (Tier 1 EN) - ICL-backed quality enforcement
+            # Note: This replaces the deprecated kanji_difficult.json for EN
+            self.negative_signals_path = config_dir / 'negative_signals.json'
             # English Grammar Validation T1 (Tier 1) - rhythm/literal/repetition guardrails
             self.english_grammar_validation_t1_path = config_dir / 'english_grammar_validation_t1.json'
 
         # Literacy Techniques (Tier 1 - language-agnostic, applies to both EN and VN)
         config_dir = PIPELINE_ROOT / 'config'
         self.literacy_techniques_path = config_dir / 'literacy_techniques.json'
+        self.literacy_techniques_compressed_path = config_dir / 'literacy_techniques_compressed.json'  # 1 example/mood, for large chapters
         self.formatting_standards_path = config_dir / 'formatting_standards.json'
 
         self._master_prompt_cache = None
         self._rag_modules_cache = {}
         self._reference_index = None  # Three-Tier RAG metadata
-        self._kanji_difficult = None  # Tier 1 kanji data
+        # self._kanji_difficult = None  # DEPRECATED: Tier 1 kanji data
         self._cjk_prevention = None  # CJK prevention schema with substitution patterns
         self._anti_ai_ism = None  # Anti-AI-ism pattern library (v3.5)
         self._english_grammar_rag = None  # English Grammar RAG (Tier 1) - natural idioms
+        self._negative_signals = None  # Negative Signals (Tier 1 EN) - ICL-backed quality enforcement
         self._english_grammar_validation_t1 = None  # EN Grammar Validation T1 (Tier 1)
         self._vietnamese_grammar_rag = None  # Vietnamese Grammar RAG (Tier 1) - anti-AI-ism + particle system
         self._literacy_techniques = None  # Literary techniques (Tier 1) - language-agnostic narrative techniques
+        self._literacy_techniques_compressed = None  # Compressed literacy techniques (1 example/mood) for large-chapter routing
         self._formatting_standards = None  # Formatting standards + romanization (Tier 1)
         self._continuity_pack = None  # Continuity pack from previous volume
         self._character_names = None  # Character names from manifest
@@ -99,7 +108,41 @@ class PromptLoader:
         self._bible_prompt = None  # Series Bible categorized prompt block
         self._bible_world_directive = None  # World setting one-liner for top-of-prompt
         self._bible_glossary_keys = set()  # JP keys covered by bible (for glossary dedup)
-        
+        self._book_type = None  # Content type: 'fiction' (default), 'memoir', 'biography', 'non_fiction'
+        self._music_industry_vocab = None  # Music-industry vocabulary supplement (memoir mode only)
+        self._title_motif_catchphrase_directive = ""  # Title Philosopher motif-aligned catchphrase rule
+
+        # Koji Fox voice directives (Phase 1-2 expansion)
+        self._voice_directive = ""  # CHARACTER VOICE DIRECTIVE from VoiceRAGManager
+        self._arc_directive = ""    # CHARACTER ARC STATES from ArcTracker
+
+        # POV character fingerprint override (Gap 8.2 — batch-safe injection)
+        # Set when a chapter's POV shifts to a non-protagonist character with a fingerprint.
+        # Injected as a high-priority block so batch+thinking mode sees the correct register
+        # without relying on tool_use (which batch mode does not support).
+        self._pov_character_name: str = ""
+        self._pov_fingerprint: dict = {}  # character_voice_fingerprints entry
+
+        # Multi-POV intra-chapter hot-switch segments (Gap 8.2 extension)
+        # Set when a chapter has multiple POV segments each belonging to a different
+        # fingerprinted character. When non-empty, takes precedence over the single-POV
+        # fields above. Each entry is a dict with keys:
+        #   character: str          — canonical EN name
+        #   fingerprint: dict       — character_voice_fingerprints entry
+        #   start_line: int | None  — source JP line hint (optional)
+        #   end_line: int | None    — source JP line hint (optional)
+        #   description: str        — human-readable segment description (optional)
+        self._pov_segments: list = []
+        self._secondary_fingerprints: list = []
+        self._inline_afterword_override: dict = {}
+
+        # ECR — volume-level translation directives (Enhanced Cultural Retention + Author Signature)
+        # Set once at volume init from metadata_en fields. Persists across all chapter builds.
+        self._ecr_clt: dict = {}         # culturally_loaded_terms
+        self._ecr_asp: dict = {}         # author_signature_patterns
+        self._ecr_cvf_list: list = []    # character_voice_fingerprints (all chars)
+        self._ecr_sig_phrases: list = [] # signature_phrases
+
         # Style guide paths (experimental - Vietnamese only for now)
         self.style_guides_dir = PIPELINE_ROOT / 'style_guides'
         # Normalize Vietnamese: vn→vi for file lookups (files use 'vi' suffix)
@@ -114,8 +157,9 @@ class PromptLoader:
         logger.info(f"  Modules Dir: {self.modules_dir}")
         if self.reference_dir:
             logger.info(f"  Reference Dir: {self.reference_dir}")
-        if self.kanji_difficult_path and self.kanji_difficult_path.exists():
-            logger.info(f"  Kanji Difficult: {self.kanji_difficult_path}")
+        # DEPRECATED: kanji_difficult_path logging
+        # if self.kanji_difficult_path and self.kanji_difficult_path.exists():
+        #     logger.info(f"  Kanji Difficult: {self.kanji_difficult_path}")
         
         # Check for style guide system (experimental)
         if self.target_language in ['vi', 'vn'] and self.style_guides_dir.exists():
@@ -149,8 +193,169 @@ class PromptLoader:
         scene_count = len(semantic_metadata.get('scene_contexts', {}))
         logger.info(f"Semantic metadata set: {char_count} characters, {pattern_count} dialogue patterns, {scene_count} scenes")
 
-    def set_bible_prompt(self, bible_prompt: str, world_directive: str = "",
-                         bible_glossary_keys: set = None):
+    def set_voice_directive(self, voice_directive: str, arc_directive: str = "") -> None:
+        """
+        Set Koji Fox voice directives for injection into the thinking block context.
+
+        Args:
+            voice_directive: Formatted CHARACTER VOICE DIRECTIVE block from VoiceRAGManager
+            arc_directive: Formatted CHARACTER ARC STATES block from ArcTracker
+        """
+        self._voice_directive = voice_directive or ""
+        self._arc_directive = arc_directive or ""
+        if voice_directive:
+            logger.info(f"Voice directive set ({len(voice_directive)} chars)")
+        if arc_directive:
+            logger.info(f"Arc directive set ({len(arc_directive)} chars)")
+
+    def set_title_motif_catchphrase_directive(self, directive: str) -> None:
+        """Set title-motif catchphrase directive for chapter prompt injection."""
+        self._title_motif_catchphrase_directive = (directive or "").strip()
+        if self._title_motif_catchphrase_directive:
+            logger.info(
+                "[TITLE MOTIF] Catchphrase directive set (%s chars)",
+                len(self._title_motif_catchphrase_directive),
+            )
+
+    def set_ecr_directives(
+        self,
+        culturally_loaded_terms: dict,
+        author_signature_patterns: dict,
+        character_voice_fingerprints: list,
+        signature_phrases: list,
+    ) -> None:
+        """Store ECR volume-level directives for injection into the system instruction.
+
+        Called once at volume initialisation. The four fields originate from
+        metadata_en and are appended as hard-rule directive blocks in
+        build_system_instruction() so they apply to every chapter.
+
+        Args:
+            culturally_loaded_terms:      ECR term → {retention_policy, display, …} dict.
+            author_signature_patterns:    {detected_patterns, literary_references} dict.
+            character_voice_fingerprints: List of per-character fingerprint dicts.
+            signature_phrases:            Flat list of {character_en, phrase_jp, phrase_en, …}.
+        """
+        self._ecr_clt = culturally_loaded_terms if isinstance(culturally_loaded_terms, dict) else {}
+        self._ecr_asp = author_signature_patterns if isinstance(author_signature_patterns, dict) else {}
+        self._ecr_cvf_list = character_voice_fingerprints if isinstance(character_voice_fingerprints, list) else []
+        self._ecr_sig_phrases = signature_phrases if isinstance(signature_phrases, list) else []
+        tot = (
+            len(self._ecr_clt)
+            + bool(self._ecr_asp)
+            + len(self._ecr_cvf_list)
+            + len(self._ecr_sig_phrases)
+        )
+        logger.info(
+            f"[ECR] Directives set: {len(self._ecr_clt)} CLT terms, "
+            f"{len(self._ecr_cvf_list)} CVF fingerprints, "
+            f"{len(self._ecr_sig_phrases)} signature phrases, "
+            f"ASP={'yes' if self._ecr_asp else 'no'} ({tot} total entries)"
+        )
+
+    def set_pov_character_override(self, character_name: str, fingerprint: dict) -> None:
+        """
+        Set a POV character fingerprint override for a chapter narrator.
+
+        Called by the translator agent when a chapter's scene plan identifies the
+        active POV character and that character has a voice fingerprint. The
+        fingerprint is injected as a high-priority block in
+        build_system_instruction() so batch+thinking mode receives the correct
+        register, contraction ceiling, and verbal-tic constraints without relying
+        on declare_translation_parameters.
+
+        Args:
+            character_name: Canonical EN name of the POV character (e.g. "Sudou Ayami")
+            fingerprint: character_voice_fingerprints entry dict
+        """
+        self._pov_segments = []
+        self._pov_character_name = character_name or ""
+        self._pov_fingerprint = fingerprint or {}
+        if character_name and fingerprint:
+            archetype = fingerprint.get("archetype", "unknown")
+            contraction_rate = fingerprint.get("contraction_rate", "?")
+            logger.info(
+                f"[POV OVERRIDE] Set POV Character: {character_name} "
+                f"(archetype={archetype}, contraction_rate={contraction_rate})"
+            )
+
+    def set_pov_segments(self, segments: list) -> None:
+        """
+        Set multi-POV intra-chapter hot-switch segments (Gap 8.2 extension).
+
+        Called by the translator agent when a chapter contains multiple first-person
+        POV sections belonging to different fingerprinted characters (e.g. alternating
+        Hikari / Ayami perspectives within a single chapter).  When set, the multi-
+        segment directive replaces the simpler single-POV override block so the model
+        receives per-segment voice constraints and explicit transition cues.
+
+        Batch+thinking mode compatible — no tool_use required.
+
+        Args:
+            segments: List of segment dicts, each with:
+                - character (str): canonical EN name
+                - fingerprint (dict): character_voice_fingerprints entry
+                - start_line (int | None): source JP line hint
+                - end_line (int | None): source JP line hint
+                - description (str | None): human-readable segment label
+        """
+        self._pov_character_name = ""
+        self._pov_fingerprint = {}
+        self._pov_segments = [s for s in (segments or []) if s.get("character") and s.get("fingerprint")]
+        if self._pov_segments:
+            names = [s["character"] for s in self._pov_segments]
+            logger.info(
+                f"[POV SEGMENTS] Set {len(self._pov_segments)}-segment multi-POV override: "
+                f"{' → '.join(names)}"
+            )
+
+    def add_secondary_fingerprint(self, character_name: str, fingerprint: dict) -> None:
+        """Inject a compact voice anchor for an important non-POV speaker."""
+        if not character_name or not fingerprint:
+            return
+
+        canonical_name = fingerprint.get("canonical_name_en", character_name) or character_name
+        existing = {
+            str(item.get("character", "")).strip().lower()
+            for item in self._secondary_fingerprints
+            if isinstance(item, dict)
+        }
+        if canonical_name.strip().lower() in existing:
+            return
+
+        self._secondary_fingerprints.append(
+            {
+                "character": canonical_name,
+                "fingerprint": fingerprint,
+            }
+        )
+        logger.info(f"[SECONDARY FP] Added secondary voice anchor: {canonical_name}")
+
+    def set_inline_afterword_override(self, marker_info: Optional[dict]) -> None:
+        """Set chapter-scoped inline afterword override metadata."""
+        if isinstance(marker_info, dict) and marker_info:
+            self._inline_afterword_override = marker_info
+            logger.info(
+                "[INLINE AFTERWORD] Set inline override (%s)",
+                marker_info.get("source", "unknown"),
+            )
+        else:
+            self._inline_afterword_override = {}
+
+    def clear_scene_voice_overrides(self) -> None:
+        """Clear chapter-scoped voice injections before processing the next chapter."""
+        self._pov_character_name = ""
+        self._pov_fingerprint = {}
+        self._pov_segments = []
+        self._secondary_fingerprints = []
+        self._inline_afterword_override = {}
+
+    def set_series_bible_prompt(
+        self,
+        bible_prompt: str,
+        world_directive: str = None, # type: ignore
+        bible_glossary_keys: set = None, # type: ignore
+    ):
         """Set series bible prompt block for injection into system instruction.
 
         Args:
@@ -167,8 +372,98 @@ class PromptLoader:
         if bible_glossary_keys:
             parts.append(f"{len(bible_glossary_keys)} dedup keys")
         logger.info(" | ".join(parts))
-    
-    def load_style_guide(self, genres: Union[List[str], str, None] = None, publisher: str = None) -> Optional[Dict[str, Any]]:
+
+    def set_genre(self, genre: str) -> None:
+        """Set genre for JIT literacy_techniques injection.
+
+        Args:
+            genre: Genre key (e.g., 'romcom', 'fantasy', 'shoujo_romance')
+        """
+        self._genre = genre
+        logger.debug(f"Genre set for JIT literacy techniques: {genre}")
+
+    def set_book_type(self, book_type: str = None) -> None: # type: ignore
+        """Set content type for module gating.
+
+        Args:
+            book_type: Content type - 'fiction' (default), 'memoir', 'biography',
+                      'autobiography', 'non_fiction', 'essay'
+
+        Side-effects when memoir/autobiography detected:
+            - Loads music_industry_vocabulary supplement from vietnamese_grammar_rag_v2.json.
+              This covers 40 J-music domain terms (レーベル, デビュー, ライブ, etc.) with
+              VN equivalents and register notes for use in artist autobiography translation.
+        """
+        self._book_type = book_type
+        logger.info(f"Book type set: {book_type or 'fiction (default)'}")
+
+        # Memoir mode: load music-industry vocabulary supplement from grammar RAG v2.
+        # Injected into cached system instruction alongside glossary/cultural-retention blocks.
+        _memoir_types = {
+            "memoir", "autobiography", "biography",
+            "non_fiction", "non-fiction", "essay",
+            "自伝", "ノンフィクション", "散文",
+        }
+        if (book_type or "").lower().strip() in _memoir_types:
+            self._load_music_industry_vocab()
+
+    @staticmethod
+    def _is_memoir_like_tag(value: str) -> bool:
+        """Return True when a genre/book_type token indicates memoir/autobiography."""
+        token = (value or "").lower().replace("-", "_").strip()
+        if not token:
+            return False
+        memoir_kws = (
+            "memoir",
+            "autobiography",
+            "autobiographical",
+            "biography",
+            "biographical",
+            "non_fiction",
+            "nonfiction",
+            "essay",
+            "自伝",
+            "自叙伝",
+            "回顧録",
+            "ノンフィクション",
+            "散文",
+        )
+        return any(kw in token for kw in memoir_kws)
+
+    def _load_music_industry_vocab(self) -> None:
+        """Load music-industry vocabulary supplement from vietnamese_grammar_rag_v2.json.
+
+        Called automatically by set_book_type() when memoir/autobiography is detected.
+        Populates self._music_industry_vocab with the 40-term music domain registry;
+        injected into the cached system instruction alongside the glossary block.
+        """
+        rag_v2_path = PIPELINE_ROOT / "config" / "vietnamese_grammar_rag_v2.json"
+        if not rag_v2_path.exists():
+            logger.warning(
+                f"[MEMOIR] vietnamese_grammar_rag_v2.json not found at {rag_v2_path} "
+                f"— music_industry_vocabulary supplement skipped"
+            )
+            return
+        try:
+            import json as _json
+            with open(rag_v2_path, encoding="utf-8") as fh:
+                rag_data = _json.load(fh)
+            music_cat = rag_data.get("pattern_categories", {}).get("music_industry_vocabulary")
+            if music_cat:
+                self._music_industry_vocab = music_cat.get("patterns", [])
+                logger.info(
+                    f"[MEMOIR] Loaded {len(self._music_industry_vocab)} music-industry "
+                    f"vocabulary terms from vietnamese_grammar_rag_v2.json"
+                )
+            else:
+                logger.warning(
+                    "[MEMOIR] music_industry_vocabulary category not found in "
+                    "vietnamese_grammar_rag_v2.json — supplement skipped"
+                )
+        except Exception as exc:
+            logger.warning(f"[MEMOIR] Failed to load music_industry_vocabulary: {exc}")
+
+    def load_style_guide(self, genres: Union[List[str], str, None] = None, publisher: str = None) -> Optional[Dict[str, Any]]: # type: ignore
         """
         Load and merge hierarchical style guides with multi-genre semantic selection (EXPERIMENTAL - Vietnamese only).
         
@@ -197,9 +492,9 @@ class PromptLoader:
         Returns:
             Style guide dictionary with genre metadata or None if not available
         """
-        # Only load for Vietnamese target language (vn)
-        if self.target_language not in ['vi', 'vn']:
-            logger.debug(f"Style guide system only available for Vietnamese (vi/vn), got: {self.target_language}")
+        # Style guide system: VN (all genres) and EN (memoir only — called explicitly by agent.py)
+        if self.target_language not in ['vi', 'vn', 'en']:
+            logger.debug(f"Style guide system not available for language: {self.target_language}")
             return None
         
         if not self.style_guides_dir.exists():
@@ -291,12 +586,12 @@ class PromptLoader:
                 result[key] = value
         return result
 
-    def load_master_prompt(self, genre: str = None) -> str:
+    def load_master_prompt(self, genre: str = None) -> str: # type: ignore
         """
         Load the master prompt XML content.
 
         Args:
-            genre: Optional genre key (e.g., 'romcom', 'fantasy') for genre-specific prompts.
+            genre: Optional genre key for configured prompt overrides.
 
         Returns:
             Master prompt content as string.
@@ -308,7 +603,12 @@ class PromptLoader:
         target_path = self.prompts_path
         if genre:
             target_path = get_genre_prompt_path(genre, self.target_language)
-            logger.info(f"Using genre-specific prompt for '{genre}': {target_path}")
+            if target_path != self.prompts_path:
+                logger.info(f"Using configured prompt override for '{genre}': {target_path}")
+            else:
+                logger.debug(
+                    f"Genre '{genre}' resolves to the universal master prompt: {target_path}"
+                )
 
         try:
             with open(target_path, 'r', encoding='utf-8') as f:
@@ -320,72 +620,57 @@ class PromptLoader:
             logger.error(f"Failed to load master prompt from {target_path}: {e}")
             raise
 
-    def load_rag_modules(self) -> Dict[str, str]:
-        """Load all RAG knowledge modules into memory."""
-        if self._rag_modules_cache:
-            return self._rag_modules_cache
+    # DEPRECATED: load_kanji_difficult - replaced by vietnamese_grammar_rag.json
+    # def load_kanji_difficult(self) -> Optional[Dict[str, Any]]:
+    #     """Load kanji_difficult.json (Tier 1 - always inject)."""
+    #     if self._kanji_difficult:
+    #         return self._kanji_difficult
+    #
+    #     if not self.kanji_difficult_path or not self.kanji_difficult_path.exists():
+    #         logger.debug("kanji_difficult.json not found")
+    #         return None
+    #
+    #     try:
+    #         with open(self.kanji_difficult_path, 'r', encoding='utf-8') as f:
+    #             self._kanji_difficult = json.load(f)
+    #         entries_count = self._kanji_difficult.get('metadata', {}).get('total_entries', 0)
+    #         size_kb = self.kanji_difficult_path.stat().st_size / 1024
+    #         logger.info(f"✓ Loaded kanji_difficult.json: {entries_count} entries ({size_kb:.1f}KB)")
+    #         return self._kanji_difficult
+    #     except Exception as e:
+    #         logger.warning(f"Failed to load kanji_difficult.json: {e}")
+    #         return None
 
-        modules = {}
-        if not self.modules_dir.exists():
-            logger.warning(f"Modules directory not found: {self.modules_dir}")
-            return modules
+    def load_negative_signals(self) -> Optional[Dict[str, Any]]:
+        """Load negative_signals.json (Tier 1 EN).
 
-        # Load all .md files that are not explicitly disabled
-        for file_path in self.modules_dir.glob("*.md"):
-            if file_path.name.startswith("DISABLED_"):
-                logger.info(f"Skipping disabled module: {file_path.name}")
-                continue
-            try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    modules[file_path.name] = content
-                    module_size_kb = len(content.encode('utf-8')) / 1024
-                    logger.info(f"Loaded RAG module: {file_path.name} ({module_size_kb:.1f}KB)")
-            except Exception as e:
-                logger.warning(f"Failed to load module {file_path.name}: {e}")
+        Contains ICL-backed quality enforcement patterns built from a 40-chapter
+        production audit (メインヒロインより可愛いモブの田中さん + 男女比1:5 Vols 1-3).
+        instruction_block.prompt_text is the verbatim injection string.
+        """
+        if self._negative_signals:
+            return self._negative_signals
 
-        # Log summary
-        total_modules = len(modules)
-        total_size_kb = sum(len(c.encode('utf-8')) for c in modules.values()) / 1024
-        logger.info(f"Total RAG modules loaded: {total_modules} files ({total_size_kb:.1f}KB)")
-
-        # Verify new anti-AI-ism modules are present
-        anti_exposition = "ANTI_EXPOSITION_DUMP_MODULE.md" in modules
-        anti_formality = "ANTI_FORMAL_LANGUAGE_MODULE.md" in modules
-        anti_translationese = "ANTI_TRANSLATIONESE_MODULE_VN.md" in modules
-        
-        if anti_exposition and anti_formality:
-            logger.info("✓ Anti-AI-ism modules detected (EXPOSITION + FORMALITY)")
-        elif anti_translationese:
-            logger.info("✓ Anti-AI-ism module detected (ANTI_TRANSLATIONESE v2.1 for VN)")
-        elif anti_exposition:
-            logger.warning("⚠ Only ANTI_EXPOSITION module found, ANTI_FORMALITY missing")
-        elif anti_formality:
-            logger.warning("⚠ Only ANTI_FORMALITY module found, ANTI_EXPOSITION missing")
-        else:
-            logger.warning("⚠ Anti-AI-ism modules NOT found - using legacy prompt only")
-
-        self._rag_modules_cache = modules
-        return modules
-
-    def load_kanji_difficult(self) -> Optional[Dict[str, Any]]:
-        """Load kanji_difficult.json (Tier 1 - always inject)."""
-        if self._kanji_difficult:
-            return self._kanji_difficult
-        
-        if not self.kanji_difficult_path or not self.kanji_difficult_path.exists():
-            logger.debug("kanji_difficult.json not found")
+        neg_path = getattr(self, 'negative_signals_path', None)
+        if not neg_path or not neg_path.exists():
+            logger.debug("negative_signals.json not found (EN Tier 1 slot)")
             return None
-        
+
         try:
-            with open(self.kanji_difficult_path, 'r', encoding='utf-8') as f:
-                self._kanji_difficult = json.load(f)
-            entries_count = self._kanji_difficult.get('metadata', {}).get('total_entries', 0)
-            size_kb = self.kanji_difficult_path.stat().st_size / 1024
-            logger.info(f"✓ Loaded kanji_difficult.json: {entries_count} entries ({size_kb:.1f}KB)")
-            return self._kanji_difficult
+            with open(neg_path, 'r', encoding='utf-8') as f:
+                self._negative_signals = json.load(f)
+            meta = self._negative_signals.get('_meta', {})
+            version = meta.get('version', '?')
+            total_patterns = meta.get('total_patterns', 0)
+            total_categories = meta.get('total_categories', 0)
+            size_kb = neg_path.stat().st_size / 1024
+            logger.info(
+                f"✓ Loaded negative_signals.json v{version}: "
+                f"{total_patterns} patterns across {total_categories} categories ({size_kb:.1f}KB)"
+            )
+            return self._negative_signals
         except Exception as e:
-            logger.warning(f"Failed to load kanji_difficult.json: {e}")
+            logger.warning(f"Failed to load negative_signals.json: {e}")
             return None
 
     def load_cjk_prevention(self) -> Optional[Dict[str, Any]]:
@@ -625,6 +910,32 @@ class PromptLoader:
             logger.warning(f"Failed to load literacy techniques: {e}")
             return None
 
+    def load_literacy_techniques_compressed(self) -> Optional[Dict[str, Any]]:
+        """Load literacy_techniques_compressed.json — 1 best example per mood (24 total).
+
+        Used by the ICL auto-cap when pre-ICL system instruction > 220KB so that even a
+        small max_examples cap (e.g. 5) still covers 5 *different* mood types rather than
+        all 5 from the first priority category in the full JSON.
+        """
+        if self._literacy_techniques_compressed:
+            return self._literacy_techniques_compressed
+
+        if not self.literacy_techniques_compressed_path or not self.literacy_techniques_compressed_path.exists():
+            logger.debug(f"Compressed literacy techniques not found: {self.literacy_techniques_compressed_path}")
+            return None
+
+        try:
+            with open(self.literacy_techniques_compressed_path, 'r', encoding='utf-8') as f:
+                self._literacy_techniques_compressed = json.load(f)
+            size_kb = self.literacy_techniques_compressed_path.stat().st_size / 1024
+            icl_section = self._literacy_techniques_compressed.get('real_world_jp_en_corpus', {}).get('professional_prose_icl_examples', {})
+            total = sum(len(v.get('examples', [])) for v in icl_section.get('examples_by_mood', {}).values())
+            logger.info(f"✓ Loaded literacy_techniques_compressed.json: {total} exemplars (1/mood) ({size_kb:.1f}KB)")
+            return self._literacy_techniques_compressed
+        except Exception as e:
+            logger.warning(f"Failed to load compressed literacy techniques: {e}")
+            return None
+
     def load_formatting_standards(self) -> Optional[Dict[str, Any]]:
         """Load formatting_standards.json (Tier 1) - punctuation + romanization standards."""
         if self._formatting_standards:
@@ -693,12 +1004,12 @@ class PromptLoader:
             logger.warning(f"Failed to load reference_index.json: {e}")
             return None
 
-    def load_reference_modules(self, genre: str = None) -> Dict[str, str]:
+    def load_reference_modules(self, genre: str = None) -> Dict[str, str]: # type: ignore
         """
         Load reference modules from VN/Reference/ (Tier 2 - context-aware).
         
         For now, implements simplified loading logic based on genre.
-        Full context-aware loading (RTAS, scene types, etc.) is Week 2 enhancement.
+        Full context-aware loading (PAIR_ID, scene types, etc.) is Week 2 enhancement.
         
         Args:
             genre: Novel genre (romcom, fantasy, etc.) for genre-based filtering
@@ -779,32 +1090,27 @@ class PromptLoader:
         total_size_kb = sum(len(c.encode('utf-8')) for c in modules.values()) / 1024
         logger.info(f"Total RAG modules loaded: {total_modules} files ({total_size_kb:.1f}KB)")
 
-        # Verify new anti-AI-ism modules are present
-        anti_exposition = "ANTI_EXPOSITION_DUMP_MODULE.md" in modules
-        anti_formality = "ANTI_FORMAL_LANGUAGE_MODULE.md" in modules
+        # Verify anti-AI-ism module is present (v3.0 consolidated)
+        anti_aiism = "ANTI_AIISM_MODULE.md" in modules
         anti_translationese = "ANTI_TRANSLATIONESE_MODULE_VN.md" in modules
-        
-        if anti_exposition and anti_formality:
-            logger.info("✓ Anti-AI-ism modules detected (EXPOSITION + FORMALITY)")
+
+        if anti_aiism:
+            logger.info("✓ Anti-AI-ism module detected (ANTI_AIISM_MODULE.md v3.0)")
         elif anti_translationese:
             logger.info("✓ Anti-AI-ism module detected (ANTI_TRANSLATIONESE v2.1 for VN)")
-        elif anti_exposition:
-            logger.warning("⚠ Only ANTI_EXPOSITION module found, ANTI_FORMALITY missing")
-        elif anti_formality:
-            logger.warning("⚠ Only ANTI_FORMALITY module found, ANTI_EXPOSITION missing")
         else:
-            logger.warning("⚠ Anti-AI-ism modules NOT found - using legacy prompt only")
+            logger.warning("⚠ Anti-AI-ism module NOT found - using legacy prompt only")
 
         self._rag_modules_cache = modules
         return modules
 
-    def build_system_instruction(self, genre: str = None) -> str:
+    def build_system_instruction(self, genre: str = None) -> str: # type: ignore
         """
         Construct the final system instruction with Three-Tier RAG injection.
 
         Tier 1 (Always inject):
           - Core modules (MEGA_CORE, ANTI_TRANSLATIONESE, MEGA_CHARACTER_VOICE)
-          - kanji_difficult.json
+          - DEPRECATED: kanji_difficult.json (replaced by vietnamese_grammar_rag.json for VN)
           - cjk_prevention_schema_*.json (language-specific)
           - anti_ai_ism_patterns.json (EN only)
           - english_grammar_rag.json (EN only)
@@ -815,9 +1121,6 @@ class PromptLoader:
         Tier 2 (Context-aware / genre-gated):
           - Reference modules based on genre/triggers
           - FANTASY_TRANSLATION_MODULE_EN.md: only for fantasy/isekai/action genres
-
-        Stage 3 only (NOT injected at generation time):
-          - english_grammar_validation_t1.json: post-hoc validation rules for stage3_refinement_agent.py
 
         Tier 3 (On-demand):
           - Deferred to Week 3 (retrieval-based)
@@ -831,7 +1134,11 @@ class PromptLoader:
         logger.debug("[VERBOSE] Building system instruction...")
         import time
         start_time = time.time()
-        
+
+        # Store genre for JIT literacy_techniques injection
+        if genre:
+            self._genre = genre
+
         logger.debug("[VERBOSE] Loading master prompt...")
         master_prompt = self.load_master_prompt(genre)
         logger.debug(f"[VERBOSE] Master prompt loaded: {len(master_prompt)} chars")
@@ -841,10 +1148,15 @@ class PromptLoader:
         tier1_modules = self.load_rag_modules()
         logger.debug(f"[VERBOSE] Tier 1 modules loaded: {len(tier1_modules)} files")
         
-        # Load Tier 1: kanji_difficult.json
-        logger.debug("[VERBOSE] Loading Tier 1: kanji_difficult.json...")
-        kanji_data = self.load_kanji_difficult()
-        
+        # DEPRECATED: kanji_difficult.json - replaced by vietnamese_grammar_rag.json
+        # logger.debug("[VERBOSE] Loading Tier 1: kanji_difficult.json...")
+        # kanji_data = self.load_kanji_difficult()
+        kanji_data = None  # DEPRECATED
+
+        # Load Tier 1: negative_signals.json (EN only - ICL-backed quality enforcement)
+        logger.debug("[VERBOSE] Loading Tier 1: negative_signals.json...")
+        negative_signals_data = self.load_negative_signals()
+
         # Load Tier 1: cjk_prevention_schema_vn.json
         logger.debug("[VERBOSE] Loading Tier 1: cjk_prevention_schema_vn.json...")
         cjk_prevention_data = self.load_cjk_prevention()
@@ -881,14 +1193,46 @@ class PromptLoader:
         # Merge all modules for injection
         all_modules = {**tier1_modules, **reference_modules}
 
-        # Tier 2 gate: skip FANTASY module ONLY for confirmed non-fantasy genres (saves ~7.7K tokens)
-        # Default = KEEP module when genre is unknown/empty (fail-open — better to include than miss).
-        # SKIP only for confirmed modern-setting genres that have zero fantasy elements.
+        # EN memoir/autobiography: ensure Tier-1 autobiography style guide is loaded
+        # even when manifest book_type is missing and only genre carries memoir tags.
+        _genre_token = (genre or "").lower().replace("-", "_").strip()
+        _book_type_token = (self._book_type or "").lower().replace("-", "_").strip()
+        _memoir_mode_from_meta = self._is_memoir_like_tag(_book_type_token)
+        _memoir_mode_from_genre = self._is_memoir_like_tag(_genre_token)
+        _memoir_mode = _memoir_mode_from_meta or _memoir_mode_from_genre
+        if self.target_language in ["en", "english"] and _memoir_mode and not self._style_guide:
+            try:
+                self.load_style_guide(genres=["autobiography_memoir"], publisher=None) # type: ignore
+                logger.info(
+                    "[TIER1][EN MEMOIR] Loaded autobiography_memoir_en style guide "
+                    "(trigger=%s)",
+                    "book_type" if _memoir_mode_from_meta else "genre",
+                )
+            except Exception as e:
+                logger.warning(f"[TIER1][EN MEMOIR] Failed to load autobiography_memoir_en style guide: {e}")
+
+        # Tier 2 gate:
+        # 1) Hard exception: skip FANTASY module for modern/contemporary Japan world settings
+        #    even when genre contains fantasy tags (e.g., modern_urban_fantasy, reincarnation in modern JP).
+        # 2) Legacy fallback: skip ONLY for confirmed non-fantasy genres.
+        # 3) Unknown genre: keep module (fail-open).
         #
         # The `genre` string may be a free-text genre tag OR a world_setting.type value such as
         # "fantasy_european_nobility_academy", "steampunk_fantasy", "modern_japan", etc.
         # Both paths use the same keyword-substring match so no special pre-processing needed.
         #
+        _world_ctx = " ".join([
+            (genre or "").lower().replace("-", "_"),
+            (self._bible_world_directive or "").lower().replace("-", "_"),
+        ])
+        _modern_world_kws = {
+            "modern", "contemporary", "present_day", "presentday", "real_world",
+            "modern_japan", "contemporary_japan", "japan", "japanese_society",
+        }
+        _reincarnation_kws = {"reincarnation", "reincarnat", "tensei", "transmigration", "reborn"}
+        _modern_world_reflection = any(mkw in _world_ctx for mkw in _modern_world_kws)
+        _has_reincarnation = any(rkw in _world_ctx for rkw in _reincarnation_kws)
+
         # Non-fantasy keywords (all must be absent from fantasy branch):
         _non_fantasy_kws = {"romcom", "contemporary", "slice_of_life", "school_life", "modern_japan", "modern_urban"}
         # Fantasy / non-modern-world keywords (any match → keep module):
@@ -902,10 +1246,17 @@ class PromptLoader:
         _is_fantasy = any(fkw in _current_genre for fkw in _fantasy_kws)
         _is_non_fantasy = _genre_known and not _is_fantasy and any(nfkw in _current_genre for nfkw in _non_fantasy_kws)
 
-        if _is_non_fantasy:
-            fantasy_key = next(
-                (k for k in all_modules if "FANTASY_TRANSLATION_MODULE" in k), None
-            )
+        fantasy_key = next(
+            (k for k in all_modules if "FANTASY_TRANSLATION_MODULE" in k), None
+        )
+        if _modern_world_reflection:
+            if fantasy_key:
+                del all_modules[fantasy_key]
+                logger.info(
+                    f"Skipped {fantasy_key} (modern-world exception: genre='{genre}', "
+                    f"world_directive_present={bool(self._bible_world_directive)}, reincarnation={_has_reincarnation})"
+                )
+        elif _is_non_fantasy:
             if fantasy_key:
                 del all_modules[fantasy_key]
                 logger.info(f"Skipped {fantasy_key} (genre='{genre}' confirmed non-fantasy — Tier 2 gate)")
@@ -913,6 +1264,57 @@ class PromptLoader:
             logger.info(f"FANTASY module active (genre='{genre}')")
         else:
             logger.info(f"FANTASY module retained (genre unknown — fail-open default)")
+
+        # Tier 2 gate: memoir/non-fiction mode skips LN-fiction modules and enables memoir module.
+        # Memoir mode can be activated by explicit book_type OR memoir-like genre tag.
+        _book_type = (self._book_type or "").lower().strip() if self._book_type else ""
+        _is_non_fiction = _book_type in {"memoir", "biography", "autobiography", "non_fiction", "non-fiction", "essay", "散文", "自伝", "ノンフィクション"}
+        _is_memoir_genre = self._is_memoir_like_tag(_current_genre)
+        _memoir_mode_active = _is_non_fiction or _is_memoir_genre
+
+        # LN-specific modules to skip for non-fiction (VN-specific)
+        _ln_modules_to_skip_vn = {
+            "MEGA_CHARACTER_VOICE_SYSTEM_VN.md",
+            "Library_LOCALIZATION_PRIMER_VN.md",
+            "ANTI_TRANSLATIONESE_MODULE_VN.md",
+            "MEGA_CORE_TRANSLATION_ENGINE_VN.md",
+        }
+        # LN-specific modules to skip for non-fiction (EN-specific)
+        _ln_modules_to_skip_en = {
+            "MEGA_CHARACTER_VOICE_SYSTEM.md",
+            "Library_LOCALIZATION_PRIMER_EN.md",
+        }
+        _ln_modules_to_skip = _ln_modules_to_skip_vn if self.target_language == 'vn' else _ln_modules_to_skip_en
+
+        memoir_key = next((k for k in all_modules if "MEMOIR_TRANSLATION_MODULE.md" in k), None)
+
+        if _memoir_mode_active:
+            skipped_ln_modules = []
+            for ln_module in _ln_modules_to_skip:
+                if ln_module in all_modules:
+                    del all_modules[ln_module]
+                    skipped_ln_modules.append(ln_module)
+            if skipped_ln_modules:
+                logger.info(
+                    f"Skipped LN-specific modules for memoir mode "
+                    f"(book_type='{_book_type or 'n/a'}', genre='{genre}'): {skipped_ln_modules}"
+                )
+            if memoir_key:
+                logger.info(
+                    f"MEMOIR module active (book_type='{_book_type or 'n/a'}', genre='{genre or 'n/a'}')"
+                )
+            else:
+                logger.warning(
+                    f"No MEMOIR_TRANSLATION_MODULE.md found for memoir mode "
+                    f"(book_type='{_book_type or 'n/a'}', genre='{genre or 'n/a'}') "
+                    f"— LN modules skipped with no replacement"
+                )
+        else:
+            # Prevent memoir rules from leaking into fiction prompts.
+            if memoir_key:
+                del all_modules[memoir_key]
+                logger.debug("Skipped MEMOIR_TRANSLATION_MODULE.md (memoir mode inactive)")
+            logger.info(f"LN-specific modules retained (book_type='{_book_type or 'fiction/default'}')")
 
         final_prompt = master_prompt
         injected_count = 0
@@ -934,21 +1336,45 @@ class PromptLoader:
                  injected_count += 1
 
                  # Track anti-AI-ism modules
-                 if "ANTI_EXPOSITION" in filename or "ANTI_FORMAL" in filename or "ANTI_TRANSLATIONESE" in filename:
+                 if "ANTI_AIISM" in filename or "ANTI_TRANSLATIONESE" in filename:
                      anti_ai_ism_injected.append(filename)
             else:
                  logger.debug(f"Module {filename} loaded but not referenced in master prompt.")
 
-        # Inject kanji_difficult.json (Tier 1)
-        if kanji_data and "kanji_difficult.json" in final_prompt:
-            kanji_entries = kanji_data.get('kanji_entries', [])
-            kanji_formatted = self._format_kanji_for_injection(kanji_entries, genre)
-            kanji_size_kb = len(kanji_formatted.encode('utf-8')) / 1024
-            
-            logger.info(f"Injecting kanji_difficult.json: {len(kanji_entries)} entries ({kanji_size_kb:.1f}KB)")
-            kanji_injection = f"\n<!-- START MODULE: kanji_difficult.json -->\n{kanji_formatted}\n<!-- END MODULE: kanji_difficult.json -->\n"
-            final_prompt = final_prompt.replace("kanji_difficult.json", kanji_injection)
+        # DEPRECATED: kanji_difficult.json injection - replaced by vietnamese_grammar_rag.json
+        # if kanji_data and "kanji_difficult.json" in final_prompt:
+        #     kanji_entries = kanji_data.get('kanji_entries', [])
+        #     kanji_formatted = self._format_kanji_for_injection(kanji_entries, genre)
+        #     kanji_size_kb = len(kanji_formatted.encode('utf-8')) / 1024
+        #
+        #     logger.info(f"Injecting kanji_difficult.json: {len(kanji_entries)} entries ({kanji_size_kb:.1f}KB)")
+        #     kanji_injection = f"\n<!-- START MODULE: kanji_difficult.json -->\n{kanji_formatted}\n<!-- END MODULE: kanji_difficult.json -->\n"
+        #     final_prompt = final_prompt.replace("kanji_difficult.json", kanji_injection)
+        #     injected_count += 1
+
+        # Inject negative_signals.json (Tier 1 EN - ICL-backed quality enforcement)
+        # Auto-appends (no placeholder needed).
+        if negative_signals_data and self.target_language in ['en', 'english']:
+            neg_formatted = self._format_negative_signals_for_injection(negative_signals_data)
+            neg_size_kb = len(neg_formatted.encode('utf-8')) / 1024
+            meta_ns = negative_signals_data.get('_meta', {})
+            total_patterns_ns = meta_ns.get('total_patterns', 0)
+            total_categories_ns = meta_ns.get('total_categories', 0)
+            version_ns = meta_ns.get('version', '?')
+            logger.info(
+                f"Injecting negative_signals.json v{version_ns}: "
+                f"{total_patterns_ns} patterns ({total_categories_ns} categories) ({neg_size_kb:.1f}KB)"
+            )
+            neg_injection = (
+                f"\n<!-- START MODULE: negative_signals.json v{version_ns} -->\n"
+                f"{neg_formatted}\n"
+                f"<!-- END MODULE: negative_signals.json -->\n"
+            )
+            final_prompt += f"\n\n{neg_injection}"
             injected_count += 1
+            anti_ai_ism_injected.append(
+                f'negative_signals.json v{version_ns} (Tier 1 EN, {total_patterns_ns} patterns, {total_categories_ns} categories)'
+            )
 
         # Inject cjk_prevention_schema_vn.json (Tier 1)
         if cjk_prevention_data and "cjk_prevention_schema_vn.json" in final_prompt:
@@ -1005,14 +1431,11 @@ class PromptLoader:
             injected_count += 1
             anti_ai_ism_injected.append('english_grammar_rag.json (Tier 1, auto-appended)')
 
-        # english_grammar_validation_t1.json — Stage 3 reference only, NOT injected into generation context.
-        # This file contains post-hoc validation rules (rhythm guardrails, AI-ism detection, tense checking)
-        # that are consumed by stage3_refinement_agent.py AFTER Opus generates output.
-        # Injecting it into Opus's 210K token system prompt wastes ~20K tokens on diagnostic instructions
-        # that the model cannot act on at generation time.
-        # Data is still loaded (load_english_grammar_validation_t1) for Stage 3 and literacy_techniques injection.
+        # english_grammar_validation_t1.json — NOT injected into generation context.
+        # Contains post-hoc validation rules that Opus cannot act on at generation time.
+        # Data is loaded only for literacy_techniques injection reference.
         if english_grammar_validation_t1_data:
-            logger.info("english_grammar_validation_t1.json loaded for Stage 3 / literacy_techniques — NOT injected into generation context")
+            logger.debug("english_grammar_validation_t1.json loaded (literacy_techniques reference only)")
 
         # Inject vietnamese_grammar_rag.json (Tier 1 - VN only, anti-AI-ism + particle system)
         if vietnamese_grammar_rag_data and "vietnamese_grammar_rag.json" in final_prompt:
@@ -1053,7 +1476,9 @@ class PromptLoader:
         if literacy_techniques_data and "literacy_techniques.json" in final_prompt:
             literacy_formatted = self._format_literacy_techniques_for_injection(
                 literacy_techniques_data,
-                english_grammar_validation_t1_data
+                english_grammar_validation_t1_data,
+                self.target_language,
+                genre or self._genre  # JIT: only inject matching genre preset
             )
             literacy_size_kb = len(literacy_formatted.encode('utf-8')) / 1024
 
@@ -1063,8 +1488,11 @@ class PromptLoader:
             psychic_levels = len(literacy_techniques_data.get('psychic_distance_levels', {}).get('levels', {}))
             genre_presets = len(literacy_techniques_data.get('genre_specific_presets', {}))
 
-            logger.info(f"Injecting literacy_techniques.json: {first_person + third_person + 1} narrative techniques, "
-                       f"{psychic_levels} psychic distance levels, {genre_presets} genre presets ({literacy_size_kb:.1f}KB)")
+            _active_genre = genre or self._genre
+            logger.info(
+                f"[JIT] literacy_techniques.json: {first_person + third_person + 1} narrative techniques, "
+                f"{psychic_levels} psychic levels, genre={_active_genre or 'all'} ({literacy_size_kb:.1f}KB)"
+            )
             literacy_injection = f"\n<!-- START MODULE: literacy_techniques.json -->\n{literacy_formatted}\n<!-- END MODULE: literacy_techniques.json -->\n"
             final_prompt = final_prompt.replace("literacy_techniques.json", literacy_injection)
             injected_count += 1
@@ -1072,16 +1500,105 @@ class PromptLoader:
             # Auto-append if placeholder not found (fallback for prompts without placeholder)
             literacy_formatted = self._format_literacy_techniques_for_injection(
                 literacy_techniques_data,
-                english_grammar_validation_t1_data
+                english_grammar_validation_t1_data,
+                self.target_language,
+                genre or self._genre  # JIT: only inject matching genre preset
             )
             literacy_size_kb = len(literacy_formatted.encode('utf-8')) / 1024
 
             first_person = len(literacy_techniques_data.get('narrative_techniques', {}).get('first_person', {}).get('subtechniques', {}))
             third_person = len(literacy_techniques_data.get('narrative_techniques', {}).get('third_person', {}).get('subtechniques', {}))
 
-            logger.info(f"Appending literacy_techniques.json (no placeholder found): {first_person + third_person + 1} techniques ({literacy_size_kb:.1f}KB)")
+            _active_genre = genre or self._genre
+            logger.info(
+                f"[JIT] literacy_techniques.json (auto-appended): {first_person + third_person + 1} techniques, "
+                f"genre={_active_genre or 'all'} ({literacy_size_kb:.1f}KB)"
+            )
             final_prompt += f"\n\n<!-- START MODULE: literacy_techniques.json (AUTO-APPENDED) -->\n{literacy_formatted}\n<!-- END MODULE: literacy_techniques.json -->\n"
             injected_count += 1
+
+        # Inject professional prose ICL examples from literacy_techniques.json (Tier 1 - always appended)
+        # These are real published J-Novel English passages used as quality anchors.
+        # Token cost: up to ~41K tokens (76 examples × ~540 tokens avg). Auto-capped when system
+        # instruction is large to prevent exceeding Claude's 200K token context window.
+        # Rendered separately from _format_literacy_techniques_for_injection() to keep structural
+        # technique rules and prose exemplars as distinct prompt sections.
+        #
+        # ICL AUTO-CAP + SOURCE ROUTING:
+        #   Compressed JSON (1 example/mood, 24 total) is used whenever pre-ICL > 180KB.
+        #   This ensures that even a small max_examples cap covers N *different* mood types
+        #   rather than N examples from the same first-priority category in the full JSON.
+        #
+        #   Thresholds calibrated at 0.43 tok/char (conservative, JP-heavy content).
+        #   User message tokens for a large chapter (~215K chars) ≈ 92K tokens, leaving
+        #   ~108K token budget for the system (= ~251KB at 0.43 tok/char).
+        #
+        #   > 225KB → compressed + 3  examples  (3 diverse moods, ~5.5KB, ~39K tokens saved)
+        #   > 205KB → compressed + 12 examples  (12 diverse moods, ~15.6KB,~30K tokens saved)
+        #   > 180KB → compressed + None          (all 24 moods,    ~31.3KB, ~15K tokens saved)
+        #   ≤ 180KB → full    + None             (all 76 examples, ~98.4KB, full quality)
+        _pre_icl_size_kb = len(final_prompt.encode('utf-8')) / 1024
+        _use_compressed_icl = _pre_icl_size_kb > 180
+        if _pre_icl_size_kb > 225:
+            _icl_max_examples = 3
+            logger.warning(
+                f"[ICL-CAP] Pre-ICL system instruction is {_pre_icl_size_kb:.1f}KB — "
+                f"routing to compressed ICL, capping at 3 diverse-mood exemplars (extreme chapter guard)."
+            )
+        elif _pre_icl_size_kb > 205:
+            _icl_max_examples = 12
+            logger.info(
+                f"[ICL-CAP] Pre-ICL system instruction is {_pre_icl_size_kb:.1f}KB — "
+                f"routing to compressed ICL, capping at 12 diverse-mood exemplars."
+            )
+        elif _pre_icl_size_kb > 180:
+            _icl_max_examples = None  # all 24 from compressed
+            logger.info(
+                f"[ICL-CAP] Pre-ICL system instruction is {_pre_icl_size_kb:.1f}KB — "
+                f"routing to compressed ICL (all 24 moods)."
+            )
+        else:
+            _icl_max_examples = None  # full set
+        # Select ICL data source: compressed for danger zones, full otherwise
+        _icl_data_source = literacy_techniques_data
+        if _use_compressed_icl:
+            _compressed = self.load_literacy_techniques_compressed()
+            if _compressed:
+                _icl_data_source = _compressed
+            else:
+                logger.warning("[ICL-CAP] Compressed ICL not found — falling back to full JSON with cap.")
+        if _icl_data_source and _icl_max_examples != 0:
+            icl_formatted = self._format_icl_prose_examples_for_injection(
+                _icl_data_source,
+                max_examples=_icl_max_examples,
+                target_language=self.target_language,
+            )
+            if icl_formatted:
+                icl_size_kb = len(icl_formatted.encode('utf-8')) / 1024
+                corpus = _icl_data_source.get('real_world_jp_en_corpus', {})
+                icl_section = corpus.get('professional_prose_icl_examples', {})
+                examples_by_mood = icl_section.get('examples_by_mood', {})
+                total_source_examples = sum(len(v.get('examples', [])) for v in examples_by_mood.values())
+                total_icl_categories = len(examples_by_mood)
+                # Compute actual injected count: min(source, cap) where None cap = all
+                actual_injected = (
+                    min(total_source_examples, _icl_max_examples)
+                    if _icl_max_examples is not None
+                    else total_source_examples
+                )
+                source_label = "compressed" if _use_compressed_icl else "full"
+                logger.info(
+                    f"Appending professional_prose_icl_examples ({source_label}): "
+                    f"{actual_injected}/{total_source_examples} exemplars across {total_icl_categories} categories "
+                    f"({icl_size_kb:.1f}KB, cap={_icl_max_examples})"
+                )
+                _icl_file = "literacy_techniques_compressed.json" if _use_compressed_icl else "literacy_techniques.json"
+                final_prompt += (
+                    f"\n\n<!-- START MODULE: professional_prose_icl_examples (from {_icl_file}) -->\n"
+                    f"{icl_formatted}\n"
+                    f"<!-- END MODULE: professional_prose_icl_examples -->\n"
+                )
+                injected_count += 1
 
         # Inject formatting_standards.json (Tier 1 - punctuation + Hepburn romanization standards)
         if formatting_standards_data and "formatting_standards.json" in final_prompt:
@@ -1193,6 +1710,63 @@ class PromptLoader:
                 final_prompt += glossary_text
                 logger.info(f"✓ Injected {len(self._glossary)} glossary terms into cached system instruction")
         
+        # Inject music-industry vocabulary supplement (MEMOIR MODE only)
+        # Sourced from vietnamese_grammar_rag_v2.json music_industry_vocabulary category.
+        # Loaded by set_book_type() when book_type is memoir/autobiography/biography.
+        if self._music_industry_vocab:
+            mv_lines = [
+                "\n\n<!-- MUSIC_INDUSTRY_VOCABULARY (MEMOIR MODE — CACHED) -->",
+                "Domain vocabulary supplement for J-music artist autobiography translation.",
+                "For each term: use vn_primary in literary prose; vn_alternative in dialogue/fan context where noted.",
+                "register note specifies which form applies in which context.",
+                "CRITICAL: Never output Japanese katakana characters in VN prose — always use the VN form.\n",
+            ]
+            # Group by implied category from id prefix
+            categories = {}
+            for term in self._music_industry_vocab:
+                tid = term.get("id", "")
+                # Extract group from id (MUS_STAGE_001 → STAGE, MUS_LABEL_009 → LABEL)
+                parts = tid.split("_")
+                grp = parts[1] if len(parts) >= 2 else "OTHER"
+                # Map to readable group names
+                group_map = {
+                    "STAGE": "PERFORMANCE", "LIVE": "PERFORMANCE", "ARTIST": "PERFORMANCE",
+                    "SINGER": "PERFORMANCE", "DEBUT": "PERFORMANCE", "ANON": "PERFORMANCE",
+                    "SOLO": "PERFORMANCE", "VOCAL": "PERFORMANCE",
+                    "LABEL": "INDUSTRY", "AGENCY": "INDUSTRY", "PRODUCER": "INDUSTRY",
+                    "CONTRACT": "INDUSTRY", "INDIE": "INDUSTRY", "MAINSTREAM": "INDUSTRY",
+                    "RECORDING": "PRODUCTION", "MV": "PRODUCTION", "ALBUM": "PRODUCTION",
+                    "SINGLE": "PRODUCTION", "RELEASE": "PRODUCTION", "SONGWRITING": "PRODUCTION",
+                    "TRACK": "PRODUCTION", "LYRICS": "PRODUCTION", "OST": "PRODUCTION",
+                    "COLLAB": "PRODUCTION", "STREAMING": "PRODUCTION",
+                    "FAN": "AUDIENCE", "FANBASE": "AUDIENCE", "CHART": "AUDIENCE",
+                    "VIRAL": "AUDIENCE", "INTERVIEW": "AUDIENCE",
+                    "TOUR": "LIVE_EVENTS", "CONCERT": "LIVE_EVENTS", "FESTIVAL": "LIVE_EVENTS",
+                    "ACTIVITIES": "LIVE_EVENTS", "AUDITION": "LIVE_EVENTS",
+                    "SONGLIST": "LIVE_EVENTS", "REVENUE": "LIVE_EVENTS",
+                    "STAGEFRIGHT": "LIVE_EVENTS", "SOUNDCHECK": "LIVE_EVENTS",
+                    "SPOTLIGHT": "LIVE_EVENTS",
+                }
+                grp_name = group_map.get(grp, grp)
+                categories.setdefault(grp_name, []).append(term)
+
+            for grp_name, terms in categories.items():
+                mv_lines.append(f"  --- {grp_name} ---")
+                for t in terms:
+                    primary = t.get("vn_primary", "?")
+                    alt = t.get("vn_alternative")
+                    reg = t.get("register", "")
+                    jp = t.get("jp_term", "?")
+                    alt_str = f" | alt: {alt}" if alt else ""
+                    mv_lines.append(f"  {jp} → {primary}{alt_str}")
+                    if reg:
+                        mv_lines.append(f"    register: {reg}")
+            final_prompt += "\n".join(mv_lines)
+            logger.info(
+                f"✓ [MEMOIR] Injected {len(self._music_industry_vocab)} music-industry "
+                f"vocabulary terms into cached system instruction"
+            )
+
         # Inject semantic metadata into system instruction (Enhanced v2.1)
         if self._semantic_metadata:
             semantic_injection = self._format_semantic_metadata(self._semantic_metadata)
@@ -1204,18 +1778,264 @@ class PromptLoader:
                 # Fallback: append if placeholder not found
                 final_prompt += f"\n\n<!-- SEMANTIC METADATA (Enhanced v2.1) -->\n{semantic_injection}\n"
                 logger.warning("⚠ SEMANTIC_METADATA_PLACEHOLDER not found, appended to end")
-        
-        # Inject style guide into system instruction (EXPERIMENTAL - Vietnamese only)
-        if self._style_guide and self.target_language in ['vi', 'vn']:
+
+        # Inject Koji Fox voice + arc directives (Phase 1-2 expansion)
+        if self._voice_directive or self._arc_directive:
+            koji_fox_block = "\n<!-- KOJI FOX VOICE DIRECTIVES -->"
+            if self._voice_directive:
+                koji_fox_block += f"\n{self._voice_directive}"
+            if self._arc_directive:
+                koji_fox_block += f"\n{self._arc_directive}"
+            final_prompt += koji_fox_block
+            logger.info(f"✓ Injected Koji Fox voice directives ({len(koji_fox_block)} chars)")
+
+        # ── ECR Volume-Level Directives ───────────────────────────────────────
+        # Injected once per volume at prompt-build time. Covers four JSON fields
+        # populated by Phase 1.5 (schema_autoupdate):
+        #   culturally_loaded_terms    → hard CLT retention rules (preserve/transcreate)
+        #   author_signature_patterns  → prose structure preservation mandates
+        #   character_voice_fingerprints → all-character voice directive table
+        #   signature_phrases          → character-defining phrase consistency table
+        _ecr_block = self._format_ecr_directive_block()
+        if _ecr_block:
+            final_prompt += f"\n\n<!-- ECR VOLUME DIRECTIVES -->\n{_ecr_block}\n<!-- END ECR VOLUME DIRECTIVES -->"
+            logger.info(
+                f"✓ [ECR] Injected volume directives block ({len(_ecr_block)} chars): "
+                f"{len(self._ecr_clt)} CLT terms, {len(self._ecr_cvf_list)} CVF fingerprints, "
+                f"{len(self._ecr_sig_phrases)} sig phrases, ASP={'yes' if self._ecr_asp else 'no'}"
+            )
+
+        # ── Gap 8.2: POV Character Fingerprint Override (batch-safe) ──────────
+        # When a chapter's narration belongs to a fingerprinted POV character,
+        # inject a high-priority override block. This fires at prompt-construction
+        # time and requires no tool_use calls, making it fully compatible with
+        # batch+thinking mode.
+        #
+        # Two sub-cases:
+        #   A) _pov_segments is set → multi-POV intra-chapter hot-switch
+        #      (Gap 8.2 extension): each segment gets its own fingerprint block
+        #      with explicit transition guidance.
+        #   B) _pov_character_name is set (and _pov_segments is empty) →
+        #      single whole-chapter POV (original Gap 8.2).
+        if self._pov_segments:
+            # ── Case A: Multi-POV hot-switch directive ────────────────────────
+            all_names = [s["character"] for s in self._pov_segments]
+            pov_lines = [
+                f"\n<!-- MULTI-POV HOT-SWITCH FINGERPRINT OVERRIDE (Gap 8.2 ext.) -->",
+                f"## ⚠ INTRA-CHAPTER POV HOT-SWITCH: {len(self._pov_segments)} NARRATORS",
+                f"",
+                f"This chapter contains **{len(self._pov_segments)} distinct first-person POV",
+                f"segments**, each belonging to a different character:",
+                f"**{' → '.join(all_names)}**",
+                f"",
+                f"Switch voice fingerprint precisely at each segment boundary.",
+                f"Carry NO vocal residue from one segment's narrator into the next.",
+                f"",
+            ]
+            for i, seg in enumerate(self._pov_segments, start=1):
+                char = seg["character"]
+                fp = seg["fingerprint"]
+                archetype = fp.get("archetype", "unknown")
+                contraction_rate = fp.get("contraction_rate", 0.5)
+                forbidden_vocab = fp.get("forbidden_vocabulary", [])
+                verbal_tics = fp.get("verbal_tics", [])
+                sentence_bias = fp.get("sentence_length_bias", "medium")
+                signature_phrases = fp.get("signature_phrases", [])
+                description = seg.get("description") or f"Segment {i}"
+                # Build line-range hint if available
+                start_l = seg.get("start_line")
+                end_l = seg.get("end_line")
+                range_hint = (
+                    f" (JP lines {start_l}–{end_l})"
+                    if start_l is not None and end_l is not None
+                    else ""
+                )
+                pov_lines += [
+                    f"### Segment {i} — {char}{range_hint}: {description}",
+                    f"",
+                    f"- **Archetype**: {archetype}",
+                    f"- **Contraction ceiling**: {contraction_rate:.0%} — "
+                    f"default register is {'formal/expanded' if contraction_rate < 0.6 else 'natural/colloquial'}",
+                    f"- **Sentence length bias**: {sentence_bias}",
+                ]
+                if verbal_tics:
+                    pov_lines.append(f"- **Verbal tics**: {'; '.join(verbal_tics)}")
+                if forbidden_vocab:
+                    pov_lines.append(f"- **Forbidden vocabulary**: {', '.join(forbidden_vocab)}")
+                if signature_phrases:
+                    pov_lines.append(f"- **Signature phrases**: {', '.join(signature_phrases)}")
+                pov_lines.append(f"")
+            pov_lines += [
+                f"Each narrator's contraction rate, verbal tics, and vocabulary are independent.",
+                f"Apply the segment fingerprint above for every narration sentence and internal",
+                f"monologue in that segment. Do not blend or average across segments.",
+                f"<!-- END MULTI-POV HOT-SWITCH FINGERPRINT OVERRIDE -->",
+            ]
+            pov_block = "\n".join(pov_lines)
+            final_prompt += pov_block
+            logger.info(
+                f"✓ [POV SEGMENTS] Injected {len(self._pov_segments)}-segment multi-POV directive "
+                f"({' → '.join(all_names)})"
+            )
+
+        elif self._pov_character_name and self._pov_fingerprint:
+            # ── Case B: Single whole-chapter POV ──────────────────────────────
+            fp = self._pov_fingerprint
+            archetype = fp.get("archetype", "unknown")
+            contraction_rate = fp.get("contraction_rate", 0.5)
+            forbidden_vocab = fp.get("forbidden_vocabulary", [])
+            verbal_tics = fp.get("verbal_tics", [])
+            sentence_bias = fp.get("sentence_length_bias", "medium")
+            signature_phrases = fp.get("signature_phrases", [])
+
+            pov_lines = [
+                f"\n<!-- POV CHARACTER FINGERPRINT OVERRIDE (Gap 8.2) -->",
+                f"## ⚠ POV CHARACTER: {self._pov_character_name}",
+                f"",
+                f"This chapter's narration and internal monologue belong to "
+                f"**{self._pov_character_name}**.",
+                f"Apply the following voice fingerprint exclusively for all narration and",
+                f"internal monologue in this chapter:",
+                f"",
+                f"- **Archetype**: {archetype}",
+                f"- **Contraction ceiling**: {contraction_rate:.0%} — contractions permitted",
+                f"  only at genuine emotional breakthrough moments; default register is",
+                f"  expanded/formal (e.g. 'that is not my concern', 'I do not know').",
+                f"- **Sentence length bias**: {sentence_bias}",
+            ]
+            if verbal_tics:
+                pov_lines.append(
+                    f"- **Verbal tics**: {'; '.join(verbal_tics)}"
+                )
+            if forbidden_vocab:
+                pov_lines.append(
+                    f"- **Forbidden vocabulary**: {', '.join(forbidden_vocab)}"
+                )
+            if signature_phrases:
+                pov_lines.append(
+                    f"- **Signature phrases**: {', '.join(signature_phrases)}"
+                )
+            pov_lines += [
+                f"",
+                f"Do NOT infer the narrator from pronouns alone. Follow the scene-plan POV",
+                f"assignment and surrounding narrative ownership cues first.",
+                f"Do NOT apply any other character's narration register ({self.target_language})",
+                f"to this chapter. Other characters' contraction rates, verbal tics, and",
+                f"vocabulary patterns are suspended for narration unless a later POV switch is",
+                f"explicitly declared.",
+                f"<!-- END POV CHARACTER FINGERPRINT OVERRIDE -->",
+            ]
+            pov_block = "\n".join(pov_lines)
+            final_prompt += pov_block
+            logger.info(
+                f"✓ [POV OVERRIDE] Injected fingerprint block for {self._pov_character_name} "
+                f"(archetype={archetype}, contraction_ceiling={contraction_rate:.0%})"
+            )
+
+        if self._secondary_fingerprints:
+            secondary_lines = [
+                "\n<!-- SECONDARY CHARACTER VOICE ANCHORS -->",
+                "## ⚠ SECONDARY CHARACTER VOICE ANCHORS",
+                "",
+                "REGISTER ISOLATION: The scene plan's dialogue_register describes the",
+                "ambient narrator/scene tone only. Characters with explicit fingerprints",
+                "must keep their own register, contraction ceiling, and vocabulary patterns",
+                "even when the scene tag suggests a different ambient mood.",
+                "",
+            ]
+            for anchor in self._secondary_fingerprints:
+                character_name = anchor.get("character", "")
+                fp = anchor.get("fingerprint", {}) or {}
+                archetype = fp.get("archetype", "unknown")
+                contraction_rate = fp.get("contraction_rate", 0.5)
+                sentence_bias = fp.get("sentence_length_bias", "medium")
+                signature_phrases = fp.get("signature_phrases", [])
+                secondary_lines += [
+                    f"### {character_name}",
+                    f"- **Archetype**: {archetype}",
+                    f"- **Contraction ceiling**: {contraction_rate:.0%}",
+                    f"- **Sentence length bias**: {sentence_bias}",
+                ]
+                verbal_tics = fp.get("verbal_tics", [])
+                if verbal_tics:
+                    secondary_lines.append(f"- **Verbal tics**: {'; '.join(verbal_tics)}")
+                forbidden_vocab = fp.get("forbidden_vocabulary", [])
+                if forbidden_vocab:
+                    secondary_lines.append(f"- **Forbidden vocabulary**: {', '.join(forbidden_vocab)}")
+                if signature_phrases:
+                    secondary_lines.append(f"- **Signature phrases**: {', '.join(signature_phrases)}")
+                secondary_lines.append("")
+            secondary_lines.append("<!-- END SECONDARY CHARACTER VOICE ANCHORS -->")
+            final_prompt += "\n".join(secondary_lines)
+            logger.info(
+                "✓ [SECONDARY FP] Injected %d secondary voice anchor(s)",
+                len(self._secondary_fingerprints),
+            )
+
+        if self._inline_afterword_override:
+            marker = str(self._inline_afterword_override.get("marker", "あとがき") or "あとがき")
+            source = str(self._inline_afterword_override.get("source", "scene_plan") or "scene_plan")
+            description = str(self._inline_afterword_override.get("description", "") or "").strip()
+            start_line = self._inline_afterword_override.get("start_line")
+            end_line = self._inline_afterword_override.get("end_line")
+            if start_line is not None and end_line is not None:
+                range_hint = f"JP lines {start_line}–{end_line}"
+            elif start_line is not None:
+                range_hint = f"JP line {start_line}+"
+            else:
+                range_hint = "JP range unspecified"
+
+            inline_lines = [
+                "\n<!-- INLINE AFTERWORD SEGMENT OVERRIDE -->",
+                "## ⚠ INLINE AFTERWORD MODE (あとがき SEGMENT)",
+                "",
+                f"Detected marker: **{marker}** ({source}; {range_hint}).",
+            ]
+            if description:
+                inline_lines.append(f"Segment note: {description}")
+            inline_lines += [
+                "",
+                "When narration enters this afterword/author-note segment, override normal chapter constraints:",
+                "- **Contraction target**: 95% (highly natural, spoken-author cadence)",
+                "- **Tone**: warm, informative, gratitude-forward; clear acknowledgements and updates",
+                "- **Constraint override**: suspend EPS-band voice limits and character-fingerprint narration constraints",
+                "- **Validator override**: treat this segment as author note (Koji Fox / voice consistency constraints bypassed)",
+                "Outside the afterword segment, continue normal chapter translation behavior.",
+                "<!-- END INLINE AFTERWORD SEGMENT OVERRIDE -->",
+            ]
+            final_prompt += "\n".join(inline_lines)
+            logger.info("✓ [INLINE AFTERWORD] Injected inline afterword override block")
+
+        # Inject style guide into system instruction (EXPERIMENTAL - VN all genres / EN memoir only)
+        _autobio_slot = (
+            '<JSON id="AUTOBIOGRAPHY_MEMOIR_EN" '
+            'condition="genre_or_book_type=memoir|autobiography">'
+            'autobiography_memoir_en.json</JSON>'
+        )
+        if self._style_guide:
             style_guide_injection = self._format_style_guide(self._style_guide)
+            _lang_label = "Vietnamese" if self.target_language in ['vi', 'vn'] else "English"
+            _comment_tag = f"<!-- {_lang_label.upper()} STYLE GUIDE (Experimental) -->"
             # Replace placeholder in master prompt
             if "STYLE_GUIDE_PLACEHOLDER" in final_prompt:
                 final_prompt = final_prompt.replace("STYLE_GUIDE_PLACEHOLDER", style_guide_injection)
-                logger.info(f"✓ [EXPERIMENTAL] Injected Vietnamese style guide ({len(style_guide_injection)} chars)")
+                logger.info(f"✓ [EXPERIMENTAL] Injected {_lang_label} style guide ({len(style_guide_injection)} chars)")
+            elif self.target_language in ['en', 'english'] and _autobio_slot in final_prompt:
+                final_prompt = final_prompt.replace(_autobio_slot, style_guide_injection)
+                logger.info(
+                    f"✓ [EXPERIMENTAL] Injected {_lang_label} style guide via "
+                    "autobiography_memoir_en.json Tier-1 slot "
+                    f"({len(style_guide_injection)} chars)"
+                )
             else:
                 # Fallback: append if placeholder not found
-                final_prompt += f"\n\n<!-- VIETNAMESE STYLE GUIDE (Experimental) -->\n{style_guide_injection}\n"
-                logger.info(f"✓ [EXPERIMENTAL] Vietnamese style guide appended ({len(style_guide_injection)} chars)")
+                final_prompt += f"\n\n{_comment_tag}\n{style_guide_injection}\n"
+                logger.info(f"✓ [EXPERIMENTAL] {_lang_label} style guide appended ({len(style_guide_injection)} chars)")
+
+        # Cleanup unresolved EN memoir Tier-1 slot so filename tokens never leak into prompt text.
+        if _autobio_slot in final_prompt:
+            final_prompt = final_prompt.replace(_autobio_slot, "")
+            logger.debug("Removed unresolved autobiography_memoir_en Tier-1 slot (style guide not injected)")
 
         # NOTE: Anthropic Thinking Discipline was previously injected here.
         # Moved to _build_user_prompt() in chapter_processor.py because the system
@@ -1224,6 +2044,210 @@ class PromptLoader:
         # The user turn is always sent fresh, so that's the correct injection point.
 
         return final_prompt
+
+    def build_retrospective_anchor_block(self, retrospective_text: str) -> str:
+        """
+        Wrap a retrospective arc prompt in the standard module comment block.
+
+        Args:
+            retrospective_text: Output of ContextManager.get_retrospective_arc_prompt().
+
+        Returns:
+            Formatted block ready for injection into system prompt or user prompt.
+            Returns "" if retrospective_text is empty.
+        """
+        if not retrospective_text or not retrospective_text.strip():
+            return ""
+        return (
+            "\n<!-- START MODULE: retrospective_pov_anchor -->\n"
+            f"{retrospective_text.strip()}\n"
+            "<!-- END MODULE: retrospective_pov_anchor -->\n"
+        )
+
+    def _format_ecr_directive_block(self) -> str:
+        """Build the ECR volume-level hard-directive block for system instruction injection.
+
+        Renders four metadata_en fields as LLM-facing hard directives:
+          - culturally_loaded_terms      : per-term retention policy table
+          - author_signature_patterns    : prose structure preservation mandates
+          - character_voice_fingerprints : voice fingerprint table (all characters)
+          - signature_phrases            : character-defining phrase consistency table
+
+        Returns empty string when none of the four fields are populated.
+        """
+        parts: List[str] = []
+
+        # ── 1. Culturally Loaded Terms ────────────────────────────────────────
+        clt = self._ecr_clt
+        if isinstance(clt, dict) and clt:
+            retain_hard  = [(jp, e) for jp, e in clt.items() if isinstance(e, dict) and e.get("retention_policy") == "preserve_jp"]
+            retain_first = [(jp, e) for jp, e in clt.items() if isinstance(e, dict) and e.get("retention_policy") == "preserve_jp_first_use"]
+            transcreate  = [(jp, e) for jp, e in clt.items() if isinstance(e, dict) and e.get("retention_policy") == "transcreate"]
+            context_dep  = [(jp, e) for jp, e in clt.items() if isinstance(e, dict) and e.get("retention_policy") == "context_dependent"]
+
+            lines = [
+                "## CULTURALLY LOADED TERMS — HARD RETENTION RULES",
+                "Policies below are BINDING. Violating them is the most critical translation failure.\n",
+            ]
+            if retain_hard:
+                lines.append("### RETAIN JP — use display form directly; NEVER paraphrase or transcreate:")
+                for jp, e in retain_hard:
+                    display = e.get("display", jp)
+                    romaji  = e.get("romaji", "")
+                    defn    = e.get("definition", "")
+                    ln = f"  {jp}"
+                    if display and display != jp:
+                        ln += f" \u2192 render as: {display}"
+                    if romaji:
+                        ln += f" ({romaji})"
+                    if defn:
+                        ln += f" \u2014 {defn}"
+                    lines.append(ln)
+                lines.append("")
+
+            if retain_first:
+                lines.append("### RETAIN JP — first occurrence: 'display (gloss)', all subsequent uses: JP display only:")
+                for jp, e in retain_first:
+                    display = e.get("display", jp)
+                    romaji  = e.get("romaji", "")
+                    defn    = e.get("definition", "")
+                    ln = f"  {jp}"
+                    if romaji:
+                        ln += f" ({romaji})"
+                    if defn:
+                        ln += f' \u2014 first use: "{display} ({defn})"'
+                    lines.append(ln)
+                lines.append("")
+
+            if transcreate:
+                lines.append("### ALWAYS TRANSCREATE to target-language equivalent:")
+                for jp, e in transcreate:
+                    en_eq = e.get("en_equivalent") or e.get("display", "")
+                    lines.append(f"  {jp}" + (f" \u2192 {en_eq}" if en_eq else ""))
+                lines.append("")
+
+            if context_dep:
+                lines.append("### CONTEXT-DEPENDENT (keep JP as archetype label; EN as plain descriptor):")
+                for jp, e in context_dep:
+                    ln = f"  {jp}"
+                    info = e.get("definition") or e.get("display", "")
+                    if info:
+                        ln += f" \u2014 {info}"
+                    lines.append(ln)
+                lines.append("")
+
+            parts.append("\n".join(lines))
+
+        # ── 2. Author Signature Patterns ─────────────────────────────────────
+        asp = self._ecr_asp
+        if isinstance(asp, dict) and asp:
+            lines = [
+                "## AUTHOR SIGNATURE PATTERNS — STRUCTURAL PRESERVATION MANDATE",
+                "Replicate these structural patterns exactly. They constitute the author's prose identity.\n",
+            ]
+            for pat in asp.get("detected_patterns", []):
+                if not isinstance(pat, dict):
+                    continue
+                # Schema uses pattern_id (not pattern_name), preservation_rule (not translation_instruction)
+                name  = pat.get("pattern_name") or pat.get("pattern_id", "")
+                jp_s  = pat.get("jp_structure", "")
+                en_s  = pat.get("en_structure", "")
+                rule  = pat.get("preservation_rule") or pat.get("translation_instruction") or pat.get("description", "")
+                freq  = pat.get("frequency", "")
+                exs   = pat.get("evidence_excerpts") or pat.get("specific_patterns", [])
+                lines.append(f"### {name}" if name else "### (unnamed pattern)")
+                if jp_s:
+                    lines.append(f"  JP structure: {jp_s}")
+                if en_s:
+                    lines.append(f"  EN structure: {en_s}")
+                if rule:
+                    lines.append(f"  Rule: {rule}")
+                if freq:
+                    lines.append(f"  Frequency: {freq}")
+                if exs:
+                    lines.append(f"  Evidence: {'; '.join(str(x) for x in exs[:2])}")
+                lines.append("")
+
+            refs = asp.get("literary_references", [])
+            if refs:
+                lines.append("Literary references shaping author's stylistic DNA:")
+                for ref in refs[:5]:
+                    if isinstance(ref, dict):
+                        title = ref.get("title", "")
+                        inf   = ref.get("influence", "")
+                        lines.append(f"  \u2022 {title}: {inf}" if title else f"  \u2022 {inf}")
+                    elif isinstance(ref, str):
+                        lines.append(f"  \u2022 {ref}")
+                lines.append("")
+
+            parts.append("\n".join(lines))
+
+        # ── 3. Character Voice Fingerprints (all characters) ─────────────────
+        cvf = self._ecr_cvf_list
+        if cvf:
+            lines = [
+                "## CHARACTER VOICE FINGERPRINTS — ALL CHARACTERS",
+                "Apply the matching fingerprint for each character's dialogue and internal monologue.\n",
+            ]
+            for fp in cvf:
+                if not isinstance(fp, dict):
+                    continue
+                name     = fp.get("canonical_name_en") or fp.get("character_en", "Unknown")
+                archetype = fp.get("archetype", "")
+                cr       = fp.get("contraction_rate")
+                forbidden = fp.get("forbidden_vocabulary", [])
+                preferred = fp.get("preferred_vocabulary", [])
+                tics     = fp.get("verbal_tics", [])
+                slen     = fp.get("sentence_length_bias", "")
+
+                lines.append(f"### {name} [{archetype}]" if archetype else f"### {name}")
+                if cr is not None:
+                    register = "formal/expanded" if cr < 0.5 else ("neutral" if cr < 0.7 else "colloquial")
+                    lines.append(f"  Contractions: {cr:.0%} ceiling \u2014 default register: {register}")
+                if slen:
+                    lines.append(f"  Sentence length: {slen}")
+                if forbidden:
+                    lines.append(f"  FORBIDDEN: {', '.join(str(x) for x in forbidden[:5])}")
+                if preferred:
+                    lines.append(f"  Preferred: {', '.join(str(x) for x in preferred[:5])}")
+                if tics:
+                    lines.append(f"  Verbal tics: {', '.join(str(x) for x in tics[:4])}")
+                lines.append("")
+
+            parts.append("\n".join(lines))
+
+        # ── 4. Signature Phrases ─────────────────────────────────────────────
+        sig = self._ecr_sig_phrases
+        if sig:
+            lines = [
+                "## SIGNATURE PHRASES — CONSISTENT TRANSLATION REQUIRED",
+                "These phrases are character-defining. Translate each one as specified every time.\n",
+            ]
+            by_char: Dict[str, list] = {}
+            for entry in sig:
+                if not isinstance(entry, dict):
+                    continue
+                char = entry.get("character_en", "Unknown")
+                by_char.setdefault(char, []).append(entry)
+
+            for char, phrases in by_char.items():
+                lines.append(f"  [{char}]")
+                for p in phrases:
+                    jp    = p.get("phrase_jp", "")
+                    en    = p.get("phrase_en", "")
+                    freq  = p.get("frequency", "")
+                    notes = p.get("translation_notes", "")
+                    ln    = f"    {jp} \u2192 {en}"
+                    if freq:
+                        ln += f" [{freq}]"
+                    lines.append(ln)
+                    if notes:
+                        lines.append(f"      Note: {notes}")
+                lines.append("")
+
+            parts.append("\n".join(lines))
+
+        return "\n\n".join(parts)
 
     def _format_semantic_metadata(self, metadata: Dict[str, Any]) -> str:
         """
@@ -1325,16 +2349,16 @@ class PromptLoader:
                     for jp_target, ref_pattern in list(refers.items())[:10]:
                         lines.append(f"    → {ref_pattern}")
                 
-                # RTAS Relationships (PHASE 0 — PREVIOUSLY INVISIBLE)
+                # PAIR_ID Relationships (PHASE 0 — PREVIOUSLY INVISIBLE)
                 relationships = char.get('relationships', {})
                 if relationships and isinstance(relationships, dict):
-                    # Check for structured RTAS format (not legacy {'context': ...})
+                    # Check for structured PAIR_ID format (not legacy {'context': ...})
                     if 'context' not in relationships:
                         lines.append(f"  Key Relationships:")
                         for target, rel_data in list(relationships.items())[:8]:
                             if isinstance(rel_data, dict):
                                 rtype = rel_data.get('type', '')
-                                score = rel_data.get('rtas_score', '')
+                                score = rel_data.get('pair_id', rel_data.get('rtas_score', ''))
                                 rnotes = rel_data.get('notes', '')
                                 score_str = f" ({score})" if score else ""
                                 notes_str = f" — {rnotes}" if rnotes else ""
@@ -1575,11 +2599,18 @@ class PromptLoader:
         metadata = style_guide.get('_metadata', {})
         mode = metadata.get('mode', 'single-genre')
         genres_loaded = metadata.get('genres_loaded', [])
-        
-        lines = ["# VIETNAMESE TRANSLATION STYLE GUIDE (Experimental)\n"]
-        lines.append("## CRITICAL: This style guide addresses two core Vietnamese translation challenges:\n")
-        lines.append("## 1. PRONOUN SYSTEM - Navigate complex age/gender/familiarity encoding")
-        lines.append("## 2. CONTEXTUAL SINO-VIETNAMESE - Choose appropriate vocabulary register\n")
+
+        _is_vn = self.target_language in ['vi', 'vn']
+        if _is_vn:
+            lines = ["# VIETNAMESE TRANSLATION STYLE GUIDE (Experimental)\n"]
+            lines.append("## CRITICAL: This style guide addresses two core Vietnamese translation challenges:\n")
+            lines.append("## 1. PRONOUN SYSTEM - Navigate complex age/gender/familiarity encoding")
+            lines.append("## 2. CONTEXTUAL SINO-VIETNAMESE - Choose appropriate vocabulary register\n")
+        else:
+            lines = ["# ENGLISH TRANSLATION STYLE GUIDE (Experimental)\n"]
+            lines.append("## CRITICAL: This style guide enforces quality standards for English translation:\n")
+            lines.append("## 1. VOICE FIDELITY - Preserve author's distinct voice; avoid homogenization")
+            lines.append("## 2. NATURAL IDIOM - Never carry JP syntax into EN; find the English equivalent\n")
         
         # Mode indicator
         if mode == 'multi-genre':
@@ -1674,7 +2705,9 @@ class PromptLoader:
                         if role_key in ['framework', 'note', 'critical_fixes']:
                             continue
                         if isinstance(role_data, dict) and 'self_reference' in role_data:
-                            lines.append(f"  • {role_key.replace('_', ' ')}: {role_data.get('self_reference', {}).get('casual', 'N/A')}")
+                            _sr = role_data['self_reference']
+                            _sr_val = _sr.get('casual', 'N/A') if isinstance(_sr, dict) else _sr
+                            lines.append(f"  • {role_key.replace('_', ' ')}: {_sr_val}")
                     lines.append("")
                 
                 # Dialogue style
@@ -1822,11 +2855,18 @@ class PromptLoader:
             'action': 'Fight scenes, chase sequences, intense physical conflicts',
             'mystery': 'Investigation scenes, clue discovery, suspenseful moments',
             'slice_of_life': 'Everyday activities, casual conversations, mundane events',
-            'drama': 'Emotional conflicts, serious discussions, character development moments'
+            'drama': 'Emotional conflicts, serious discussions, character development moments',
+            'autobiography_memoir': (
+                'ALL prose in this volume — applies to every chapter. '
+                'Direct emotional assertion (no epistemic hedging). '
+                'First-person introspective narration, retrospective time framing, '
+                'inner-monologue patterns, artist/music industry register. '
+                'CRITICAL_ANTI_HEDGING_RULE is ABSOLUTE (not optional/scene-conditional).'
+            ),
         }
         return descriptions.get(genre_key, f'Scenes matching {genre_key.replace("_", " ")} genre')
 
-    def _format_kanji_for_injection(self, kanji_entries: List[Dict], genre: str = None) -> str:
+    def _format_kanji_for_injection(self, kanji_entries: List[Dict], genre: str = None) -> str: # type: ignore
         """
         Format kanji_difficult.json entries for prompt injection.
         
@@ -2112,6 +3152,32 @@ class PromptLoader:
         lines.append("- Keep tone/honorific consistency while de-AI-ising phrasing.\n")
 
         return "\n".join(lines)
+
+    def _select_diverse_examples(
+        self,
+        examples: List[Any],
+        max_examples: int = 2
+    ) -> List[Dict[str, Any]]:
+        """
+        Select a compact set of non-duplicate examples for few-shot injection.
+        """
+        selected: List[Dict[str, Any]] = []
+        seen = set()
+        for ex in examples:
+            if not isinstance(ex, dict):
+                continue
+            key = (
+                str(ex.get("jp", "")).strip(),
+                str(ex.get("literal", ex.get("incorrect", ex.get("original", "")))).strip(),
+                str(ex.get("natural", ex.get("preferred", ex.get("correct", "")))).strip(),
+            )
+            if key in seen:
+                continue
+            seen.add(key)
+            selected.append(ex)
+            if len(selected) >= max_examples:
+                break
+        return selected
     
     def _format_english_grammar_rag_for_injection(self, grammar_rag_data: Dict[str, Any]) -> str:
         """
@@ -2141,7 +3207,7 @@ class PromptLoader:
             # Sort by corpus_frequency if available
             sorted_patterns = sorted(hf_patterns, key=lambda x: x.get('corpus_frequency', 0), reverse=True)
             
-            for pattern in sorted_patterns[:15]:  # Top 15 most frequent
+            for pattern in sorted_patterns[:10]:  # Top 10 most frequent, richer examples
                 pattern_id = pattern.get('id', '')
                 jp_indicators = pattern.get('japanese_indicators', [])
                 en_pattern = pattern.get('english_pattern', '')
@@ -2154,17 +3220,18 @@ class PromptLoader:
                 lines.append(f"### {jp_display}")
                 lines.append(f"**Pattern:** {en_pattern}")
                 
-                # Add examples (first one)
-                if examples:
-                    ex = examples[0]
+                # Add diverse examples (up to two)
+                selected_examples = self._select_diverse_examples(examples, max_examples=2)
+                for i, ex in enumerate(selected_examples, 1):
+                    lines.append(f"Example {i}:")
                     if ex.get('literal'):
                         lines.append(f"❌ Literal: \"{ex.get('literal', '')}\"")
                     if ex.get('natural'):
                         lines.append(f"✅ Natural: \"{ex.get('natural', '')}\"")
                 
-                # Add key usage rule
-                if usage_rules:
-                    lines.append(f"📌 {usage_rules[0]}")
+                # Add key usage rules
+                for rule in usage_rules[:2]:
+                    lines.append(f"📌 {rule}")
                 
                 lines.append("")
         
@@ -2187,8 +3254,10 @@ class PromptLoader:
                 en_pattern = pattern.get('english_pattern', '')
                 examples = pattern.get('examples', [])
                 lines.append(f"- **{', '.join(jp_indicators)}** → \"{en_pattern}\"")
-                if examples and examples[0].get('natural'):
-                    lines.append(f"  Example: {examples[0].get('natural', '')}")
+                for ex in self._select_diverse_examples(examples, max_examples=2):
+                    natural = ex.get('natural')
+                    if natural:
+                        lines.append(f"  Example: {natural}")
             lines.append("")
         
         # CONDITIONAL RESTRUCTURING (important for natural flow)
@@ -2199,7 +3268,47 @@ class PromptLoader:
                 jp_indicators = pattern.get('japanese_indicators', [])[:2]
                 en_pattern = pattern.get('english_pattern', '')
                 lines.append(f"- **{', '.join(jp_indicators)}** → \"{en_pattern}\"")
+                for ex in self._select_diverse_examples(pattern.get('examples', []), max_examples=2):
+                    natural = ex.get('natural')
+                    if natural:
+                        lines.append(f"  Example: {natural}")
             lines.append("")
+
+        # 17a8 quality-audit upgrades: expressive intensity + cultural clarity
+        lines.append("## 🎭 EMOTIONAL INTENSITY MAPPING (17a8 Upgrade)\n")
+        lines.append("Map JP emotional pressure to EN rhythm. Keep meaning stable, shift delivery style:")
+        lines.append("- **panic / crisis**: short fragments, hard stops, selective caps for inner-shout")
+        lines.append("- **nervous excitement**: short declaratives + occasional exclamation")
+        lines.append("- **calm reflection**: flowing clauses, softer punctuation")
+        lines.append("- Preserve character voice while changing cadence.")
+        lines.append("")
+
+        lines.append("## ⚡ DRAMATIC PUNCTUATION ENGINE (17a8 Upgrade)\n")
+        lines.append("When JP line is panic/emphasis-heavy (ムリ, やばい, 危機, 無理):")
+        lines.append("- Prefer staccato emphasis where natural: \"No. Freaking. Way.\"")
+        lines.append("- Use em-dash for abrupt emotional turn: \"—Total. Crisis. Mode.\"")
+        lines.append("- Keep readability first; avoid gimmick overuse.")
+        lines.append("")
+
+        lines.append("## 🧠 CHARACTER-SPECIFIC EXPANSION GUARDRAILS (17a8 Upgrade)\n")
+        lines.append("Do NOT summarize emotional confession beats into one flat sentence.")
+        lines.append("For key confession/realization moments, preserve progression:")
+        lines.append("1) reaction/body cue → 2) internal realization → 3) explicit declaration")
+        lines.append("Only expand when JP clearly carries these beats.")
+        lines.append("")
+
+        lines.append("## 🌐 CULTURAL TERM FIRST-MENTION EXPANSION\n")
+        lines.append("On first mention, expand uncommon JP shorthand in-context once:")
+        lines.append("- Example: \"Supadari — short for Super Darling.\"")
+        lines.append("After first expansion, use short form naturally.")
+        lines.append("")
+
+        lines.append("## 🗣️ HIGH-VALUE IDIOM EQUIVALENCE OVERRIDES (17a8 Upgrade)\n")
+        lines.append("Prefer natural EN equivalents over literal carry-over:")
+        lines.append("- 目が潰れる → \"it just about broke my eyes to look at\" / \"my eyes practically fell out\"")
+        lines.append("- 場違い → \"like a fish out of water\" / \"completely out of place\"")
+        lines.append("- モジモジする → \"fidgeting\" / \"shuffling\"")
+        lines.append("")
         
         # QUICK REFERENCE: Avoid Literal Translations
         lines.append("## ⚠️ AVOID THESE LITERAL TRANSLATIONS\n")
@@ -2242,8 +3351,7 @@ class PromptLoader:
                 if issue:
                     lines.append(f"- {issue}")
                 examples = pattern.get('examples', [])
-                if examples:
-                    ex = examples[0]
+                for ex in examples[:2]:
                     incorrect = ex.get('incorrect') or ex.get('original')
                     correct = ex.get('correct') or ex.get('preferred')
                     if incorrect and correct:
@@ -2265,8 +3373,7 @@ class PromptLoader:
                 if rule_id:
                     lines.append(f"- **{rule_id}**: {issue}")
                 examples = pattern.get('examples', [])
-                if examples:
-                    ex = examples[0]
+                for ex in examples[:2]:
                     original = ex.get('original') or ex.get('incorrect') or ex.get('over_emphasis')
                     preferred = ex.get('preferred') or ex.get('correct')
                     if original and preferred:
@@ -2369,7 +3476,7 @@ class PromptLoader:
         Converts JSON pattern database into Vietnamese translation guidance.
         Focuses on:
         1. AI-ism elimination (sentence + dialogue patterns)
-        2. Particle system by archetype/RTAS
+        2. Particle system by archetype/PAIR_ID
         3. Pronoun tier system (friendship/romance)
         4. Japanese structure carryover prevention
         
@@ -2509,13 +3616,13 @@ class PromptLoader:
             lines.append("### Friendship Progression\n")
             for tier_name, tier_data in friendship.items():
                 if isinstance(tier_data, dict):
-                    rtas_range = tier_data.get('rtas_range', '')
+                    pair_id = tier_data.get('pair_id', tier_data.get('rtas_range', ''))
                     pronouns = tier_data.get('pronouns', {})
                     first_person = pronouns.get('first_person', [])[:2]
                     second_person = pronouns.get('second_person', [])[:2]
                     first_str = ', '.join(first_person) if first_person else '-'
                     second_str = ', '.join(second_person) if second_person else '-'
-                    lines.append(f"**{tier_name}** (RTAS {rtas_range}): xưng {first_str} / gọi {second_str}")
+                    lines.append(f"**{tier_name}** (PAIR_ID {pair_id}): xưng {first_str} / gọi {second_str}")
             lines.append("")
         
         # Romance scale
@@ -2524,22 +3631,22 @@ class PromptLoader:
             lines.append("### Romance Evolution\n")
             for stage, stage_data in list(romance.items())[:4]:
                 if isinstance(stage_data, dict):
-                    rtas = stage_data.get('rtas', '')
+                    pair_id = stage_data.get('pair_id', stage_data.get('rtas', ''))
                     pronouns = stage_data.get('pronouns', {})
                     first = pronouns.get('first_person', [''])[:1]
                     second = pronouns.get('second_person', [''])[:1]
-                    lines.append(f"**{stage}** (RTAS {rtas}): {first[0] if first else ''} ↔ {second[0] if second else ''}")
+                    lines.append(f"**{stage}** (PAIR_ID {pair_id}): {first[0] if first else ''} ↔ {second[0] if second else ''}")
             lines.append("")
-        
-        # RTAS PARTICLE EVOLUTION
-        rtas_evolution = grammar_rag_data.get('rtas_particle_evolution', {})
-        if rtas_evolution:
-            lines.append("## 📈 RTAS PARTICLE EVOLUTION\n")
-            for rtas_tier, tier_data in list(rtas_evolution.items())[:4]:
+
+        # PAIR_ID PARTICLE EVOLUTION
+        pair_id_evolution = grammar_rag_data.get('pair_id_particle_evolution', grammar_rag_data.get('rtas_particle_evolution', {}))
+        if pair_id_evolution:
+            lines.append("## 📈 PAIR_ID PARTICLE EVOLUTION\n")
+            for pair_id_tier, tier_data in list(pair_id_evolution.items())[:4]:
                 if isinstance(tier_data, dict):
                     register = tier_data.get('register', '')
                     particles_list = tier_data.get('particles', [])[:4]
-                    lines.append(f"**{rtas_tier}** ({register}): {', '.join(particles_list)}")
+                    lines.append(f"**{pair_id_tier}** ({register}): {', '.join(particles_list)}")
             lines.append("")
         
         # FREQUENCY THRESHOLDS (warnings)
@@ -2559,7 +3666,7 @@ class PromptLoader:
         lines.append("## 📌 GOLDEN RULES\n")
         lines.append("1. **Particle là Linh Hồn Hội Thoại** - Không có particle = đọc như robot")
         lines.append("2. **Match Archetype với Register** - Tsundere ≠ Ojou-sama particle set")
-        lines.append("3. **RTAS Drives Pronoun Evolution** - Mức độ thân thiết → thay đổi xưng hô")
+        lines.append("3. **PAIR_ID Drives Pronoun Evolution** - Mức độ thân thiết → thay đổi xưng hô")
         lines.append("4. **Zero AI-ism Tolerance** - \"Có lẽ X...\" patterns = FAIL\n")
         lines.append("")
         lines.append("**Success Metric:** Người đọc Việt Nam không nhận ra là bản dịch.")
@@ -2570,7 +3677,9 @@ class PromptLoader:
     def _format_literacy_techniques_for_injection(
         self,
         literacy_data: Dict[str, Any],
-        english_validation_t1_data: Optional[Dict[str, Any]] = None
+        english_validation_t1_data: Optional[Dict[str, Any]] = None,
+        target_language: Optional[str] = None,
+        genre: Optional[str] = None,
     ) -> str:
         """
         Format Literary Techniques for prompt injection (Tier 1).
@@ -2585,11 +3694,18 @@ class PromptLoader:
         Args:
             literacy_data: Literary techniques dictionary with narrative_techniques, psychic_distance_levels, etc.
             english_validation_t1_data: Optional EN validation config for cross-module rhythm interlock.
+            target_language: Target language code ('en', 'vn', etc.). If 'vn', includes vn_instruction.
 
         Returns:
             Formatted literary technique guidance for prompt injection
         """
-        lines = ["# LITERARY TECHNIQUES: CREATIVE TRANSCREATION (Tier 1 - Language-Agnostic)\n"]
+        # Use instance target_language if not specified
+        if target_language is None:
+            target_language = self.target_language
+
+        is_vn = target_language in ['vn', 'vi']
+
+        lines = ["# LITERARY TECHNIQUES: CREATIVE TRANSCREATION (Tier 1)\n"]
         lines.append("## 🎭 What You Are Doing: NOT Translation, But Creative Transcreation\n")
         lines.append("You are not a dictionary—you are a **method actor** performing a script.")
         lines.append("Transform Japanese narrative quirks into natural prose using literary techniques.\n")
@@ -2622,12 +3738,19 @@ class PromptLoader:
                 if vocab_infection and vocab_infection.get('enabled'):
                     lines.append(f"**Vocabulary Infection:** {vocab_infection.get('instruction', '')}\n")
 
+                # VN-specific instruction
+                if is_vn and tp_limited.get('vn_instruction'):
+                    lines.append(f"**Hướng dẫn VN:** {tp_limited['vn_instruction']}\n")
+
             # Third Person Omniscient
             tp_omniscient = third_person_subs.get('third_person_omniscient', {})
             if tp_omniscient:
                 lines.append("### 🌍 Third Person Omniscient (Ngôi thứ ba toàn tri)\n")
                 lines.append(f"**Definition:** {tp_omniscient.get('definition', '')}")
-                lines.append(f"**Psychic Distance:** {tp_omniscient.get('psychic_distance', 'far')}\n")
+                lines.append(f"**Psychic Distance:** {tp_omniscient.get('psychic_distance', 'far')}")
+                if is_vn and tp_omniscient.get('vn_instruction'):
+                    lines.append(f"**Hướng dẫn VN:** {tp_omniscient['vn_instruction']}")
+                lines.append("")
 
             # Third Person Objective
             tp_objective = third_person_subs.get('third_person_objective', {})
@@ -2637,6 +3760,8 @@ class PromptLoader:
                 banned_content = tp_objective.get('banned_content', [])
                 if banned_content:
                     lines.append("\n**BANNED:** " + ", ".join(banned_content[:4]))
+                if is_vn and tp_objective.get('vn_instruction'):
+                    lines.append(f"**Hướng dẫn VN:** {tp_objective['vn_instruction']}")
                 lines.append("")
 
         # FREE INDIRECT DISCOURSE (Critical for Shoujo)
@@ -2720,8 +3845,7 @@ class PromptLoader:
                 for enforcement in avoid_literal.get('enforcement', [])[:3]:
                     lines.append(f"- {enforcement}")
                 rewrite_examples = avoid_literal.get('rewrite_examples', [])
-                if rewrite_examples:
-                    ex = rewrite_examples[0]
+                for ex in rewrite_examples[:2]:
                     literal = ex.get('literal', '')
                     preferred = ex.get('preferred', '')
                     if literal and preferred:
@@ -2740,8 +3864,7 @@ class PromptLoader:
                 if markers:
                     lines.append(f"- Intensity stack markers to minimize: {', '.join(markers[:6])}")
                 rewrite_examples = avoid_repetition.get('rewrite_examples', [])
-                if rewrite_examples:
-                    ex = rewrite_examples[0]
+                for ex in rewrite_examples[:2]:
                     original = ex.get('over_emphasis', '')
                     preferred = ex.get('preferred', '')
                     if original and preferred:
@@ -2783,8 +3906,7 @@ class PromptLoader:
                     if pivot_instruction:
                         lines.append(f"- Emotional pivot rule: {pivot_instruction}")
                 rewrite_examples = mmo_scene.get('rewrite_examples', [])
-                if rewrite_examples:
-                    ex = rewrite_examples[0]
+                for ex in rewrite_examples[:2]:
                     original = ex.get('over_exposition') or ex.get('over_flattened')
                     preferred = ex.get('preferred', '')
                     if original and preferred:
@@ -2829,30 +3951,39 @@ class PromptLoader:
 
                 lines.append("**Execution Rule:** Keep meaning and voice, then prefer the tightest natural cadence.\n")
 
-        # GENRE-SPECIFIC PRESETS
+        # GENRE-SPECIFIC PRESETS (JIT: only inject relevant genre preset)
         genre_presets = literacy_data.get('genre_specific_presets', {})
-        if genre_presets:
-            lines.append("## 🎯 GENRE-SPECIFIC NARRATIVE PRESETS\n")
+        if genre_presets and genre:
+            # Map common genre names to literacy_techniques keys
+            genre_map = {
+                'romcom': 'shoujo_romance',
+                'romantic_comedy': 'shoujo_romance',
+                'shoujo_romance': 'shoujo_romance',
+                'shoujo': 'shoujo_romance',
+                'noir': 'noir_hardboiled',
+                'hardboiled': 'noir_hardboiled',
+                'noir_hardboiled': 'noir_hardboiled',
+                'horror': 'psychological_horror',
+                'psychological_horror': 'psychological_horror',
+                'fantasy': 'epic_fantasy',
+                'epic_fantasy': 'epic_fantasy',
+            }
+            matched_genre_key = genre_map.get(genre.lower().strip(), genre.lower().strip())
+            matched_genre = genre_presets.get(matched_genre_key, {})
 
-            # Shoujo Romance (most relevant)
-            shoujo = genre_presets.get('shoujo_romance', {})
-            if shoujo:
-                lines.append("### 🌸 Shoujo Romance")
-                lines.append(f"- **Technique:** {shoujo.get('narrative_technique', '')}")
-                lines.append(f"- **Psychic Distance:** {shoujo.get('psychic_distance', '')}")
-                lines.append(f"- **Sensory Focus:** {shoujo.get('sensory_focus', '')}")
-                lines.append(f"- **Pacing:** {shoujo.get('sentence_pacing', '')}")
-                lines.append(f"- **Vocabulary:** {shoujo.get('emotional_vocabulary', '')}\n")
-
-            # Other genres (abbreviated)
-            for genre_key in ['noir_hardboiled', 'psychological_horror']:
-                genre = genre_presets.get(genre_key, {})
-                if genre:
-                    genre_name = genre_key.replace('_', ' ').title()
-                    lines.append(f"### {genre_name}")
-                    lines.append(f"- Technique: {genre.get('narrative_technique', '')}")
-                    lines.append(f"- Distance: {genre.get('psychic_distance', '')}")
-                    lines.append(f"- Pacing: {genre.get('sentence_pacing', '')}\n")
+            if matched_genre:
+                lines.append("## 🎯 GENRE-SPECIFIC NARRATIVE PRESET\n")
+                genre_display = matched_genre_key.replace('_', ' ').title()
+                lines.append(f"### {genre_display}")
+                lines.append(f"- **Technique:** {matched_genre.get('narrative_technique', '')}")
+                lines.append(f"- **Psychic Distance:** {matched_genre.get('psychic_distance', '')}")
+                lines.append(f"- **Sensory Focus:** {matched_genre.get('sensory_focus', '')}")
+                lines.append(f"- **Pacing:** {matched_genre.get('sentence_pacing', '')}")
+                lines.append(f"- **Vocabulary:** {matched_genre.get('emotional_vocabulary', '')}")
+                if is_vn and matched_genre.get('vn_instruction'):
+                    lines.append(f"- **Hướng dẫn VN:** {matched_genre['vn_instruction']}")
+                lines.append("")
+            # If no match, inject nothing (JIT: only inject when genre detected)
 
         # GOLDEN RULES
         lines.append("## 📌 INTEGRATION RULES\n")
@@ -2867,6 +3998,153 @@ class PromptLoader:
 
         return "\n".join(lines)
 
+    def _format_icl_prose_examples_for_injection(
+        self,
+        literacy_data: Dict[str, Any],
+        model_id: Optional[str] = None,
+        max_examples: Optional[int] = None,
+        target_language: Optional[str] = None,
+    ) -> str:
+        """
+        Format professional prose ICL examples from real_world_jp_en_corpus for prompt injection.
+
+        Renders the ``professional_prose_icl_examples.examples_by_mood`` section that
+        _format_literacy_techniques_for_injection() intentionally omits (structural rules vs.
+        prose exemplars are separate concerns).
+
+        Injection strategy:
+        - For Opus models (128 K context): inject ALL examples ordered by scene-type diversity
+          priority. Token cost ~21 K tokens — well within the ~102 K available headroom.
+        - For Sonnet/Haiku models (shorter contexts): cap at max_examples (default 24, covering
+          every major scene type with at least 1 example).
+        - Category order follows narrative utility: most universally needed scene types first
+          (mystery/deduction → kinetic action → romance → GL → psychological → comedy → poetic).
+        - Within each category examples are emitted in the order they appear in the JSON
+          (already curated highest-quality first).
+
+        Args:
+            literacy_data: Full literary techniques dict (contains real_world_jp_en_corpus).
+            model_id: Optional model string (e.g. 'claude-opus-4-6'). Used to determine
+                      full vs. capped injection.
+            max_examples: Hard cap on total examples injected. None = no cap (Opus default).
+            target_language: Target language code ('en', 'vn', etc.). If 'vn', includes vn_instruction.
+
+        Returns:
+            Formatted ICL prose block for prompt injection, or empty string if no data.
+        """
+        # Use instance target_language if not specified
+        if target_language is None:
+            target_language = self.target_language
+
+        is_vn = target_language in ['vn', 'vi']
+        corpus = literacy_data.get('real_world_jp_en_corpus', {})
+        icl_section = corpus.get('professional_prose_icl_examples', {})
+        examples_by_mood = icl_section.get('examples_by_mood', {})
+
+        if not examples_by_mood:
+            return ''
+
+        # Determine if this is an Opus-class model (full injection) or not (capped)
+        is_opus = model_id and 'opus' in model_id.lower()
+
+        # Priority order: most universally applicable scene types first.
+        # Categories not listed here are appended afterwards in alphabetical order.
+        PRIORITY_ORDER = [
+            'mystery_deduction',
+            'kinetic_action_sequence',
+            'grief_romance',
+            'psychological_duel',
+            'gl_intimate_crescendo',
+            'cold_intellectual_narrator',
+            'cunning_heroine_agency',
+            'dramatized_romance',
+            'comedic_escalation_chain',
+            'slapstick_interiority',
+            'observation_as_affection',
+            'silent_channel_intimacy',
+            'sibling_grief_payoff',
+            'retrospective_layering',
+            'earned_softening',
+            'sardonic_analysis_loop',
+            'literary_poetic',
+            'deep_introspection',
+            'endurance_as_devotion',
+            'tension_suspense',
+            'wistful_bittersweet',
+            'intimate_quiet_moments',
+            'playful_banter',
+            'genre_aware_epilogue',
+        ]
+
+        # Build ordered category list (priority-listed first, then any unlisted alphabetically)
+        ordered_categories = [c for c in PRIORITY_ORDER if c in examples_by_mood]
+        remaining = sorted(k for k in examples_by_mood if k not in PRIORITY_ORDER)
+        ordered_categories.extend(remaining)
+
+        lines = ["# PROFESSIONAL PROSE ICL: PUBLISHED J-NOVEL ENGLISH EXEMPLARS\n"]
+        lines.append(
+            "These are verbatim passages from officially published J-Novel English translations "
+            "(Yen Press / Seven Seas / J-Novel Club). "
+            "Use them as **quality anchors** — not templates to copy, but proof of what "
+            "premium LN prose sounds like in English. "
+            "Match their register, rhythm, and emotional precision.\n"
+        )
+
+        total_injected = 0
+        for cat_key in ordered_categories:
+            if max_examples is not None and total_injected >= max_examples:
+                break
+
+            cat = examples_by_mood[cat_key]
+            cat_label = cat_key.replace('_', ' ').title()
+            cat_desc = cat.get('description', '')
+            cat_vn_instruction = cat.get('vn_instruction', '')
+            examples = cat.get('examples', [])
+
+            if not examples:
+                continue
+
+            lines.append(f"## {cat_label}")
+            if cat_desc:
+                lines.append(f"*{cat_desc}*")
+            # For VN: add vn_instruction
+            if is_vn and cat_vn_instruction:
+                lines.append(f"\n**Hướng dẫn Tiếng Việt:** {cat_vn_instruction}")
+            lines.append("")
+
+            for ex in examples:
+                if max_examples is not None and total_injected >= max_examples:
+                    break
+
+                ex_id = ex.get('id', '')
+                source = ex.get('source', '')
+                context = ex.get('context', '')
+                text = ex.get('text', '')
+                techniques = ex.get('techniques', [])
+                why_premium = ex.get('why_premium', '')
+
+                if not text:
+                    continue
+
+                lines.append(f"### [{ex_id}] — {source}")
+                if context:
+                    lines.append(f"**Scene context:** {context}")
+                if techniques:
+                    lines.append(f"**Techniques:** {', '.join(techniques)}")
+                lines.append("\n```")
+                lines.append(text.strip())
+                lines.append("```")
+                if why_premium:
+                    lines.append(f"\n> **Why premium:** {why_premium}")
+                lines.append("")
+                total_injected += 1
+
+        lines.append(f"---\n*{total_injected} exemplars from {len(set(examples_by_mood.keys()))} scene-type categories.*\n")
+        lines.append("**Usage rule:** These are reference anchors. When translating similar scenes, "
+                     "match the prose register—never copy verbatim.\n")
+
+        return "\n".join(lines)
+
     def build_translation_prompt(
         self,
         source_text: str,
@@ -2875,6 +4153,7 @@ class PromptLoader:
         previous_context: Optional[str] = None,
         name_registry: Optional[Dict[str, str]] = None,
         jp_title: Optional[str] = None,
+        title_pipeline: Optional[str] = None,
     ) -> str:
         """
         Build the complete translation prompt for a chapter.
@@ -2882,6 +4161,7 @@ class PromptLoader:
         Args:
             source_text: Japanese source text to translate.
             chapter_title: Translated chapter title (EN or target language).
+                           For MINIMAL_NOUN philosophy, this is the short toc label (e.g., "Love").
             chapter_id: Stable pipeline identifier (e.g., chapter_02). Does NOT reflect
                         the book's internal chapter numbering — use jp_title/chapter_title for that.
             previous_context: Context from previous chapters.
@@ -2890,46 +4170,78 @@ class PromptLoader:
                       Injected alongside chapter_title so the model has zero ambiguity about
                       which chapter it is translating. Prevents thinking-budget waste on
                       chapter_id vs. JP heading reconciliation.
+            title_pipeline: Thematic working title for internal pipeline use (e.g., "A Firework Date
+                            and a First Kiss"). Provides scene/emotional framing for the translator
+                            when chapter_title is a minimal noun. Never used as EPUB heading.
 
         Returns:
             Complete prompt for translation.
         """
         parts = []
+        reference_docs: List[str] = []
+        doc_index = 1
+
+        def _append_reference_doc(source_name: str, content: str):
+            nonlocal doc_index
+            if not content:
+                return
+            reference_docs.extend([
+                f'  <document index="{doc_index}">',
+                f"    <source>{source_name}</source>",
+                "    <document_content>",
+                content,
+                "    </document_content>",
+                "  </document>",
+            ])
+            doc_index += 1
 
         # Continuity pack from previous volume
         if self._continuity_pack:
-            parts.append(self._continuity_pack)
-            parts.append("")
+            _append_reference_doc("continuity_pack", self._continuity_pack)
 
         # Previous chapter context
         if previous_context:
-            parts.append("<!-- CONTEXT FROM PREVIOUS CHAPTERS -->")
-            parts.append(previous_context)
-            parts.append("")
+            _append_reference_doc("previous_chapter_context", previous_context)
 
         # Character name registry
         if name_registry:
-            parts.append("<!-- CHARACTER NAME REGISTRY -->")
-            parts.append("Use these established name translations consistently:")
+            registry_lines = ["Use these established name translations consistently:"]
             for jp, translated in name_registry.items():
-                parts.append(f"  {jp} = {translated}")
+                registry_lines.append(f"  {jp} = {translated}")
+            _append_reference_doc("character_name_registry", "\n".join(registry_lines))
+
+        if reference_docs:
+            parts.append("<!-- LONG CONTEXT REFERENCE DOCUMENTS -->")
+            parts.append("<documents>")
+            parts.extend(reference_docs)
+            parts.append("</documents>")
             parts.append("")
 
         # Source text
         if chapter_id or jp_title or chapter_title:
-            parts.append("<!-- TARGET CHAPTER -->")
+            parts.append("<target_chapter>")
             if chapter_id:
                 parts.append(f"Pipeline ID: {chapter_id}  (internal only — do NOT use as heading)")
             if jp_title:
                 parts.append(f"JP title: {jp_title}")
             if chapter_title:
                 parts.append(f"EN title: {chapter_title}")
+            if title_pipeline and title_pipeline != chapter_title:
+                parts.append(f"Scene context (pipeline, do NOT use as heading): {title_pipeline}")
+            if self._title_motif_catchphrase_directive:
+                parts.append(
+                    "Title motif catchphrase policy: "
+                    f"{self._title_motif_catchphrase_directive}"
+                )
             parts.append("Use EN title (above) as the output heading. Ignore any chapter number embedded in the source filename or pipeline ID.")
+            parts.append("</target_chapter>")
             parts.append("")
         parts.append("<!-- SOURCE TEXT TO TRANSLATE -->")
+        parts.append("<source_text>")
         parts.append(f"# {chapter_title}")
         parts.append("")
         parts.append(source_text)
+        parts.append("</source_text>")
         parts.append("")
 
         # Language-specific instructions
@@ -2938,7 +4250,7 @@ class PromptLoader:
 
         if self.target_language == 'vn':
             # Vietnamese-specific instructions
-            parts.append(f"Translate ONLY the Japanese text inside the SOURCE TEXT TO TRANSLATE block to {lang_name}, following all guidelines in the system prompt.")
+            parts.append(f"Translate ONLY the Japanese text inside the <source_text> tags to {lang_name}, following all guidelines in the system prompt.")
             parts.append("CRITICAL SCOPE: Ignore any Japanese text that appears in cache/reference/continuity context.")
             parts.append("IMPORTANT: Preserve all [ILLUSTRATION: filename] tags exactly as they appear.")
             parts.append("IMPORTANT: Apply character archetypes and pronoun systems as defined in the prompt.")
@@ -2982,7 +4294,7 @@ class PromptLoader:
             parts.append("  ✓ If gaiji appears mid-dialogue, integrate naturally without breaking flow")
         else:
             # English instructions (default)
-            parts.append(f"Translate ONLY the Japanese text inside the SOURCE TEXT TO TRANSLATE block to {lang_name}, following all guidelines in the system prompt.")
+            parts.append(f"Translate ONLY the Japanese text inside the <source_text> tags to {lang_name}, following all guidelines in the system prompt.")
             parts.append("CRITICAL SCOPE: Ignore any Japanese text that appears in cache/reference/continuity context.")
             parts.append("IMPORTANT: Preserve all [ILLUSTRATION: filename] tags exactly as they appear.")
             parts.append("IMPORTANT: Use contractions naturally (target 80%+ contraction rate).")
@@ -3107,6 +4419,41 @@ class PromptLoader:
         lines.append("- Keep punctuation normalized (no JP quote brackets in final output).")
         lines.append("- Lock romanization on first appearance and stay consistent chapter-to-chapter.")
         lines.append("- Use ASCII Hepburn long vowels (ou/oo/ei/ii/uu), not macrons.")
+        return "\n".join(lines)
+
+    def _format_negative_signals_for_injection(self, negative_signals_data: Dict[str, Any]) -> str:
+        """Format negative_signals.json instruction_block for prompt injection.
+
+        The instruction_block.prompt_text array is the authoritative verbatim injection
+        text, built from a 40-chapter production audit with inline ICL pairs.
+        Falls back to a minimal header if instruction_block is absent.
+        """
+        instruction_block = negative_signals_data.get('instruction_block', {})
+        prompt_text_lines = instruction_block.get('prompt_text', [])
+        if prompt_text_lines:
+            return "\n".join(prompt_text_lines)
+
+        # Fallback: compact summary from raw pattern data
+        meta = negative_signals_data.get('_meta', {})
+        version = meta.get('version', '?')
+        total_patterns = meta.get('total_patterns', 0)
+        lines = [
+            f"# NEGATIVE SIGNAL ENFORCEMENT v{version}",
+            f"## Source: {meta.get('source', 'QC audit')}",
+            f"## Total patterns: {total_patterns} (CRITICAL + MAJOR)",
+            "",
+            "Avoid the following translation failure modes:",
+        ]
+        for severity in ['CRITICAL', 'MAJOR']:
+            section = negative_signals_data.get(severity, {})
+            categories = section.get('categories', {})
+            for cat_id, cat_data in categories.items():
+                patterns = cat_data.get('patterns', [])
+                for p in patterns[:2]:
+                    bad = p.get('bad', '')
+                    good = p.get('good', '')
+                    if bad and good:
+                        lines.append(f"- [{severity}] {p.get('id', cat_id)}: ❌ {bad} → ✅ {good}")
         return "\n".join(lines)
 
     def get_total_rag_size(self) -> int:

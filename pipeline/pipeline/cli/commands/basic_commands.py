@@ -33,7 +33,9 @@ def handle_config(args: Any, controller: Any) -> CommandResult:
         language=args.language if hasattr(args, 'language') else None,
         show_language=args.show_language if hasattr(args, 'show_language') else False,
         toggle_multimodal=args.toggle_multimodal if hasattr(args, 'toggle_multimodal') else False,
-        toggle_smart_chunking=args.toggle_smart_chunking if hasattr(args, 'toggle_smart_chunking') else False
+        toggle_smart_chunking=args.toggle_smart_chunking if hasattr(args, 'toggle_smart_chunking') else False,
+        toggle_proxy_key=args.toggle_proxy_key if hasattr(args, 'toggle_proxy_key') else False,
+        phase2_endpoint=args.phase2_endpoint if hasattr(args, 'phase2_endpoint') else None,
     )
     return CommandResult(exit_code=0)
 

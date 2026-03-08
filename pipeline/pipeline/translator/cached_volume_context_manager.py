@@ -20,6 +20,8 @@ import logging
 import hashlib
 from datetime import datetime, timedelta
 
+from pipeline.translator.config import is_volume_context_legacy_mode
+
 logger = logging.getLogger(__name__)
 
 
@@ -49,6 +51,16 @@ class CachedVolumeContextManager:
         """
         self.work_dir = work_dir
         self.gemini_client = gemini_client
+        self.enabled = is_volume_context_legacy_mode()
+        if not self.enabled:
+            logger.warning(
+                "[VOLUME-CACHE][LEGACY] CachedVolumeContextManager is deprecated and disabled "
+                "(translation.context.volume_context_legacy_mode=false)."
+            )
+            self.cache_metadata_path = work_dir / ".context" / "CACHE_METADATA.json"
+            self.cache_metadata = {}
+            self._cache_unavailable_reason = "legacy_mode_disabled"
+            return
         self.cache_metadata_path = work_dir / '.context' / 'CACHE_METADATA.json'
         self.cache_metadata = self._load_cache_metadata()
         self._cache_unavailable_reason: Optional[str] = None
@@ -116,6 +128,9 @@ class CachedVolumeContextManager:
         - Chapter 3+: Extend cache with new chapter context OR create new if invalidated
         """
         context_hash = self._compute_context_hash(volume_context_text)
+
+        if not self.enabled:
+            return None
 
         # Chapter 1: No caching needed
         if chapter_num == 1:
@@ -189,6 +204,9 @@ class CachedVolumeContextManager:
 
     def _supports_cache_creation(self) -> bool:
         """Check whether the attached Gemini client supports cache creation."""
+        if not self.enabled:
+            self._cache_unavailable_reason = "legacy_mode_disabled"
+            return False
         if self.gemini_client is None:
             self._cache_unavailable_reason = "gemini_client is not initialized"
             return False
@@ -260,6 +278,8 @@ class CachedVolumeContextManager:
 
     def get_cache_name(self) -> Optional[str]:
         """Get current active cache name if valid."""
+        if not self.enabled:
+            return None
         if self._is_cache_valid() and self.cache_metadata.get('volume_cache_name'):
             return self.cache_metadata['volume_cache_name']
         return None
@@ -277,6 +297,8 @@ class CachedVolumeContextManager:
             True if successful, False otherwise
         """
         cache_name = self.get_cache_name()
+        if not self.enabled:
+            return False
         if not cache_name:
             logger.warning("No active cache to extend")
             return False
@@ -318,6 +340,8 @@ class CachedVolumeContextManager:
 
     def invalidate_cache(self):
         """Manually invalidate cache (force recreation on next use)."""
+        if not self.enabled:
+            return
         self.cache_metadata['volume_cache_name'] = None
         self.cache_metadata['cached_context_hash'] = None
         self.cache_metadata['cache_expires_at'] = None

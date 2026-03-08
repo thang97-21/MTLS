@@ -1,7 +1,7 @@
 {
   "_meta": {
-    "version": "2.2",
-    "last_updated": "2026-02-15",
+    "version": "2.3",
+    "last_updated": "2026-03-04",
     "echo_detection": {
       "enabled": true,
       "proximity_window": 100
@@ -698,5 +698,88 @@
       ],
       "rule": "In 1st person POV narration, ALL passive constructions must be converted to active voice for immediacy and natural Vietnamese prose."
     }
+  },
+  "GRAMMAR_HALLUCINATION": {
+    "description": "Non-standard auxiliary verb agreement with no JP stammer/character basis. Discovered in QC eval 01c3 (\u30cd\u30c8\u30b2 Vol.1): 40 instances of AAVE-adjacent 'is you'/'does you' patterns injected by the model with zero JP or character grounding.",
+    "severity": "HIGH",
+    "source_case": {
+      "volume": "01c3",
+      "instances_found": 40,
+      "chapters_affected": "01-05",
+      "date_discovered": "2026-03-04",
+      "pattern_type": "AAVE-adjacent interrogative verb agreement failure",
+      "grammar_score_impact": "8.8 \u2192 8.5 post-fix"
+    },
+    "check_jp_source": true,
+    "exclusion_rule": "DO NOT flag if: (1) character is in a registered stammer/flustered state (tsundere_flustered, panic_collapse) AND (2) JP source has a fragmented/stammered equivalent. Intentional accent collapse is correct character voice (see GRAMMAR_REGRESSION_PROTOCOL in MEGA_CORE_TRANSLATION_ENGINE.md).",
+    "patterns": [
+      {
+        "id": "interrogative_is_you",
+        "regex": "\\b[Ww]h(?:at|y|ere|en|ich|o)\\s+is\\s+you\\b",
+        "display": "What/Why/Where is you",
+        "severity": "HIGH",
+        "fix": "Replace 'is you' \u2192 'are you': 'Why is you' \u2192 'Why are you'",
+        "check_jp_source": true,
+        "examples": {
+          "bad": [
+            "Why is you suddenly talking to me? (JP: \u306f\uff1f\u3000\u4f55\u3044\u304d\u306a\u308a\u8a71\u3057\u304b\u3051\u3066\u6765\u3066\u308b\u308f\u3051\uff1f \u2014 clean casual JP)",
+            "What is you doing here? (JP: \u306a\u3093\u3067\u3053\u3053\u306b\u3044\u308b\u306e \u2014 standard question)"
+          ],
+          "good": [
+            "Why are you suddenly talking to me? \u2714",
+            "Wh\u2014Why is *you* even here\u2014?! \u2714 (KEEP if JP is fragmented stammer + tsundere flustered state)"
+          ]
+        }
+      },
+      {
+        "id": "interrogative_does_you",
+        "regex": "\\b[Ww]h(?:at|y|ere|en|ich|o)\\s+does\\s+you\\b",
+        "display": "What/Why does you",
+        "severity": "HIGH",
+        "fix": "Replace 'does you' \u2192 'do you': 'What does you mean' \u2192 'What do you mean'",
+        "check_jp_source": true,
+        "examples": {
+          "bad": [
+            "What does you MEAN, 'what is'? (JP: \u4f55\u304c\u3063\u3066\u4f55\u304c\u3088\uff1f \u2014 standard casual)"
+          ],
+          "good": [
+            "What do you MEAN, 'what is'? \u2714"
+          ]
+        }
+      },
+      {
+        "id": "interrogative_how_is_you",
+        "regex": "\\b[Hh]ow\\s+is\\s+you\\b",
+        "display": "How is you",
+        "severity": "HIGH",
+        "fix": "Replace 'is you' \u2192 'are you': 'How is you' \u2192 'How are you'",
+        "check_jp_source": true
+      },
+      {
+        "id": "interrogative_where_is_you",
+        "regex": "\\b[Ww]here\\s+is\\s+you\\b",
+        "display": "Where is you",
+        "severity": "HIGH",
+        "fix": "Replace 'is you' \u2192 'are you'",
+        "check_jp_source": true
+      },
+      {
+        "id": "interrogative_who_does_you",
+        "regex": "\\b[Ww]ho\\s+does\\s+you\\b",
+        "display": "Who does you",
+        "severity": "HIGH",
+        "fix": "Replace 'does you' \u2192 'do you'",
+        "check_jp_source": true
+      }
+    ],
+    "auto_fix_regex_map": {
+      "(?i)(what|why|how|where|when|which)\\s+is\\s+you": "$1 are you",
+      "(?i)(what|why|how|where|when|which|who)\\s+does\\s+you": "$1 do you"
+    },
+    "case_variant_note": "Case variants must be preserved: 'WHY IS YOU' \u2192 'WHY ARE YOU'. Do NOT lowercase the sentence-start.",
+    "legitimate_constructions": [
+      "'is you' as predicate: 'The bigger problem is you getting absorbed' \u2014 grammatically correct, do NOT flag",
+      "'is you' as identity: 'The question is you or him' \u2014 predicate nominative, do NOT flag"
+    ]
   }
 }

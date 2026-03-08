@@ -197,11 +197,6 @@ def start_translation_flow(
                 checked=config.caching_enabled,
             ),
             questionary.Choice(
-                "Auto-inherit Sequels",
-                value="inherit",
-                checked=True,
-            ),
-            questionary.Choice(
                 "Force Re-translate (Overwrite)",
                 value="force",
                 checked=False,
@@ -248,7 +243,7 @@ def start_translation_flow(
             'epub_path': epub_path,
             'volume_id': volume_id,
             'caching': 'caching' in features,
-            'auto_inherit': 'inherit' in features,
+            'auto_inherit': False,
             'force': 'force' in features,
             'auto_build': 'auto_build' in features,
         }
@@ -323,6 +318,7 @@ def resume_volume_flow(
         choices=[
             questionary.Choice("Continue Translation (Phase 2)", value="translate"),
             questionary.Choice("Run Phase 1.55 (Rich Metadata Cache)", value="phase1.55"),
+            questionary.Choice("Run Phase 1.56 (Translator's Guidance Brief)", value="phase1.56"),
             questionary.Choice("Run Phase 1.6 (Multimodal Processor)", value="phase1.6"),
             questionary.Choice("Build EPUB (Phase 4)", value="build"),
             questionary.Choice("Run Full Pipeline", value="run"),
@@ -382,13 +378,14 @@ def select_chapters_flow(
             'failed': '[red]✗[/red]',
         }.get(status, '[dim]?[/dim]')
 
+        chapter_id = str(ch.get('id') or '').strip()
         filename = ch.get('filename', 'unknown')
         title = ch.get('title', '')[:30] or filename
-        label = f"{status_icon} {filename}: {title}"
+        label = f"{status_icon} {chapter_id or filename}: {title}"
 
         chapter_choices.append(questionary.Choice(
             label,
-            value=filename,
+            value=chapter_id or filename,
             checked=(status != 'completed'),
         ))
 

@@ -138,12 +138,12 @@ Learn by comparing pairs. Internalize the "feel" of natural Vietnamese.
 
 | ❌ Cold Dialogue | ✅ Natural Dialogue | 🎯 Context |
 |------------------|---------------------|-----------|
-| "Cam on." | "Cam on nha." | Friends (RTAS > 3.5) |
+| "Cam on." | "Cam on nha." | Friends (PAIR_2+ / JP signal: close friends or higher) |
 | "Toi hieu." | "Toi hieu roi." | Agreement |
 | "Di thoi." | "Di thoi nao." | Invitation |
 | "Dung." | "Dung vay." | Affirmation |
 
-**Rule:** Add appropriate particles based on RTAS and archetype.
+**Rule:** Add appropriate particles based on JP signal state / PAIR_ID and archetype.
 
 ---
 
@@ -428,7 +428,7 @@ Lo lang hien ro tren mat co ay. Toi dung yen khong biet phai lam gi. Nhung cau h
 - [ ] No "dieu" overuse
 
 ## Dialogue Check
-- [ ] Particles match RTAS score
+- [ ] Particles match relationship signal state / PAIR_ID
 - [ ] Register matches archetype
 - [ ] Interjections are natural Vietnamese
 - [ ] Stuttering patterns are Vietnamese-style
@@ -513,7 +513,7 @@ Ask: "Would a native Vietnamese speaker say this?"
 **Rule:** "Thật là" is filler. Replace with:
 - Particle "quá" after adjective
 - Stronger adjective choice
-- Slang intensifier (if RTAS/archetype allows)
+- Slang intensifier (if JP signal state / PAIR_ID and archetype allow)
 - Sentence fragment for emotional weight
 
 ---
@@ -578,7 +578,7 @@ Em cảm giác như thể... tất cả chỉ là giấc mơ.
 
 ## 8.6 Boldness Check Integration
 
-**For high-RTAS scenes (≥ 4.8), scan for these patterns BEFORE finalizing:**
+**For PAIR_3 (romantic peak) scenes, scan for these patterns BEFORE finalizing:**
 
 ```
 Pre-Output Scan:
@@ -589,12 +589,12 @@ Pre-Output Scan:
 - [ ] "Như thể" → Direct metaphor
 ```
 
-**Why This Matters at High RTAS:**
-Emotional peak scenes need MAXIMUM impact. These AI-isms blunt emotional force. At RTAS ≥ 4.8, every word must hit hard.
+**Why This Matters at PAIR_3 (Romantic Peak):**
+Emotional peak scenes need MAXIMUM impact. These AI-isms blunt emotional force. At PAIR_3 (romantic peak), every word must hit hard.
 
 **Example Transformation:**
 ```
-# Before (RTAS 4.9, confession scene - WEAK)
+# Before (PAIR_3, confession scene - WEAK)
 "Thật là khó nói. Có vẻ như cảm xúc của tôi... như thể một cách nào đó..."
 
 # After (BOLD)
@@ -629,7 +629,7 @@ Emotional peak scenes need MAXIMUM impact. These AI-isms blunt emotional force. 
 - [ ] **"Như thể"** converted to direct metaphor
 
 ### Dialogue Check
-- [ ] Particles match RTAS score
+- [ ] Particles match relationship signal state / PAIR_ID
 - [ ] Register matches archetype
 - [ ] Interjections are natural Vietnamese
 - [ ] Stuttering patterns are Vietnamese-style

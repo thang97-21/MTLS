@@ -36,6 +36,7 @@ class RubyEntry:
     confidence: float = 1.0  # Classification confidence
     name_type: str = "standard"  # standard, kirakira, fragmented, katakana
     notes: str = ""  # Additional notes (e.g., "unusual reading", "kira-kira name")
+    ruby_style: str = "narou"  # narou, interweave, kirakira - how ruby annotation is structured
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -115,8 +116,11 @@ class RubyExtractor:
         # Second pass: classify and filter
         for entry in all_ruby_entries:
             # Check for kira-kira name (kanji with katakana reading)
-            if self._is_kirakira_name(entry.kanji, entry.ruby):
+            is_kirakira = self._is_kirakira_name(entry.kanji, entry.ruby)
+
+            if is_kirakira:
                 entry.name_type = "kirakira"
+                entry.ruby_style = "kirakira"
                 entry.notes = f"Kira-kira name: {entry.kanji} read as {entry.ruby}"
                 entry.confidence = 0.98
 
@@ -127,10 +131,11 @@ class RubyExtractor:
                     self.kirakira_names.append(entry)
                 continue
 
-            # Check if it's a character name
+            # Check if it's a standard character name
             confidence = self._is_character_name(entry.kanji, entry.ruby, entry.context)
             if confidence >= 0.70:  # Lowered threshold for better recall
                 entry.confidence = confidence
+
                 # Deduplicate (same kanji+ruby combo)
                 key = (entry.kanji, entry.ruby)
                 if key not in self.seen_entries:
@@ -192,12 +197,19 @@ class RubyExtractor:
 
     def _track_fragment(self, entry: RubyEntry, source_file: str) -> None:
         """Track potential name fragments for later assembly."""
-        # Only track 2-3 char entries with hiragana ruby
-        if not (2 <= len(entry.kanji) <= 3):
+        # Track 1-3 char entries with hiragana ruby.
+        # Single-kanji entries are only kept when context-qualified to avoid noise.
+        if not (1 <= len(entry.kanji) <= 3):
             return
         if not self.HIRAGANA_PATTERN.fullmatch(entry.ruby):
             return
         if entry.kanji in self._common_terms:
+            return
+        if len(entry.kanji) == 1 and not self._is_context_qualified_single_kanji_name(
+            entry.kanji,
+            entry.ruby,
+            entry.context,
+        ):
             return
 
         # Use ruby as key for grouping (same reading = possibly related)
@@ -205,6 +217,42 @@ class RubyExtractor:
         self.fragmented_candidates[entry.ruby].parts.append((entry.kanji, entry.ruby))
         self.fragmented_candidates[entry.ruby].contexts.append(entry.context)
         self.fragmented_candidates[entry.ruby].source_files.add(source_file)
+
+    def _is_context_qualified_single_kanji_name(self, kanji: str, ruby: str, context: str) -> bool:
+        """Return True when a single-kanji ruby token is likely a given name."""
+        if not kanji or len(kanji) != 1:
+            return False
+        if kanji in self._common_terms:
+            return False
+        if not self.HIRAGANA_PATTERN.fullmatch(ruby or ""):
+            return False
+
+        honorific_patterns = [
+            f"{kanji}ちゃん",
+            f"{kanji}くん",
+            f"{kanji}さん",
+            f"{kanji}様",
+            f"{kanji}先輩",
+            f"{kanji}は",
+            f"{kanji}が",
+            f"{kanji}って",
+            f"{kanji}の読み方",
+        ]
+        if any(p in context for p in honorific_patterns):
+            return True
+
+        # Strict fallback: only quoted direct address forms.
+        dialogue_patterns = [
+            f"「{kanji}ちゃん",
+            f"「{kanji}くん",
+            f"「{kanji}さん",
+            f"『{kanji}ちゃん",
+            f"『{kanji}くん",
+            f"『{kanji}さん",
+            f"「{kanji}」",
+            f"『{kanji}』",
+        ]
+        return any(p in context for p in dialogue_patterns)
 
     def _extract_katakana_names(self, xhtml_content: str, source_file: str) -> List[RubyEntry]:
         """
@@ -309,45 +357,75 @@ class RubyExtractor:
         return katakana
 
     def _parse_ruby_tag(self, ruby_tag: Tag, source_file: str) -> Optional[RubyEntry]:
-        """Parse a single <ruby> tag."""
+        """
+        Parse a single <ruby> tag.
+
+        Handles 3 structural styles:
+          NAROU:      <ruby><rb>名前</rb><rt>なまえ</rt></ruby>
+                      → kanji="名前", ruby="なまえ", style="narou"
+
+          INTERWEAVE: <ruby>名<rt>な</rt>前<rt>まえ</rt></ruby>
+                      → kanji="名前", ruby="なまえ", style="interweave"
+                      (raw copy-paste from web novels mixes kanji and rt inline)
+
+          KIRA-KIRA:  <ruby><rb>愛梨</rb><rt>ラブリ</rt></ruby>
+                      → kanji="愛梨", ruby="ラブリ", style="kirakira"
+        """
         try:
             rb = ruby_tag.find('rb')
-            rt = ruby_tag.find('rt')
+            rt_tags = ruby_tag.find_all('rt')
 
-            if rb and rt:
+            if not rt_tags:
+                return None
+
+            # ── NAROU style: single <rb> + single <rt> ──
+            if rb and len(rt_tags) == 1:
                 kanji = rb.get_text(strip=True)
-                ruby = rt.get_text(strip=True)
+                ruby = rt_tags[0].get_text(strip=True)
+                ruby_style = "narou"
+
+            # ── INTERWEAVE style: kanji and <rt> nodes are siblings ──
+            # Detected when there are multiple <rt> tags OR no <rb> tag at all.
+            # Raw copy-paste from Narou/Kakuyomu produces:
+            #   <ruby>名<rt>な</rt>前<rt>まえ</rt></ruby>
+            # We reconstruct the full kanji and full reading by walking children in order.
             else:
-                rt_tags = ruby_tag.find_all('rt')
-
-                if not rt_tags:
-                    return None
-
                 kanji_parts = []
                 ruby_parts = []
+                rt_count = 0
 
                 for child in ruby_tag.children:
                     if child.name == 'rt':
                         ruby_parts.append(child.get_text(strip=True))
-                    elif child.name in ['span', 'rb'] or isinstance(child, str):
-                        text = child.get_text(strip=True) if hasattr(child, 'get_text') else str(child).strip()
+                        rt_count += 1
+                    elif child.name in ('span', 'rb'):
+                        text = child.get_text(strip=True)
+                        if text:
+                            kanji_parts.append(text)
+                    elif isinstance(child, str):
+                        text = child.strip()
                         if text:
                             kanji_parts.append(text)
 
                 kanji = ''.join(kanji_parts)
                 ruby = ''.join(ruby_parts)
 
+                # Classify style: interweave when kanji chars and rt tags alternate
+                # (multiple rt tags = interweave; single rt with no rb = also interweave)
+                ruby_style = "interweave" if rt_count > 1 else "narou"
+
             if not kanji or not ruby:
                 return None
 
-            context = self._extract_context(ruby_tag, window=80)  # Larger context window
+            context = self._extract_context(ruby_tag, window=80)
 
             return RubyEntry(
                 kanji=kanji,
                 ruby=ruby,
                 context=context,
                 source_file=source_file,
-                confidence=1.0
+                confidence=1.0,
+                ruby_style=ruby_style,
             )
 
         except Exception as e:
@@ -415,7 +493,7 @@ class RubyExtractor:
 
         # Exclude single character
         if len(kanji) == 1:
-            return 0.0
+            return 0.92 if self._is_context_qualified_single_kanji_name(kanji, ruby, context) else 0.0
 
         confidence = 0.0
 
@@ -529,8 +607,7 @@ class RubyExtractor:
         """
         assembled = []
 
-        # This is a simplified heuristic - could be enhanced with NLP
-        # For now, we just ensure fragments are captured individually
+        # Keep legacy fragment capture behavior first.
 
         for _ruby_key, fragment in self.fragmented_candidates.items():
             if len(fragment.parts) >= 2:
@@ -549,6 +626,75 @@ class RubyExtractor:
                         )
                         self.seen_entries.add(key)
                         assembled.append(entry)
+
+        # Conservative surname+given assembly:
+        # merge likely surname (2-4 kanji) + given (1 kanji) within same source file.
+        by_source: Dict[str, List[RubyEntry]] = defaultdict(list)
+        for entry in self.entries:
+            if not entry.source_file:
+                continue
+            if not self.HIRAGANA_PATTERN.fullmatch(entry.ruby or ""):
+                continue
+            if entry.name_type in {"kirakira", "katakana"}:
+                continue
+            by_source[entry.source_file].append(entry)
+
+        for source_file, source_entries in by_source.items():
+            surname_candidates = [
+                e for e in source_entries
+                if 2 <= len(e.kanji) <= 4 and e.confidence >= 0.9
+            ]
+            given_candidates = [
+                e for e in source_entries
+                if len(e.kanji) == 1 and self._is_context_qualified_single_kanji_name(e.kanji, e.ruby, e.context)
+            ]
+
+            for surname in surname_candidates:
+                for given in given_candidates:
+                    if surname.kanji == given.kanji:
+                        continue
+                    merged_kanji = f"{surname.kanji}{given.kanji}"
+                    merged_ruby = f"{surname.ruby}{given.ruby}"
+                    key = (merged_kanji, merged_ruby)
+                    if key in self.seen_entries:
+                        continue
+
+                    # Require balanced local evidence from both surname and given cues.
+                    surname_signal = any(
+                        marker in (surname.context or "") or marker in (given.context or "")
+                        for marker in (
+                            f"{surname.kanji}くん",
+                            f"{surname.kanji}さん",
+                            f"{surname.kanji}様",
+                            f"{surname.kanji}先輩",
+                        )
+                    )
+                    given_signal = any(
+                        marker in (given.context or "") or marker in (surname.context or "")
+                        for marker in (
+                            f"{given.kanji}ちゃん",
+                            f"{given.kanji}くん",
+                            f"{given.kanji}さん",
+                        )
+                    )
+                    has_explicit_full = (
+                        merged_kanji in (surname.context or "")
+                        or merged_kanji in (given.context or "")
+                    )
+                    if not has_explicit_full and not (surname_signal and given_signal):
+                        continue
+
+                    entry = RubyEntry(
+                        kanji=merged_kanji,
+                        ruby=merged_ruby,
+                        context=f"{surname.context} / {given.context}",
+                        source_file=source_file,
+                        confidence=0.86,
+                        name_type="fragmented",
+                        notes="Assembled surname+given from separate ruby hints",
+                    )
+                    self.seen_entries.add(key)
+                    assembled.append(entry)
 
         return assembled
 

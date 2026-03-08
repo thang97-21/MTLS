@@ -16,9 +16,12 @@ Integration with Librarian's Ruby Text Extraction:
 import json
 import hashlib
 import logging
+import re
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Any
+
+from pipeline.common.name_order_normalizer import normalize_payload_names
 
 logger = logging.getLogger(__name__)
 
@@ -115,9 +118,11 @@ class VisualCacheManager:
             
             # Ensure parent directory exists
             self.cache_path.parent.mkdir(parents=True, exist_ok=True)
+            payload = normalize_payload_names(self.cache, self.manifest)
             
             with open(self.cache_path, 'w', encoding='utf-8') as f:
-                json.dump(self.cache, f, indent=2, ensure_ascii=False)
+                json.dump(payload, f, indent=2, ensure_ascii=False)
+            self.cache = payload
             
             logger.info(f"[MULTIMODAL] ✓ Visual cache saved successfully: {self.cache_path}")
             logger.info(f"[MULTIMODAL] ✓ File size: {self.cache_path.stat().st_size} bytes")
@@ -150,6 +155,12 @@ class VisualCacheManager:
 
         return {}
 
+    def get_entry(self, illustration_id: str) -> Dict[str, Any]:
+        """Get full cache entry payload for an illustration ID."""
+        resolved_id = self._resolve_id(illustration_id)
+        entry = self.cache.get(resolved_id, {})
+        return entry if isinstance(entry, dict) else {}
+
     def get_spoiler_prevention(self, illustration_id: str) -> Dict[str, Any]:
         """Get spoiler prevention rules for a specific illustration."""
         resolved_id = self._resolve_id(illustration_id)
@@ -170,11 +181,34 @@ class VisualCacheManager:
         validation = entry.get("validation", {})
         return validation if isinstance(validation, dict) else {}
 
+    @staticmethod
+    def _entry_kind(illustration_id: str) -> str:
+        key = str(illustration_id or "").strip().lower()
+        if not key:
+            return "unknown"
+        if key == "cover" or key.startswith("cover-") or key.startswith("allcover"):
+            return "cover"
+        if key.startswith("kuchie") or re.match(r"^k\d{3}(?:[-_]\d+)*$", key):
+            return "kuchie"
+        return "inline"
+
     def get_cache_stats(self) -> Dict[str, int]:
         """Get summary statistics of cache contents."""
-        stats = {"total": 0, "cached": 0, "safety_blocked": 0, "manual_override": 0, "needs_review": 0}
-        for entry in self.cache.values():
+        stats = {
+            "total": 0,
+            "cached": 0,
+            "safety_blocked": 0,
+            "manual_override": 0,
+            "needs_review": 0,
+            "inline": 0,
+            "kuchie": 0,
+            "cover": 0,
+        }
+        for illustration_id, entry in self.cache.items():
             stats["total"] += 1
+            kind = self._entry_kind(illustration_id)
+            if kind in stats:
+                stats[kind] += 1
             if not isinstance(entry, dict):
                 continue
             status = entry.get("status", "other")
@@ -221,6 +255,9 @@ class VisualCacheManager:
     ) -> bool:
         """Determine if a cached analysis needs regeneration."""
         if not entry:
+            return True
+        # Never pin transient failures in cache; always allow retry on next run.
+        if entry.get("status") == "error":
             return True
         if not force_override and entry.get("status") == "manual_override":
             return False

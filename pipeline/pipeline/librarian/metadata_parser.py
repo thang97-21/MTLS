@@ -371,44 +371,30 @@ def find_previous_volume(series_title: str, current_volume_num: int, work_dir: P
 
 def load_previous_metadata(previous_volume_dir: Path) -> Dict[str, Any]:
     """
-    Load character_names and glossary from previous volume's metadata_en.json.
+    Deprecated legacy helper.
+
+    Direct predecessor metadata inheritance has been retired in favor of
+    Bible-driven continuity and Rich Metadata Cache enrichment.
     
     Args:
         previous_volume_dir: Path to previous volume directory
     
     Returns:
-        Dict with 'character_names' and 'glossary' keys
+        Empty metadata payload.
     """
-    import json
-    
-    metadata_path = previous_volume_dir / 'metadata_en.json'
-    
-    if not metadata_path.exists():
-        print(f"[WARN] Previous volume metadata not found: {metadata_path}")
-        return {'character_names': {}, 'glossary': {}}
-    
-    try:
-        with open(metadata_path, 'r', encoding='utf-8') as f:
-            metadata = json.load(f)
-        
-        character_names = metadata.get('character_names', {})
-        glossary = metadata.get('glossary', {})
-        
-        print(f"[INFO] Loaded from previous volume: {len(character_names)} names, {len(glossary)} glossary terms")
-        
-        return {
-            'character_names': character_names,
-            'glossary': glossary
-        }
-    except Exception as e:
-        print(f"[ERROR] Failed to load previous metadata: {e}")
-        return {'character_names': {}, 'glossary': {}}
+    print(
+        "[WARN] load_previous_metadata() is deprecated. "
+        "Previous-volume metadata_en.json inheritance is disabled."
+    )
+    return {'character_names': {}, 'glossary': {}}
 
 
 def merge_metadata(previous: Dict, current: Dict) -> Dict:
     """
-    Merge previous volume metadata with current volume metadata.
-    Current volume takes precedence for conflicts.
+    Deprecated legacy helper.
+
+    Returns current metadata unchanged because predecessor metadata merge is
+    no longer supported.
     
     Args:
         previous: Metadata from previous volume
@@ -417,21 +403,13 @@ def merge_metadata(previous: Dict, current: Dict) -> Dict:
     Returns:
         Merged metadata dict
     """
-    merged_names = {
-        **previous.get('character_names', {}),
-        **current.get('character_names', {})
-    }
-    
-    merged_glossary = {
-        **previous.get('glossary', {}),
-        **current.get('glossary', {})
-    }
-    
-    print(f"[INFO] Merged metadata: {len(merged_names)} names, {len(merged_glossary)} glossary terms")
-    
+    print(
+        "[WARN] merge_metadata() is deprecated. "
+        "Returning current metadata without predecessor merge."
+    )
     return {
-        'character_names': merged_names,
-        'glossary': merged_glossary
+        'character_names': dict(current.get('character_names', {})),
+        'glossary': dict(current.get('glossary', {}))
     }
 
 

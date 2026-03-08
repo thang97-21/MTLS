@@ -53,6 +53,11 @@ h1:first-child {
   page-break-before: avoid;
 }
 
+h1.post-header-title {
+  page-break-before: avoid;
+  margin-top: 1em;
+}
+
 /* Paragraphs */
 p {
   text-indent: 1.5em;
@@ -61,6 +66,23 @@ p {
 
 p.noindent, section > div > p:first-of-type {
   text-indent: 0;
+}
+
+/* Blockquotes and lyric presentation */
+p.blockquote {
+  text-indent: 0;
+  margin: 0.35em 1.25em;
+}
+
+p.lyric {
+  text-indent: 0;
+  margin: 0.05em 0;
+  text-align: left;
+}
+
+p.lyric-break {
+  text-indent: 0;
+  margin: 0.35em 0;
 }
 
 /* Scene Break - Force center alignment with maximum specificity */
@@ -83,6 +105,45 @@ em {
 
 strong {
   font-weight: bold;
+}
+
+/* Footnotes */
+a.noteref {
+  vertical-align: super;
+  font-size: 0.75em;
+  text-decoration: none;
+  line-height: 0;
+}
+
+section.footnotes {
+  margin-top: 1.5em;
+  padding-top: 0.75em;
+  border-top: 1px solid #cccccc;
+}
+
+section.footnotes h2 {
+  text-indent: 0;
+  font-size: 1em;
+  margin: 0 0 0.5em 0;
+}
+
+section.footnotes ol {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+section.footnotes li {
+  margin: 0.35em 0;
+}
+
+section.footnotes p {
+  text-indent: 0;
+  margin: 0;
+}
+
+a.footnote-backref {
+  text-decoration: none;
+  margin-left: 0.35em;
 }
 
 /* Cover */
@@ -283,6 +344,24 @@ class BuilderAgent:
         text = str(value).strip()
         return text if text else fallback
 
+    @staticmethod
+    def _is_placeholder_title(value: str) -> bool:
+        """Detect metadata placeholder markers that should not be surfaced in EPUB TOC."""
+        token = str(value or "").strip().lower()
+        if not token:
+            return True
+        placeholders = {
+            "[to be filled]",
+            "to be filled",
+            "[todo]",
+            "todo",
+            "[tbd]",
+            "tbd",
+            "[placeholder]",
+            "placeholder",
+        }
+        return token in placeholders
+
     def _resolve_book_title(
         self,
         manifest: dict,
@@ -321,7 +400,8 @@ class BuilderAgent:
         self,
         volume_id: str,
         output_filename: Optional[str] = None,
-        skip_qc_check: bool = False
+        skip_qc_check: bool = False,
+        include_header_illustrations: bool = False,
     ) -> BuildResult:
         """
         Build complete EPUB from translated volume.
@@ -330,6 +410,8 @@ class BuilderAgent:
             volume_id: Volume identifier (directory name in WORK/)
             output_filename: Optional custom output filename
             skip_qc_check: If True, build even if critics not complete
+            include_header_illustrations: If True, preserve chapter-opening
+                illustration placeholders in chapter XHTML instead of skipping them
 
         Returns:
             BuildResult with status and details
@@ -337,6 +419,10 @@ class BuilderAgent:
         print(f"\n{'='*60}")
         print(f"BUILDER AGENT - Building: {volume_id}")
         print(f"Target Language: {self.language_name} ({self.target_language.upper()})")
+        print(
+            "Header illustrations: "
+            + ("INCLUDE" if include_header_illustrations else "SKIP")
+        )
         print(f"{'='*60}\n")
 
         try:
@@ -445,7 +531,11 @@ class BuilderAgent:
             # Step 3: Convert chapters
             print("\n[STEP 3/8] Converting chapters to XHTML...")
             chapter_items, chapter_info = self._process_chapters(
-                manifest, work_dir, paths, actual_target_lang
+                manifest,
+                work_dir,
+                paths,
+                actual_target_lang,
+                include_header_illustrations=include_header_illustrations,
             )
             print(f"     Converted: {len(chapter_items)} chapters")
 
@@ -571,6 +661,113 @@ class BuilderAgent:
         with open(manifest_path, 'r', encoding='utf-8') as f:
             return json.load(f)
 
+    @staticmethod
+    def _extract_chapter_opening_illustration(md_content: str) -> Optional[str]:
+        """Return the first chapter-opening illustration placeholder, if present."""
+        from ..config import ILLUSTRATION_PLACEHOLDER_PATTERN
+
+        content_started = False
+        for raw_line in md_content.splitlines():
+            line = raw_line.strip()
+            if line.startswith('#'):
+                continue
+            if not line:
+                continue
+
+            is_illustration = bool(re.search(ILLUSTRATION_PLACEHOLDER_PATTERN, line))
+            if is_illustration and not content_started:
+                return line
+
+            if line != "<blank>":
+                content_started = True
+                break
+
+        return None
+
+    def _resolve_chapter_markdown_path_silent(
+        self,
+        chapter: dict,
+        translated_dir: Path,
+        jp_dir: Path,
+        target_language: str
+    ) -> Optional[Path]:
+        """Resolve translated markdown path without emitting builder logs."""
+        source_file = self._coerce_text(chapter.get('source_file', ''), '')
+        if not source_file:
+            return None
+
+        lang_file_key = f'{target_language}_file'
+        translated_filename_raw = chapter.get(lang_file_key) or chapter.get('translated_file', source_file)
+        translated_filename = self._coerce_text(translated_filename_raw, source_file)
+        translated_file = translated_dir / translated_filename
+        jp_file = jp_dir / source_file
+
+        if translated_file.exists():
+            return translated_file
+        if jp_file.exists():
+            return jp_file
+
+        mapped_id = self._map_filename_to_chapter_id(source_file)
+        if mapped_id != source_file:
+            translated_file_mapped = translated_dir / f"{mapped_id}.md"
+            if translated_file_mapped.exists():
+                return translated_file_mapped
+
+        return None
+
+    def detect_header_illustrations(self, volume_id: str) -> List[Dict[str, str]]:
+        """
+        Detect chapter-opening illustration placeholders for a volume.
+
+        Returns:
+            List of dicts with chapter/file/placeholder metadata.
+        """
+        work_dir = self.work_base / volume_id
+        manifest = self._load_manifest(work_dir)
+
+        manifest_target_lang = manifest.get('pipeline_state', {}).get('translator', {}).get('target_language')
+        actual_target_lang = self._coerce_text(manifest_target_lang, self.target_language).lower()
+
+        chapters = manifest.get('chapters', [])
+        if not chapters and 'structure' in manifest:
+            chapters = manifest.get('structure', {}).get('chapters', [])
+
+        translated_dir = work_dir / actual_target_lang.upper()
+        jp_dir = work_dir / "JP"
+
+        detections: List[Dict[str, str]] = []
+        for index, chapter in enumerate(chapters, start=1):
+            md_path = self._resolve_chapter_markdown_path_silent(
+                chapter=chapter,
+                translated_dir=translated_dir,
+                jp_dir=jp_dir,
+                target_language=actual_target_lang,
+            )
+            if md_path is None or not md_path.exists():
+                continue
+
+            try:
+                placeholder = self._extract_chapter_opening_illustration(
+                    md_path.read_text(encoding='utf-8')
+                )
+            except Exception:
+                continue
+
+            if not placeholder:
+                continue
+
+            chapter_id = self._coerce_text(
+                chapter.get('id', f'chapter_{index:02d}'),
+                f'chapter_{index:02d}',
+            )
+            detections.append({
+                "chapter_id": chapter_id,
+                "file": md_path.name,
+                "placeholder": placeholder,
+            })
+
+        return detections
+
     def _validate_pipeline_state(self, manifest: dict) -> None:
         """Validate that previous pipeline stages are complete."""
         state = manifest.get('pipeline_state', {})
@@ -630,7 +827,8 @@ class BuilderAgent:
         manifest: dict,
         work_dir: Path,
         paths: EPUBPaths,
-        target_language: str
+        target_language: str,
+        include_header_illustrations: bool = False,
     ) -> tuple:
         """Convert all translated markdown chapters to XHTML."""
         # Support both v3.0 and v3.5 manifest schemas
@@ -660,6 +858,16 @@ class BuilderAgent:
         translated_dir = work_dir / target_language.upper()
         jp_dir = work_dir / "JP"  # Fallback if translated dir not available
 
+        # Optional richer chapter metadata map (metadata_en.chapters.*) for
+        # volumes where chapter-level title_en was omitted from manifest.chapters.
+        translated_meta_chapters: Dict[str, Dict[str, Any]] = {}
+        if isinstance(metadata_translated, dict):
+            raw_meta_chapters = metadata_translated.get("chapters", {})
+            if isinstance(raw_meta_chapters, dict):
+                for meta_id, meta_entry in raw_meta_chapters.items():
+                    if isinstance(meta_entry, dict):
+                        translated_meta_chapters[str(meta_id).strip()] = meta_entry
+
         manifest_items = []
         chapter_info = []  # For navigation
 
@@ -688,10 +896,19 @@ class BuilderAgent:
 
             # Prioritize language-specific chapter title
             chapter_title_key = f'title_{target_language}'
+            chapter_meta = translated_meta_chapters.get(chapter_id, {})
+            metadata_title = self._coerce_text(
+                chapter_meta.get(chapter_title_key)
+                or chapter_meta.get('title_english')
+                or chapter_meta.get('title_en')
+                or chapter_meta.get('title'),
+                '',
+            )
             raw_title = (
                 primary.get(chapter_title_key)
                 or primary.get('title_english')
                 or primary.get('title_en')
+                or (metadata_title if not self._is_placeholder_title(metadata_title) else '')
                 or primary.get('title')
                 or f'Chapter {i+1}'
             )
@@ -720,10 +937,58 @@ class BuilderAgent:
                 continue
 
             md_content = '\n\n'.join(chunk for chunk in merged_markdown_chunks if chunk)
+            header_illustration_active = (
+                include_header_illustrations
+                and bool(self._extract_chapter_opening_illustration(md_content))
+            )
 
-            # Convert to XHTML paragraphs
-            paragraphs = self._markdown_to_paragraphs(md_content)
+            # Extract header illustration for separate page generation
+            header_illustration_placeholder = None
+            if header_illustration_active:
+                header_illustration_placeholder = self._extract_chapter_opening_illustration(md_content)
+                # Remove from markdown content so H1 stays in chapter xhtml
+                if header_illustration_placeholder:
+                    md_content_lines = md_content.split('\n')
+                    md_content = '\n'.join(
+                        line for line in md_content_lines
+                        if header_illustration_placeholder.strip() not in line
+                    )
+
+            # Convert to XHTML paragraphs (header illustration already removed from md_content)
+            paragraphs = self._markdown_to_paragraphs(
+                md_content,
+                include_header_illustrations=False,  # Already extracted
+            )
             xhtml_content = MarkdownToXHTML.convert_to_xhtml_string(paragraphs)
+
+            # Generate separate decorated header xhtml BEFORE chapter xhtml if enabled
+            if header_illustration_active and header_illustration_placeholder:
+                # Extract image filename from placeholder: [ILLUSTRATION: pxxx.jpg]
+                from ..config import ILLUSTRATION_PLACEHOLDER_PATTERN
+                match = re.search(ILLUSTRATION_PLACEHOLDER_PATTERN, header_illustration_placeholder)
+                if match:
+                    header_image_file = match.group(1).strip().strip('"')
+                    header_xhtml_filename = f"chapter{i+1:03d}-header.xhtml"
+                    header_xhtml_path = paths.text_dir / header_xhtml_filename
+
+                    # Use StructureBuilder to create the header page
+                    header_id = f"chapter-{i+1:03d}-header"
+                    StructureBuilder.create_image_page_xhtml(
+                        header_xhtml_path,
+                        header_image_file,
+                        header_id,
+                        title,
+                        lang_code,
+                        "header-illustration"
+                    )
+
+                    # Add to manifest BEFORE the chapter
+                    manifest_items.append(ManifestItem(
+                        id=header_id,
+                        href=f"Text/{header_xhtml_filename}",
+                        media_type="application/xhtml+xml"
+                    ))
+                    print(f"     [OK] Generated decorated header: {header_xhtml_filename}")
 
             # Build XHTML
             xhtml_filename = f"chapter{i+1:03d}.xhtml"
@@ -740,7 +1005,10 @@ class BuilderAgent:
                 chapter_title=chapter_title_for_xhtml,
                 chapter_id=chapter_id,
                 lang_code=lang_code,
-                book_title=book_title
+                book_title=book_title,
+                place_title_after_leading_illustration=(
+                    header_illustration_active and bool(chapter_title_for_xhtml)
+                ),
             )
             xhtml_path.write_text(xhtml, encoding='utf-8')
 
@@ -753,12 +1021,19 @@ class BuilderAgent:
 
             # Track for navigation (skip pre-TOC content like cover pages)
             if not primary.get('is_pre_toc_content', False):
-                chapter_info.append({
+                chapter_entry = {
                     'id': chapter_id,
                     'title': title,
                     'xhtml_filename': xhtml_filename,
                     'href': f"Text/{xhtml_filename}",
-                })
+                }
+                # Add header illustration ID if present (for spine ordering)
+                if header_illustration_active and header_illustration_placeholder:
+                    from ..config import ILLUSTRATION_PLACEHOLDER_PATTERN
+                    match = re.search(ILLUSTRATION_PLACEHOLDER_PATTERN, header_illustration_placeholder)
+                    if match:
+                        chapter_entry['header_id'] = f"chapter-{i+1:03d}-header"
+                chapter_info.append(chapter_entry)
 
             if len(batch) > 1:
                 merged_count = len([f for f in merged_source_files if f])
@@ -1026,7 +1301,11 @@ class BuilderAgent:
 
         return inspection
 
-    def _markdown_to_paragraphs(self, md_content: str) -> List[str]:
+    def _markdown_to_paragraphs(
+        self,
+        md_content: str,
+        include_header_illustrations: bool = False,
+    ) -> List[str]:
         """Convert markdown content to list of paragraphs."""
         from ..config import ILLUSTRATION_PLACEHOLDER_PATTERN
         
@@ -1060,9 +1339,12 @@ class BuilderAgent:
             is_illustration = bool(re.search(ILLUSTRATION_PLACEHOLDER_PATTERN, line))
             
             if is_illustration and not content_started:
-                # Skip chapter-opening illustrations (stylized titles with Japanese text)
-                print(f"     [SKIP] Chapter-opening illustration: {line}")
-                continue
+                if include_header_illustrations:
+                    print(f"     [KEEP] Chapter-opening illustration: {line}")
+                else:
+                    # Skip chapter-opening illustrations (stylized titles with Japanese text)
+                    print(f"     [SKIP] Chapter-opening illustration: {line}")
+                    continue
             
             # Mark that we've seen actual content (not just blanks)
             if not content_started and line != "<blank>":
@@ -1134,7 +1416,21 @@ class BuilderAgent:
         Returns:
             List of kuchi-e image filenames (reversed for RTL→LTR conversions)
         """
-        kuchie_list = assets.get('kuchie', [])
+        def _as_file_list(values: Any) -> List[str]:
+            files: List[str] = []
+            if not isinstance(values, list):
+                return files
+            for item in values:
+                if isinstance(item, dict):
+                    candidate = item.get('file') or Path(item.get('image_path', '')).name
+                else:
+                    candidate = str(item) if item is not None else ''
+                candidate = self._coerce_text(candidate, '')
+                if candidate:
+                    files.append(candidate)
+            return files
+
+        kuchie_list = _as_file_list(assets.get('kuchie', []))
         
         # v3.7 schema: check structure.illustrations for frontmatter kuchie (exclude cover)
         if not kuchie_list and structure:
@@ -1146,37 +1442,51 @@ class BuilderAgent:
                 and ill.get('id', '').lower() != 'cover'  # Exclude cover image
             ]
 
-        # Handle new format: list of dicts with metadata
-        # Schema v3.5 has: {"file": "kuchie-001.jpg", "original": "...", "image_path": "..."}
-        # Legacy manifests might have only "image_path" - use that as fallback
-        if kuchie_list and isinstance(kuchie_list[0], dict):
-            # Extract 'file' field from each metadata dict (preferred)
-            # Fallback to 'image_path' basename for legacy manifests
-            # Already in correct spine order (1→N)
-            kuchie_list = [
-                k.get('file') or Path(k.get('image_path', '')).name
-                for k in kuchie_list
-            ]
-            # Filter out empty strings
-            kuchie_list = [k for k in kuchie_list if k]
-
         if not kuchie_list:
             # Fallback: detect from illustrations with naming patterns
-            kuchie_patterns = [r'kuchie.*\.jpg', r'frontis.*\.jpg', r'color.*\.jpg']
+            kuchie_patterns = [
+                r'^kuchie[-_].*\.jpe?g$',
+                r'^k\d{3}(?:[-_]\d{3})?\.jpe?g$',
+                r'^p00[1-9](?:[-_]p?00[1-9])?\.jpe?g$',
+                r'^frontis.*\.jpe?g$',
+                r'^color.*\.jpe?g$',
+            ]
             kuchie_images = []
             for illust in assets.get('illustrations', []):
+                filename = self._coerce_text(
+                    illust.get('file') if isinstance(illust, dict) else illust,
+                    '',
+                )
+                if not filename:
+                    continue
                 for pattern in kuchie_patterns:
-                    if re.match(pattern, illust, re.IGNORECASE):
-                        kuchie_images.append(illust)
+                    if re.match(pattern, filename, re.IGNORECASE):
+                        kuchie_images.append(filename)
                         break
-            kuchie_list = sorted(kuchie_images)
+            kuchie_list = kuchie_images
 
         # Second fallback: Check chapters array for kuchie entry (schema v3.6+)
         if not kuchie_list and manifest:
             for chapter in manifest.get('chapters', []):
                 if chapter.get('id') == 'kuchie':
-                    kuchie_list = chapter.get('illustrations', [])
+                    kuchie_list = _as_file_list(chapter.get('illustrations', []))
                     break
+
+        # Filter allcover/cover noise and dedupe while preserving order.
+        filtered: List[str] = []
+        seen = set()
+        for name in kuchie_list:
+            lower = str(name).lower()
+            if not lower:
+                continue
+            if 'allcover' in lower:
+                continue
+            if lower == 'cover.jpg':
+                continue
+            if lower in seen:
+                continue
+            filtered.append(name)
+            seen.add(lower)
         
         # DON'T auto-reverse kuchie order - the librarian extraction already
         # provides them in correct visual/narrative order via sequential numbering.
@@ -1187,7 +1497,93 @@ class BuilderAgent:
         # because it double-reversed already-sorted kuchie-001.jpg through kuchie-NNN.jpg
         # filenames from the extraction phase.
         
-        return kuchie_list
+        return filtered
+
+    def _detect_illustration_images(
+        self,
+        manifest: Dict[str, Any],
+        work_dir: Path,
+        kuchie_list: Optional[List[str]] = None,
+    ) -> List[str]:
+        """
+        Resolve illustration filenames for both legacy and spine-based manifests.
+
+        Sources (in order):
+        1) assets.illustrations (strings or metadata dicts)
+        2) structure.illustrations (v3.7+) excluding frontmatter/cover
+        3) chapter illustration references
+        4) filesystem fallback (assets/illustrations and assets root)
+        """
+        assets = manifest.get('assets', {}) if isinstance(manifest, dict) else {}
+        structure = manifest.get('structure', {}) if isinstance(manifest, dict) else {}
+        chapters = manifest.get('chapters', []) if isinstance(manifest, dict) else []
+
+        allowed_ext = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'}
+        kuchie_set = {str(k).lower() for k in (kuchie_list or [])}
+
+        def _extract_name(item: Any) -> str:
+            if isinstance(item, dict):
+                candidate = item.get('file') or Path(item.get('image_path', '')).name
+            else:
+                candidate = item
+            return self._coerce_text(candidate, '')
+
+        ordered: List[str] = []
+        seen = set()
+
+        def _add(name: str):
+            lower = str(name).lower()
+            if not lower:
+                return
+            if Path(name).suffix.lower() not in allowed_ext:
+                return
+            if lower in seen:
+                return
+            if 'allcover' in lower:
+                return
+            if lower == 'cover.jpg':
+                return
+            if lower in kuchie_set:
+                return
+            seen.add(lower)
+            ordered.append(name)
+
+        # 1) assets.illustrations
+        for item in assets.get('illustrations', []) if isinstance(assets.get('illustrations', []), list) else []:
+            _add(_extract_name(item))
+
+        # 2) structure.illustrations (skip frontmatter/cover id)
+        if isinstance(structure.get('illustrations'), list):
+            for item in structure.get('illustrations', []):
+                if not isinstance(item, dict):
+                    _add(_extract_name(item))
+                    continue
+                if str(item.get('id', '')).lower() == 'cover':
+                    continue
+                if str(item.get('location', '')).lower() == 'frontmatter':
+                    continue
+                _add(_extract_name(item))
+
+        # 3) chapters[].illustrations
+        for chapter in chapters:
+            chapter_ills = chapter.get('illustrations', []) if isinstance(chapter, dict) else []
+            if not isinstance(chapter_ills, list):
+                continue
+            for item in chapter_ills:
+                _add(_extract_name(item))
+
+        # 4) filesystem fallback
+        assets_dir = work_dir / 'assets'
+        fallback_dirs = [assets_dir / 'illustrations', assets_dir]
+        for folder in fallback_dirs:
+            if not folder.exists() or not folder.is_dir():
+                continue
+            for path in sorted(folder.iterdir()):
+                if not path.is_file():
+                    continue
+                _add(path.name)
+
+        return ordered
 
     def _process_images(
         self,
@@ -1264,30 +1660,15 @@ class BuilderAgent:
         # Analyze kuchi-e dimensions for orientation detection
         kuchie_metadata = analyze_kuchie_images(assets_dir, kuchie_list)
 
-        # Illustrations - support both v3.0-3.5 (assets.illustrations) and v3.7 (structure.illustrations)
-        illust_list = assets.get('illustrations', [])
-        
-        # v3.7 schema: illustrations are in structure.illustrations array
-        if not illust_list and structure.get('illustrations'):
-            illust_list = [ill.get('file', '') for ill in structure.get('illustrations', []) if ill.get('file')]
-
-        # Handle new format: list of dicts with metadata (similar to kuchie handling)
-        if illust_list and isinstance(illust_list[0], dict):
-            # Extract 'file' field from each metadata dict
-            illust_list = [
-                ill.get('file') or Path(ill.get('image_path', '')).name
-                for ill in illust_list
-            ]
-            # Filter out empty strings
-            illust_list = [ill for ill in illust_list if ill]
-
-        # Fallback: Collect illustrations from chapters array (schema v3.6+)
-        if not illust_list:
-            illust_set = set()  # Use set to avoid duplicates
-            for chapter in manifest.get('chapters', []):
-                chapter_illusts = chapter.get('illustrations', [])
-                illust_set.update(chapter_illusts)
-            illust_list = sorted(illust_set)  # Sort for consistent ordering
+        # Illustrations - unified resolver supports:
+        # - legacy normalized names (illust-###)
+        # - spine-based originals (e.g., p015.jpg, P013.jpg, image_rsrc###, etc.)
+        # - metadata dict forms with file/image_path
+        illust_list = self._detect_illustration_images(
+            manifest=manifest,
+            work_dir=work_dir,
+            kuchie_list=kuchie_list,
+        )
 
         # Track copied illustrations to avoid duplicates
         copied_illustrations = set()
@@ -1310,62 +1691,6 @@ class BuilderAgent:
                     media_type=self._get_image_media_type(illust)
                 ))
                 copied_illustrations.add(illust)
-        
-        # Also copy any original-named illustrations from assets/illustrations directory
-        # This supports original EPUB filenames from various Japanese publishers
-        illustrations_dir = assets_dir / "illustrations"
-        if illustrations_dir.exists():
-            # Patterns for common original EPUB illustration filenames (from publisher_profiles/)
-            # Each pattern group covers specific publisher naming conventions:
-            original_patterns = [
-                # Page number formats (most common - KADOKAWA, Overlap, Brave Bunko, Kodansha)
-                r'^p\d+\.(?:jpg|jpeg|png|gif|webp)$',           # p015.jpg, p267.jpg (lowercase)
-                r'^P\d+[a-z]?\.(?:jpg|jpeg|png|gif|webp)$',     # P013.jpg, P020a.jpg (SB Creative uppercase with optional suffix)
-                
-                # Kindle/AZW conversion format
-                r'^image_rsrc\w+\.(?:jpg|jpeg|png|gif|webp)$',  # image_rsrc147.jpg, image_rsrc3ND.jpg
-                
-                # Manga page format
-                r'^m\d+\.(?:jpg|jpeg|png|gif|webp)$',           # m003.jpg, m047.jpg
-                
-                # Illustration prefix formats (KADOKAWA, Brave Bunko)
-                r'^i[-_]\d+\.(?:jpg|jpeg|png|gif|webp)$',       # i-001.jpg, i_023.jpg
-                
-                # Shueisha embed format
-                r'^embed\d+(?:_HD)?\.(?:jpg|jpeg|png|gif|webp)$',  # embed0006.jpg, embed0007_HD.jpg
-                
-                # Media Factory o_ prefix format
-                r'^o_p\d+\.(?:jpg|jpeg|png|gif|webp)$',         # o_p025.jpg, o_p039.jpg
-                
-                # Special formats
-                r'^photo\.(?:jpg|jpeg|png|gif|webp)$',          # photo.jpg (author photos, etc.)
-                r'^t\d+\.(?:jpg|jpeg|png|gif|webp)$',           # t002.jpg, t003.jpg (title pages)
-            ]
-            import re as regex_module
-            combined_pattern = '|'.join(f'({p})' for p in original_patterns)
-            
-            for img_path in sorted(illustrations_dir.iterdir()):
-                if not img_path.is_file():
-                    continue
-                filename = img_path.name
-                # Skip if already copied
-                if filename in copied_illustrations:
-                    continue
-                # Skip standard renamed format (illust-###.jpg) - already handled above
-                if filename.startswith('illust-'):
-                    continue
-                # Check if matches original filename patterns
-                if regex_module.match(combined_pattern, filename, regex_module.IGNORECASE):
-                    dest = paths.images_dir / filename
-                    shutil.copy2(img_path, dest)
-                    illust_counter += 1
-                    manifest_items.append(ManifestItem(
-                        id=f"illust-{illust_counter:03d}",
-                        href=f"Images/{filename}",
-                        media_type=self._get_image_media_type(filename)
-                    ))
-                    copied_illustrations.add(filename)
-                    print(f"     [OK] Copied original illustration: {filename}")
 
         # Additional images (titlepage, manga headers, etc.)
         additional_list = assets.get('additional', [])
@@ -1450,10 +1775,10 @@ class BuilderAgent:
             if isinstance(kuchie_assets[0], dict):
                 first_kuchie_original = kuchie_assets[0].get('original', '')
             
-            # If first kuchie's original is cover.jpg, use kuchie-001.jpg as the actual cover
+            # If first kuchie's original is cover.jpg, use first kuchie file as the actual cover
             if first_kuchie_original and 'cover' in first_kuchie_original.lower():
                 cover_image = first_kuchie
-                print(f"     [INFO] Using kuchie-001 as cover (spine-extracted from {first_kuchie_original})")
+                print(f"     [INFO] Using {first_kuchie} as cover (spine-extracted from {first_kuchie_original})")
         
         cover_path = paths.text_dir / "cover.xhtml"
         StructureBuilder.create_cover_xhtml(cover_path, title, language_code, cover_image)
@@ -1464,7 +1789,11 @@ class BuilderAgent:
         ))
 
         # 2. Kuchi-e pages (NEW!)
-        kuchie_list = self._detect_kuchie_images(assets, manifest)
+        kuchie_list = self._detect_kuchie_images(
+            assets,
+            manifest,
+            manifest.get('structure', {}),
+        )
         
         # Multi-act: only place Act 1 kuchie in front matter
         volume_structure = manifest.get('volume_structure', {})
@@ -1628,7 +1957,11 @@ class BuilderAgent:
         )
         
         # Get full kuchie list for global indexing
-        kuchie_list = self._detect_kuchie_images(assets, manifest)
+        kuchie_list = self._detect_kuchie_images(
+            assets,
+            manifest,
+            manifest.get('structure', {}),
+        )
         
         manifest_items = []
         
@@ -2040,7 +2373,7 @@ class BuilderAgent:
             current_act = 1
             for ch in chapter_info:
                 ch_act = chapter_act_map.get(ch['id'], current_act)
-                
+
                 # If we've crossed into a new act, insert separator + kuchie
                 if ch_act > current_act:
                     for new_act_num in range(current_act + 1, ch_act + 1):
@@ -2050,7 +2383,10 @@ class BuilderAgent:
                         for idx in act_kuchie_map.get(new_act_num, []):
                             spine_items.append(SpineItem(idref=f"kuchie-{idx+1:03d}"))
                     current_act = ch_act
-                
+
+                # Add header illustration page before chapter if present
+                if ch.get('header_id'):
+                    spine_items.append(SpineItem(idref=ch['header_id']))
                 spine_items.append(SpineItem(idref=ch['id']))
         else:
             # === SINGLE-VOLUME SPINE (original behavior) ===
@@ -2062,6 +2398,9 @@ class BuilderAgent:
 
             # Chapters
             for ch in chapter_info:
+                # Add header illustration page before chapter if present
+                if ch.get('header_id'):
+                    spine_items.append(SpineItem(idref=ch['header_id']))
                 spine_items.append(SpineItem(idref=ch['id']))
 
         # Generate OPF
@@ -2104,7 +2443,8 @@ def run_builder(
     output_filename: Optional[str] = None,
     work_base: Optional[Path] = None,
     output_base: Optional[Path] = None,
-    skip_qc_check: bool = False
+    skip_qc_check: bool = False,
+    include_header_illustrations: bool = False,
 ) -> BuildResult:
     """
     Main entry point for Builder agent.
@@ -2115,12 +2455,18 @@ def run_builder(
         work_base: Optional custom working directory
         output_base: Optional custom output directory
         skip_qc_check: Skip critics completion check
+        include_header_illustrations: Keep chapter-opening illustration placeholders
 
     Returns:
         BuildResult with status and details
     """
     agent = BuilderAgent(work_base, output_base)
-    return agent.build_epub(volume_id, output_filename, skip_qc_check)
+    return agent.build_epub(
+        volume_id,
+        output_filename,
+        skip_qc_check,
+        include_header_illustrations=include_header_illustrations,
+    )
 
 
 # CLI interface
@@ -2135,6 +2481,11 @@ if __name__ == "__main__":
     parser.add_argument("--work-dir", "-w", type=Path, help="Working directory")
     parser.add_argument("--output-dir", type=Path, help="Output directory")
     parser.add_argument("--skip-qc", action="store_true", help="Skip QC check")
+    parser.add_argument(
+        "--include-header-illustrations",
+        action="store_true",
+        help="Keep chapter-opening illustration placeholders in chapter XHTML",
+    )
 
     args = parser.parse_args()
 
@@ -2143,7 +2494,8 @@ if __name__ == "__main__":
         output_filename=args.output,
         work_base=args.work_dir,
         output_base=args.output_dir,
-        skip_qc_check=args.skip_qc
+        skip_qc_check=args.skip_qc,
+        include_header_illustrations=args.include_header_illustrations,
     )
 
     if result.success:

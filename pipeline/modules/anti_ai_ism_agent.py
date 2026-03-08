@@ -8,7 +8,7 @@ using a three-layer architecture:
 Layer 1 — Regex Scanner: 65+ patterns from anti_ai_ism_patterns.json
            (CRITICAL/MAJOR/MINOR/VN severity tiers with echo detection)
 
-Layer 2 — Vector Bad Prose DB: Embeds every output sentence via gemini-embedding-001,
+Layer 2 — Vector Bad Prose DB: Embeds every output sentence via config-driven embeddings,
            compares against a ChromaDB collection of "known bad" AI prose examples.
            Sentences with cosine similarity ≥ 0.80 to any bad example get flagged.
 
@@ -35,6 +35,7 @@ from typing import List, Dict, Optional, Tuple, Any
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
 from pipeline.common.genai_factory import create_genai_client, resolve_api_key
+from pipeline.common.embedding_client import EmbeddingClient
 
 # Add parent paths for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -243,13 +244,14 @@ class AntiAIismAgent:
         
         # ── Layer 2: Initialize Vector Bad Prose DB ──
         self.vector_store = None
-        self.gemini_client = None
+        self.embedding_client = None
         api_key = resolve_api_key(api_key=gemini_api_key, required=False)
         
-        if self.use_vector and CHROMADB_AVAILABLE and GEMINI_AVAILABLE and api_key:
+        if self.use_vector and CHROMADB_AVAILABLE:
             try:
-                self.gemini_client = create_genai_client(api_key=api_key)
-                self._embedding_model = "gemini-embedding-001"
+                self.embedding_client = EmbeddingClient()
+                self._embedding_provider = self.embedding_client.provider
+                self._embedding_model = self.embedding_client.model
                 
                 db_client = chromadb.PersistentClient(
                     path=persist_directory,
@@ -265,6 +267,9 @@ class AntiAIismAgent:
                     self._seed_bad_prose_db()
                 
                 logger.info(f"[HEAL] Layer 2: Bad Prose DB loaded ({self.vector_store.count()} vectors)")
+                logger.info(
+                    f"[HEAL] Layer 2 embeddings: provider={self._embedding_provider}, model={self._embedding_model}"
+                )
             except Exception as e:
                 logger.warning(f"[HEAL] Layer 2 init failed: {e}. Falling back to regex-only mode.")
                 self.vector_store = None
@@ -272,10 +277,8 @@ class AntiAIismAgent:
             missing = []
             if not CHROMADB_AVAILABLE:
                 missing.append("chromadb")
-            if not GEMINI_AVAILABLE:
-                missing.append("google-genai")
-            if not api_key:
-                missing.append("GOOGLE_API_KEY (or GEMINI_API_KEY)")
+            if not self.use_vector:
+                missing.append("vector mode disabled")
             logger.warning(f"[HEAL] Layer 2 disabled (missing: {', '.join(missing)})")
         
         # ── Layer 3: LLM client for psychic distance + healing ──
@@ -353,7 +356,7 @@ class AntiAIismAgent:
     
     def _seed_bad_prose_db(self):
         """Seed ChromaDB with bad prose examples + embeddings."""
-        if not self.vector_store or not self.gemini_client:
+        if not self.vector_store or not self.embedding_client:
             return
         
         logger.info(f"[HEAL] Seeding Bad Prose DB with {len(BAD_PROSE_SEEDS)} examples...")
@@ -372,11 +375,7 @@ class AntiAIismAgent:
         
         # Batch embed
         try:
-            result = self.gemini_client.models.embed_content(
-                model=self._embedding_model,
-                contents=texts
-            )
-            embeddings = [list(e.values) for e in result.embeddings]
+            embeddings = self.embedding_client.embed_texts(texts)
             
             self.vector_store.add(
                 ids=ids,
@@ -395,15 +394,11 @@ class AntiAIismAgent:
         Returns:
             (similarity, matched_text, fix_guidance) if ≥ threshold, else None
         """
-        if not self.vector_store or not self.gemini_client:
+        if not self.vector_store or not self.embedding_client:
             return None
         
         try:
-            result = self.gemini_client.models.embed_content(
-                model=self._embedding_model,
-                contents=sentence
-            )
-            query_embedding = list(result.embeddings[0].values)
+            query_embedding = self.embedding_client.embed_text(sentence)
             
             results = self.vector_store.query(
                 query_embeddings=[query_embedding],

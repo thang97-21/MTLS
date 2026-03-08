@@ -224,7 +224,15 @@ Example output:
             # Load image
             image_bytes = kuchie_path.read_bytes()
             mime_type = "image/jpeg" if kuchie_path.suffix.lower() in (".jpg", ".jpeg") else "image/png"
-            image_part = types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
+            
+            # Construct payload with high media_resolution for detailed character OCR
+            image_part = types.Part(
+                inline_data=types.Blob(
+                    mime_type=mime_type,
+                    data=image_bytes,
+                ),
+                media_resolution={"level": "media_resolution_high"}
+            )
             
             response = client.models.generate_content(
                 model="gemini-2.5-pro",

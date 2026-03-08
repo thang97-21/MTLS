@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Set, Tuple
 from dataclasses import dataclass, asdict
 from datetime import datetime
 
-from pipeline.common.gemini_client import GeminiClient
+from pipeline.common.phase_llm_router import PhaseLLMRouter
 from pipeline.translator.config import get_model_name
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,7 @@ class Relationship:
     relationship_type: str  # "romance_arc", "peer_friendship", "family", etc.
     dynamics: str
     stability: str  # "flat", "evolving", "binary_trigger"
-    intimacy: float = 0.0  # RTAS score for VN
+    intimacy: float = 0.0  # PAIR_ID signal strength for VN
     state: str = "unknown"
     pronoun_pair: Optional[str] = None  # For VN: "anh/em", "tớ/cậu", etc.
     confidence: float = 0.0
@@ -104,7 +104,11 @@ class SchemaExtractor:
         
         # Initialize Gemini client for semantic extraction
         # Use gemini-2.5-flash for fast schema extraction (Phase 1.5 optimization)
-        self.gemini_client = GeminiClient(model="gemini-2.5-flash", enable_caching=False)
+        self.gemini_client = PhaseLLMRouter().get_client(
+            "1.5",
+            model="gemini-2.5-flash",
+            enable_caching=False,
+        )
         
         # Load manifest for volume metadata
         manifest_path = work_dir / "manifest.json"

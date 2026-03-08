@@ -20,6 +20,12 @@ import unicodedata
 
 logger = logging.getLogger(__name__)
 
+try:
+    from pipeline.config import get_phase_model as _get_phase_model
+except ImportError:
+    def _get_phase_model(phase, fallback):
+        return fallback
+
 
 @dataclass
 class DetectedEntity:
@@ -66,7 +72,7 @@ class ReferenceValidator:
     - Media titles (ベル○ルク→Berserk)
     """
 
-    # Model configuration
+    # Fallback model — real value resolved from translation.phase_models.1_6 in config.yaml
     RESOLVE_MODEL = "gemini-3-flash-preview"
     RESOLVE_THINKING_LEVEL = "high"
 
@@ -108,8 +114,14 @@ class ReferenceValidator:
             enable_wikipedia: Whether to enable Wikipedia verification for high-stakes entities
         """
         if gemini_client is None:
-            from pipeline.common.gemini_client import GeminiClient
-            self.gemini_client = GeminiClient(model=self.RESOLVE_MODEL)
+            from pipeline.common.phase_llm_router import PhaseLLMRouter
+            # Resolve from config.yaml (translation.phase_models.1_6); keep class const as fallback
+            resolve_model = _get_phase_model("1.6", self.RESOLVE_MODEL)
+            self.gemini_client = PhaseLLMRouter().get_client(
+                "2.5",
+                model=resolve_model,
+                enable_caching=False,
+            )
 
             # Force high thinking level for deobfuscation
             thinking_cfg = dict(self.gemini_client.thinking_mode_config or {})

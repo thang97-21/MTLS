@@ -9,6 +9,7 @@
         "emphasis_texture",
         "romanization_standards",
         "scene_breaks",
+        "subtitle_formatting",
         "sound_effects",
         "poetry_verse",
         "dialogue_formatting",
@@ -324,6 +325,23 @@
                 }
             ]
         },
+        "subtitle_formatting": {
+            "description": "Formatting for recurring POV-shift subtitles",
+            "priority": "medium",
+            "patterns": [
+                {
+                    "id": "pov_subtitle_formatting",
+                    "rule": "Bold the entire subtitle and add an empty line before and after it",
+                    "context": "pov_shift_subs",
+                    "examples": [
+                        {
+                            "en": "\n\n**─── A Childhood Friend Wants to Hold Hands ───**\n\n",
+                            "vn": "\n\n**─── Cô Bạn Thanh Mai Trúc Mã Muốn Nắm Tay ───**\n\n"
+                        }
+                    ]
+                }
+            ]
+        },
         "sound_effects": {
             "description": "Integration strategies for Japanese onomatopoeia",
             "priority": "medium",
@@ -578,6 +596,12 @@
                 "aspect": "Scene Breaks",
                 "english": "***",
                 "vietnamese": "***",
+                "both": "✓"
+            },
+            {
+                "aspect": "POV Subtitles",
+                "english": "**Bold + Spacing**",
+                "vietnamese": "**Bold + Spacing**",
                 "both": "✓"
             },
             {

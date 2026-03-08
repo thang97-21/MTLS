@@ -6,9 +6,9 @@
 
 # 00_LOCALIZATION_PRIMER_EN
 
-## RTAS Scoring Logic
+## EPS Scoring Logic
 
-**Definition** – Relationship Tension & Affection Score (RTAS) measures intimacy on a 1.0‑5.0 scale.
+**Definition** – Emotional Proximity Score (EPS) measures intimacy on a 1.0‑5.0 scale.
 **Baseline** – 3.0
 **Modifiers** – Pronouns (+0.3‑+0.7), honorifics (‑0.8‑+0.5), particles (+0.2‑+0.4), contextual keywords (‑2.0‑+1.5), proxemics (‑0.5‑+1.2).
 **Formula** – `RTAS_FINAL = 3.0 + Σ(MODIFIERS)`
@@ -27,13 +27,13 @@
 - **Filler Words:** "Oh my", "Goodness", "Indeed", "Quite"
 - **Forbidden:** Slang, crude language, fragments, "like", "yeah"
 - **Punctuation:** Proper periods, minimal exclamations
-- **Address Style:** Full names, Mr./Ms., titles (even at RTAS 3.0+)
+- **Address Style:** Full names, Mr./Ms., titles (even at EPS [NEUTRAL]+)
 
 **Example Dialogue:**
 ```
-RTAS 2.0: "Good morning, Mr. Tanaka. I trust you slept well?"
-RTAS 3.5: "Good morning, Ryo. Did you sleep well?" (softens but stays formal)
-RTAS 4.5: "Morning, Ryo. You look well-rested." (warm but still proper)
+EPS [COOL]: "Good morning, Mr. Tanaka. I trust you slept well?"
+EPS [WARM]: "Good morning, Ryo. Did you sleep well?" (softens but stays formal)
+EPS [HOT]: "Morning, Ryo. You look well-rested." (warm but still proper)
 ```
 
 ---
@@ -48,13 +48,13 @@ RTAS 4.5: "Morning, Ryo. You look well-rested." (warm but still proper)
 - **Filler Words:** Rare; "Understood", "Affirmative" (if military context)
 - **Forbidden:** Rambling, emotional outbursts, casual slang
 - **Punctuation:** Periods dominate; rare exclamations
-- **Tone:** Neutral to formal regardless of RTAS (duty > emotion)
+- **Tone:** Neutral to formal regardless of EPS (duty > emotion)
 
 **Example Dialogue:**
 ```
-RTAS 2.0: "I will complete the mission. No delays."
-RTAS 3.5: "I'll handle it. You can count on me." (slight softening)
-RTAS 4.5: "Leave it to me. I won't let you down." (personal investment shows)
+EPS [COOL]: "I will complete the mission. No delays."
+EPS [WARM]: "I'll handle it. You can count on me." (slight softening)
+EPS [HOT]: "Leave it to me. I won't let you down." (personal investment shows)
 ```
 
 ---
@@ -75,9 +75,9 @@ RTAS 4.5: "Leave it to me. I won't let you down." (personal investment shows)
 
 **Example Dialogue:**
 ```
-RTAS 2.0: "Hi! Nice to meet you! This is gonna be so fun!"
-RTAS 3.5: "Hey! Wanna grab lunch? I know this awesome place!"
-RTAS 4.5: "There you are! I missed you! Let's go, let's go!"
+EPS [COOL]: "Hi! Nice to meet you! This is gonna be so fun!"
+EPS [WARM]: "Hey! Wanna grab lunch? I know this awesome place!"
+EPS [HOT]: "There you are! I missed you! Let's go, let's go!"
 ```
 
 ---
@@ -96,9 +96,9 @@ RTAS 4.5: "There you are! I missed you! Let's go, let's go!"
 
 **Example Dialogue:**
 ```
-RTAS 2.0: "Hey, cute outfit! Where'd you get it?"
-RTAS 3.5: "Babe, that looks so good on you! We need to go shopping together!"
-RTAS 4.5: "You're literally the best. No cap. Love you!"
+EPS [COOL]: "Hey, cute outfit! Where'd you get it?"
+EPS [WARM]: "Babe, that looks so good on you! We need to go shopping together!"
+EPS [HOT]: "You're literally the best. No cap. Love you!"
 ```
 
 ---
@@ -110,18 +110,18 @@ RTAS 4.5: "You're literally the best. No cap. Love you!"
 
 **Voice Markers:**
 - **Vocabulary:** Clinical, precise, neutral (fine, adequate, acceptable)
-- **Contractions:** Rare to moderate (varies by RTAS)
+- **Contractions:** Rare to moderate (varies by EPS)
 - **Sentence Structure:** Short, declarative, minimal elaboration
 - **Filler Words:** Almost none; "I see", "Understood"
 - **Forbidden:** Emotional language, exclamations, rambling
 - **Punctuation:** Periods, minimal variation
-- **Tone:** Flat until RTAS 4.0+, then subtle warmth emerges
+- **Tone:** Flat until EPS [WARM]+, then subtle warmth emerges
 
 **Example Dialogue:**
 ```
-RTAS 2.0: "I'm fine." (period, no elaboration)
-RTAS 3.5: "I'm alright. Thanks for asking." (acknowledgment shows care)
-RTAS 4.5: "I'm okay. Really. You don't need to worry." (vulnerability peek)
+EPS [COOL]: "I'm fine." (period, no elaboration)
+EPS [WARM]: "I'm alright. Thanks for asking." (acknowledgment shows care)
+EPS [HOT]: "I'm okay. Really. You don't need to worry." (vulnerability peek)
 ```
 
 ---
@@ -136,13 +136,13 @@ RTAS 4.5: "I'm okay. Really. You don't need to worry." (vulnerability peek)
 - **Filler Words:** "It's not like...", "I mean...", "Whatever"
 - **Contradiction:** Harsh words + hesitation markers (ellipsis, em-dashes)
 - **Punctuation:** Exclamations (defensive), ellipsis (soft moments)
-- **Tone Shift:** Sharp → hesitant as RTAS increases
+- **Tone Shift:** Sharp → hesitant as EPS increases
 
 **Example Dialogue:**
 ```
-RTAS 2.0: "Why would I care? Do whatever you want."
-RTAS 3.5: "I—It's not like I was worried or anything! I just... happened to be nearby."
-RTAS 4.5: "I... I was worried, okay? Don't make me say it twice."
+EPS [COOL]: "Why would I care? Do whatever you want."
+EPS [WARM]: "I—It's not like I was worried or anything! I just... happened to be nearby."
+EPS [HOT]: "I... I was worried, okay? Don't make me say it twice."
 ```
 
 ---
@@ -173,7 +173,7 @@ RTAS 4.5: "I... I was worried, okay? Don't make me say it twice."
 
 ### 2.0 WORLD-AWARENESS SYSTEM (PRIORITY RULE)
 
-**CRITICAL:** Honorific choice depends on **world setting** before RTAS calculation.
+**CRITICAL:** Honorific choice depends on **world setting** before EPS calculation.
 
 #### **SETTING DETECTION:**
 
@@ -210,16 +210,16 @@ START → Identify world setting
   ├─ Modern Japanese? → KEEP JAPANESE HONORIFICS (kun, chan, san, sama)
   └─ Mixed setting? → ADAPT BY CHARACTER ORIGIN
        ↓
-       Then apply RTAS tier rules (see Section 2.1)
+       Then apply EPS tier rules (see Section 2.1)
 ```
 
 ---
 
 ### 2.1 JAPANESE HONORIFIC CONVERSION RULES
 
-#### **BASE RULES BY RTAS TIER**
+#### **BASE RULES BY EPS TIER**
 
-| Honorific | RTAS < 2.0 | RTAS 2.0-3.5 | RTAS 3.5-5.0 | Special Cases |
+| Honorific | EPS [COLD] | EPS [COOL]-3.5 | EPS [WARM]-5.0 | Special Cases |
 |-----------|-----------|-------------|-------------|---------------|
 | **-san** | Mr./Ms. LastName | LastName (neutral) | FirstName | Drop for peers; keep for elder respect |
 | **-sama** | Lord/Lady/Master | Keep or Title | Keep if nobility context | "Master" for servant; "Lady" for noble |
@@ -242,20 +242,20 @@ STEP 0: Determine world setting (PRIORITY)
 
 STEP 1: Identify honorific type (-san/-sama/-kun/-chan/-senpai/-sensei)
 
-STEP 2: Calculate RTAS
-  → IF RTAS < 2.0: FORMAL path
-  → IF RTAS 2.0-3.5: NEUTRAL path
-  → IF RTAS 3.5+: CASUAL/INTIMATE path
+STEP 2: Calculate EPS
+  → IF EPS [COLD]: FORMAL path
+  → IF EPS [COOL]-3.5: NEUTRAL path
+  → IF EPS [WARM]+: CASUAL/INTIMATE path
 
 STEP 3: Check character archetype
   → Ojou-sama: Add +0.5 formality (keeps titles longer)
   → Gyaru: Subtract -0.5 formality (drops titles faster)
-  → Kuudere: Neutral (follows RTAS exactly)
+  → Kuudere: Neutral (follows EPS exactly)
 
 STEP 4: Check relationship context
-  → Elder/Teacher: Retain respect markers regardless of RTAS
-  → Peer/Friend: Follow RTAS strictly
-  → Romantic: Soften faster (first names at RTAS 2.5+)
+  → Elder/Teacher: Retain respect markers regardless of EPS
+  → Peer/Friend: Follow EPS strictly
+  → Romantic: Soften faster (first names at EPS [COOL]+)
 
 STEP 5: Apply conversion rule from table above
 
@@ -267,7 +267,7 @@ STEP 6: LOCK decision for scene (no mid-scene honorific changes)
 ### 2.3 SPECIAL CASES & EDGE HANDLING
 
 **Case 1: Multiple Honorifics in Same Scene**
-- **Consistency Rule:** If Character A uses "Mr. Tanaka" for NPC, Character B (same RTAS tier) should match
+- **Consistency Rule:** If Character A uses "Mr. Tanaka" for NPC, Character B (same EPS tier) should match
 - **Exception:** Character archetypes differ (Ojou-sama keeps formal; Gyaru drops immediately)
 
 **Case 2: Honorific Escalation/De-escalation**
@@ -289,9 +289,9 @@ STEP 6: LOCK decision for scene (no mid-scene honorific changes)
 
 **When world setting is non-Japanese (fantasy, isekai, Western), use these English honorific equivalents:**
 
-#### **ENGLISH HONORIFIC TABLE (RTAS-BASED)**
+#### **ENGLISH HONORIFIC TABLE (EPS-BASED)**
 
-| Context | RTAS < 2.0 | RTAS 2.0-3.5 | RTAS 3.5-5.0 |
+| Context | EPS [COLD] | EPS [COOL]-3.5 | EPS [WARM]-5.0 |
 |---------|-----------|-------------|-------------|
 | **Male peer/junior (-kun equivalent)** | Master LastName | LastName | FirstName |
 | **Female peer/junior (-chan equivalent)** | Miss FirstName | FirstName | FirstName/Nickname |
@@ -330,7 +330,7 @@ STEP 6: LOCK decision for scene (no mid-scene honorific changes)
 **Example 2: Isekai Adventure Party**
 - **Japanese Source:** 「リョウ君、大丈夫?」 (Female party member → Male peer)
 - **Translation:** "Ryo, are you alright?"
-- **Rationale:** -kun dropped in Western fantasy context (peers use first names at RTAS 3.0+)
+- **Rationale:** -kun dropped in Western fantasy context (peers use first names at EPS [NEUTRAL]+)
 
 **Example 3: Knight Addressing Commander**
 - **Japanese Source:** 「隊長殿、敵が来ました!」
@@ -367,289 +367,6 @@ Reason: Japanese syllable constraints (no consonant clusters, always vowel-endin
 ---
 
 #### **THE SOLUTION: MULTI-STAGE LINGUISTIC FINGERPRINTING**
-
-### **STAGE 1: PHONOLOGICAL ANALYSIS**
-
-**Objective:** Reverse-engineer the original intended name from katakana constraints.
-
-#### **1.1 MORA DECOMPOSITION**
-
-Break katakana into mora units and identify phonological patterns:
-
-```
-INPUT: ベレト (Be-re-to)
-
-MORA ANALYSIS:
-  ベ (be) = /be/
-  レ (re) = /re/ or /le/ (R/L ambiguity in Japanese)
-  ト (to) = /to/ or /t/ (final vowel may be epenthetic)
-
-PHONOLOGICAL CLUES:
-  - 3 mora = likely 2-syllable source (Ber-et, Bel-et)
-  - Final -to = probably epenthetic vowel (original ends in -t)
-  - Middle -re- = could be /r/ or /l/ sound
-```
-
-#### **1.2 EPENTHETIC VOWEL DETECTION**
-
-Identify which vowels are Japanese additions vs. original:
-
-| Pattern | Likely Epenthetic | Original Form | Example |
-|---------|-------------------|---------------|---------|
-| -to | Yes (final consonant) | -t | ベレト → Beret |
-| -do | Yes (final consonant) | -d | リチャード → Richard |
-| -su | Yes (final consonant) | -s | クリス → Chris |
-| -ru | Maybe (could be -r or -l) | -r/-l/-rl | カール → Carl/Karl |
-| -u (after consonant) | Yes (cluster breaker) | (remove) | アルト → Art |
-| -i (after consonant) | Yes (cluster breaker) | (remove) | スミス → Smith |
-
-**Epenthesis Removal Algorithm:**
-```
-IF final mora is -to/-do/-su/-ku:
-  → Remove final vowel
-  → Restore consonant ending
-
-IF middle vowel breaks cluster:
-  → Identify likely cluster (st, ch, th, ck, etc.)
-  → Restore cluster
-
-IF long vowel (double mora):
-  → Check if original has long vowel or diphthong
-  → Preserve if etymologically correct
-```
-
----
-
-### **STAGE 2: MORPHEME IDENTIFICATION**
-
-**Objective:** Identify name components and their linguistic origins.
-
-#### **2.1 COMMON NAME MORPHEMES BY LANGUAGE**
-
-**English Name Elements:**
-| Morpheme | Meaning | Examples | Katakana Patterns |
-|----------|---------|----------|-------------------|
-| -eth | Old English suffix | Kenneth, Gareth, Bereth | -エス, -エト |
-| -ric | "Ruler" | Aldric, Eric, Frederick | -リック, -リク |
-| -hart | "Strong/brave" | Reinhart, Lockhart | -ハート, -ハルト |
-| -wyn | "Friend/blessed" | Eowyn, Gwyn | -ウィン, -ウイン |
-| -ton | "Town" | Ashton, Clayton | -トン |
-
-**German Name Elements:**
-| Morpheme | Meaning | Examples | Katakana Patterns |
-|----------|---------|----------|-------------------|
-| -hardt | "Hard/strong" | Reinhardt, Bernhardt | -ハルト, -ハート |
-| -helm | "Helmet/protection" | Wilhelm, Anselm | -ヘルム |
-| -fried | "Peace" | Siegfried, Gottfried | -フリート, -フリード |
-| -rich | "Ruler/king" | Heinrich, Dietrich | -リヒ, -リッヒ |
-
-**French Name Elements:**
-| Morpheme | Meaning | Examples | Katakana Patterns |
-|----------|---------|----------|-------------------|
-| -elle | Feminine diminutive | Isabelle, Gabrielle | -エル, -エール |
-| -ette | Feminine diminutive | Juliette, Colette | -エット |
-| -ard | "Hardy/brave" | Bernard, Gerard | -アール, -アルド |
-| -ier | Occupational suffix | Olivier, Xavier | -イエ, -イエール |
-
-**Latin Name Elements:**
-| Morpheme | Meaning | Examples | Katakana Patterns |
-|----------|---------|----------|-------------------|
-| -ius | Roman masculine | Julius, Aurelius, Artorius | -ウス, -イウス |
-| -ia | Roman feminine | Julia, Cecilia, Lucia | -ア, -イア |
-| -us | Latin ending | Marcus, Brutus | -ウス |
-
-#### **2.2 MORPHEME MATCHING ALGORITHM**
-
-```
-INPUT: Katakana name
-
-STEP 1: Extract potential morphemes
-  → Identify suffix patterns (last 2-3 mora)
-  → Identify root patterns (first 3-5 mora)
-
-STEP 2: Match against morpheme database
-  → Score each language's morpheme match
-  → English: +1 for each English morpheme
-  → German: +1 for each German morpheme
-  → French: +1 for each French morpheme
-  → Latin: +1 for each Latin morpheme
-
-STEP 3: Determine dominant language
-  → Highest score = primary linguistic bias
-  → Ties = use world setting as tiebreaker
-
-EXAMPLE:
-  ベレト (Be-re-to)
-  → Suffix: -to (no clear morpheme match)
-  → Root: Ber- (Germanic root "bear")
-  → Possible matches:
-      - English -eth ending: Bereth ✓
-      - French silent -t: Beret ✓
-      - German -t: Bert ✓
-  → World setting: Fantasy (English-bias default)
-  → RESULT: "Bereth" (English bias applied)
-```
-
----
-
-### **STAGE 3: STATISTICAL PATTERN MATCHING**
-
-**Objective:** Use frequency analysis of real-world names to guide transcription.
-
-#### **3.1 PHONEME FREQUENCY BY LANGUAGE**
-
-**English Name Phoneme Frequencies:**
-```
-High Frequency:
-  - Consonant clusters: th, ch, sh, st, ck, ng
-  - Endings: -er, -on, -an, -en, -eth, -ith
-  - Vowel patterns: Silent e, diphthongs (ay, ey, ow)
-
-Low Frequency:
-  - Vowel endings (except -a, -ah)
-  - Consonant + o/u endings
-  - Triple consonants
-```
-
-**German Name Phoneme Frequencies:**
-```
-High Frequency:
-  - Consonant clusters: sch, pf, tz, ch, ck
-  - Endings: -hardt, -helm, -rich, -fried
-  - Vowel patterns: ie, ei, au, eu
-
-Low Frequency:
-  - Silent consonants
-  - Soft endings (-elle, -ette)
-```
-
-**French Name Phoneme Frequencies:**
-```
-High Frequency:
-  - Silent consonants: -et, -ot, -aux, -eux
-  - Nasalization: -on, -an, -en, -in
-  - Soft endings: -elle, -ette, -ier, -ard
-
-Low Frequency:
-  - Hard consonant clusters (st, ck)
-  - Germanic endings (-hardt, -helm)
-```
-
-#### **3.2 STATISTICAL SCORING SYSTEM**
-
-```
-FOR EACH candidate transcription:
-
-  CALCULATE English_Score:
-    +2 for each English morpheme match
-    +1 for each English phoneme pattern
-    +1 if ends with common English suffix
-    -1 if has awkward vowel ending (-o, -u)
-    -2 if has "Engrish" markers (double vowels, -ru, -to)
-
-  CALCULATE German_Score:
-    +2 for each German morpheme match
-    +1 for each German phoneme pattern
-    +1 if has Germanic consonant cluster
-    -1 if has French soft ending
-
-  CALCULATE French_Score:
-    +2 for each French morpheme match
-    +1 for each French phoneme pattern
-    +1 if has silent consonant
-    -1 if has hard consonant cluster
-
-  SELECT highest score as primary bias
-  APPLY corresponding linguistic rules
-```
-
-**Example Scoring:**
-```
-Katakana: ベレト (Be-re-to)
-
-Candidate 1: "Bereto" (Direct)
-  English_Score: -2 (Engrish -to ending)
-  German_Score: -1 (awkward ending)
-  French_Score: -1 (not French pattern)
-  TOTAL: -4 ✗ REJECT
-
-Candidate 2: "Bereth" (English bias)
-  English_Score: +2 (morpheme -eth) +1 (English suffix) = +3
-  German_Score: 0
-  French_Score: 0
-  TOTAL: +3 ✓ STRONG
-
-Candidate 3: "Beret" (French bias)
-  English_Score: 0
-  German_Score: 0
-  French_Score: +2 (silent -t) +1 (French pattern) = +3
-  TOTAL: +3 ✓ STRONG
-
-TIEBREAKER: World setting (Fantasy = English default)
-FINAL: "Bereth"
-```
-
----
-
-### **STAGE 4: CONTEXT-AWARE VALIDATION**
-
-**Objective:** Ensure name fits character role, world setting, and narrative context.
-
-#### **4.1 CHARACTER ROLE MATCHING**
-
-| Character Role | Preferred Linguistic Bias | Rationale |
-|----------------|--------------------------|-----------|
-| **Noble/Royalty** | English/French | Formal, sophisticated, traditional |
-| **Knight/Warrior** | English/German | Strong, martial, historical |
-| **Mage/Scholar** | Latin/Greek | Academic, classical, intellectual |
-| **Commoner/Peasant** | Simplified English | Short, practical, unpretentious |
-| **Merchant** | Italian/French | Trade-associated, cosmopolitan |
-| **Clergy** | Latin/Hebrew | Religious, traditional, formal |
-
-#### **4.2 WORLD SETTING CONSISTENCY**
-
-```
-IF world_setting == "Medieval European Fantasy":
-  → Primary bias: English (60%), German (25%), French (15%)
-  → Avoid: Japanese romanization, modern spellings
-  → Prefer: Classical, traditional forms
-
-IF world_setting == "Renaissance-inspired":
-  → Primary bias: Italian (40%), French (30%), English (30%)
-  → Prefer: Elegant, flowing names with Latin roots
-
-IF world_setting == "Nordic/Viking":
-  → Primary bias: Old Norse, Germanic
-  → Prefer: Hard consonants, -sson/-dottir patterns
-
-IF world_setting == "Modern Japanese":
-  → NO BIAS: Keep original romanization
-  → Preserve cultural authenticity
-```
-
-#### **4.3 NARRATIVE CONSISTENCY CHECK**
-
-```
-BEFORE FINALIZING:
-
-  1. Check existing character names in series
-     → Are they English-biased? German-biased? Mixed?
-     → Match the established pattern
-
-  2. Check family relationships
-     → Family members should share linguistic origin
-     → Example: If father is "Wilhelm", son should be "Heinrich" not "Henry"
-
-  3. Check geographical origin
-     → Characters from same region should share linguistic bias
-     → Northern kingdom = Germanic, Southern = Romance
-
-  4. Check social class consistency
-     → Nobles: Formal, traditional spellings
-     → Commoners: Simplified, practical spellings
-```
-
----
 
 ### **STAGE 5: FINAL DECISION TREE (ENHANCED)**
 
@@ -894,362 +611,6 @@ Before finalizing character name:
 
 ---
 
-### 3.2 KUCHI-E PROTOCOL (CHARACTER ILLUSTRATION LORE EXTRACTION)
-
-**Purpose:** Extract canonical character information from kuchi-e (口絵 - frontispiece illustrations) using multimodal AI analysis.
-
-#### **WHAT IS KUCHI-E?**
-
-**Definition:** Kuchi-e (口絵) are character illustration pages in light novels containing:
-- Full-body character design artwork
-- Character name (Japanese, often with romanization)
-- Personality traits, titles, or role descriptions
-- Visual canon: hair color, eye color, outfit, accessories
-
-**Why Critical for Translation:**
-- Provides **canonical character names** (with katakana for linguistic bias application)
-- Establishes **visual reference** for accurate descriptions
-- Defines **character archetypes** through text descriptions
-- Locks **official romanization** (though linguistic bias may override)
-
----
-
-#### **GATEKEEPER PROTOCOL (IMAGE CLASSIFICATION)**
-
-**Purpose:** Filter out non-character illustrations before extraction.
-
-**Problem:** Light novel image folders contain multiple image types:
-- ✗ **Cover pages** (表紙) - Title, author, promotional text
-- ✗ **Table of contents** (目次) - Chapter list with page numbers
-- ✓ **Character sheets** (キャラクター設定) - Isolated character design
-- ✓ **Kuchi-e** (口絵) - Character in scene with lore text
-
-**GATEKEEPER TASK:** Classify image BEFORE extraction to avoid processing covers/TOC.
-
----
-
-**IMAGE TYPE CLASSIFICATION:**
-
-| **Type** | **Visual Signatures** | **Action** |
-|----------|----------------------|-----------|
-| **TYPE A: COVER** (表紙/Bìa) | - Large typography (series title, volume)<br>- Author name visible<br>- Publisher logo, obi (book band)<br>- Poster-like dramatic layout<br>- Character present but focus on branding | **REJECT & SKIP**<br>(Optional: Extract title/author metadata) |
-| **TYPE B: TOC** (目次) | - Chapter list with page numbers<br>- Text in list/table format<br>- Words: "CONTENTS", "目次", "もくじ"<br>- Chapter titles (第一章, プロローグ, etc.)<br>- Decorative borders, primarily text | **REJECT & SKIP** |
-| **TYPE C: CHARACTER_SHEET** (キャラクター設定) | - White/plain background<br>- Character isolated (no scene context)<br>- Technical annotations (name, height, weight)<br>- Reference sheet style, clean lines<br>- May show multiple angles | **EXTRACT TO PROFILE**<br>(Update character database) |
-| **TYPE D: KUCHIE** (口絵) | - Character in scene with background<br>- Library, garden, castle, school setting<br>- Environmental interaction<br>- Name overlay + personality quote<br>- Artistic illustration with mood | **EXECUTE FULL EXTRACTION**<br>(This is the target!) |
-
----
-
-**GATEKEEPER DECISION TREE:**
-
-```
-INPUT: [IMAGE]
-  ↓
-CLASSIFY IMAGE TYPE
-  ↓
-┌─────────────────────────────────────────────────────────────┐
-│ IF COVER → Log title/author → SKIP extraction              │
-│ IF TOC → Log chapter structure → SKIP extraction           │
-│ IF CHARACTER_SHEET → Extract name/stats → Update profile   │
-│ IF KUCHIE → Extract full data → Add to system instruction  │
-│ IF UNKNOWN → Warn user → Proceed with extraction (caution) │
-└─────────────────────────────────────────────────────────────┘
-```
-
-**Example Classification Results:**
-
-```
-Image: cover-vol1.jpg
-Classification: COVER
-Action: ⏭️ SKIPPED (Cover page)
-Reason: Contains title "貴族令嬢、俺にだけなつく", author name, large typography
-
-Image: contents.jpg
-Classification: TOC
-Action: ⏭️ SKIPPED (Table of Contents)
-Reason: Contains "CONTENTS", chapter list with page numbers (005, 013, 047...)
-
-Image: kuchie-001-luna.jpg
-Classification: KUCHIE
-Action: ✅ EXTRACT
-Reason: Character in library scene, name overlay "ルーナ・ペレンメル", personality quote
-```
-
----
-
-#### **KUCHI-E EXTRACTION WORKFLOW**
-
-```
-STEP 0: GATEKEEPER (NEW)
-  - Classify image type using Gemini Vision
-  - Filter: IF (COVER OR TOC) → SKIP extraction
-  - Continue only for CHARACTER_SHEET or KUCHIE
-
-STEP 1: IDENTIFY KUCHI-E IMAGES
-  - Locate character illustration pages in source EPUB/images folder
-  - Typical location: /image/kuchie-001.jpg, /image/kuchie-002.jpg, etc.
-  - Usually appear after title page, before Prologue
-
-STEP 2: MULTIMODAL AI ANALYSIS (Gemini Vision)
-  - Send image + extraction prompt to Gemini API
-  - Request: Character name, traits, visual description
-  - Parse Japanese text overlays (OCR + translation)
-
-STEP 3: EXTRACT CHARACTER DATA
-  From image text:
-    - Name (JP): [Katakana/Kanji name]
-    - Name (Romanization): [Official if provided]
-    - Title/Nickname: [Japanese title from image]
-    - Personality Traits: [Text description on image]
-
-  From visual analysis:
-    - Hair Color: [Describe from artwork]
-    - Eye Color: [Describe from artwork]
-    - Outfit: [Uniform, dress, armor, etc.]
-    - Accessories: [Ribbons, weapons, jewelry]
-    - Age Appearance: [Estimate from art style]
-
-STEP 4: APPLY LINGUISTIC BIAS
-  - Official romanization (if provided) → Evaluate against Section 2.4
-  - If romanization is "Engrish" → Apply linguistic bias
-  - If romanization is natural → Keep official form
-  - Lock finalized name for entire series
-
-STEP 5: CREATE CHARACTER LORE ENTRY
-  - Add to project glossary/character_roster
-  - Mark as CANONICAL (from official kuchi-e)
-  - Reference throughout translation for consistency
-
-STEP 6: SEND TO GEMINI WITH CONTEXT
-  - Include kuchi-e data in system instruction
-  - Gemini references character visuals during translation
-  - Ensures description consistency (hair color, outfit, mannerisms)
-```
-
----
-
-#### **GEMINI MULTIMODAL INTEGRATION**
-
-**Kuchi-e Extraction Prompt Template:**
-
-```
-You are analyzing a Japanese light novel character illustration (kuchi-e/口絵).
-
-TASK: Extract the following information from this image:
-
-1. CHARACTER NAME
-   - Japanese text (katakana/kanji)
-   - Official romanization (if shown on image)
-   - Format: [Japanese] = [Romanization]
-
-2. CHARACTER TITLE/NICKNAME
-   - Japanese text (if any title is shown)
-   - Example: 紅花姫 (Crimson Blossom Princess)
-
-3. PERSONALITY TRAITS (from text overlay)
-   - Transcribe Japanese text descriptions
-   - Translate to English
-   - Extract keywords: personality, role, quirks
-
-4. VISUAL DESCRIPTION
-   - Hair: Color, style, length, accessories
-   - Eyes: Color, expression
-   - Outfit: Type (uniform, dress, armor), colors, details
-   - Accessories: Ribbons, weapons, jewelry, etc.
-   - Age appearance: Estimated age range
-
-5. CHARACTER ARCHETYPE HINTS
-   - Based on visual + text, suggest likely archetype:
-     * Ojou-sama? (refined noble appearance)
-     * Tsundere? (confident pose, arms crossed)
-     * Kuudere? (emotionless expression)
-     * Genki? (energetic pose)
-     * etc.
-
-Output as structured YAML.
-```
-
-**Example Extraction (from provided images):**
-
-**Image 1: Luna=Peremmer**
-```yaml
-Character Analysis:
-  name_jp: "ルーナ・ペレンメル"
-  name_official: "Luna=Peremmer"
-  name_corrected: "Luna Peremmer" # Keep (already natural, French-inspired)
-
-  title_jp: "本食いの才女" (hon kui no saijo)
-  title_en: "The Book-Loving Prodigy"
-
-  traits_jp: "わたしはあなた以外の方と遊ぶつもりはありませんよ"
-  traits_en: "I have no intention of spending time with anyone other than you."
-
-  visual:
-    hair: "Silver/white, long, twin braids with white ribbon accessory"
-    eyes: "Amber/golden"
-    outfit: "Blue noble uniform with white coat, gold buttons, double-breasted"
-    accessories: "White ribbon in hair, knee-high dark boots"
-    age_appearance: "16-18"
-
-  archetype_hints:
-    - "Kuudere (cool, reserved expression)"
-    - "Bookworm (title mentions 本食い - book lover)"
-    - "Noble lady (formal uniform)"
-    - "Devoted/loyal (dialogue about exclusivity)"
-
-  description_notes: |
-    Petite noble girl with distinctive silver hair and amber eyes.
-    Wears academy-style double-breasted blue uniform with white coat.
-    Reserved, intellectual type focused on books.
-    Chapter title reference: 第三章　本食いの才女
-```
-
-**Image 2: Elena=Leclerc**
-```yaml
-Character Analysis:
-  name_jp: "エレナ・ルクレール"
-  name_official: "Elena=Leclerc"
-  name_corrected: "Elena Leclerc" # Keep (French surname, natural)
-
-  title_jp: "紅花姫" (benibana hime)
-  title_en: "The Crimson Blossom Princess"
-
-  traits_jp: "別にあなたに褒められたいがために言ったわけじゃないわよ"
-  traits_en: "It's not like I said that because I wanted you to praise me or anything."
-
-  visual:
-    hair: "Crimson/red-pink, very long, large black bow accessory"
-    eyes: "Magenta/pink"
-    outfit: "Red and black noble dress, military-style with gold buttons, white frills"
-    accessories: "Large black bow in hair, thigh-high black stockings, black shoes"
-    age_appearance: "16-18"
-
-  archetype_hints:
-    - "Tsundere (classic tsundere line: 別に...わけじゃないわよ)"
-    - "Ojou-sama (princess title, noble appearance)"
-    - "Popular beauty (text mentions many marriage proposals)"
-    - "Strong-willed (confident pose, arms crossed)"
-
-  description_notes: |
-    Beautiful noble girl with striking crimson hair and matching eyes.
-    Known as "Crimson Blossom Princess" due to her appearance.
-    Wears ornate red military-style dress with black accents.
-    Classic tsundere personality (denies true intentions).
-    Chapter title reference: 第二章　紅花姫
-```
-
----
-
-#### **KUCHI-E LORE INTEGRATION**
-
-**Protocol:** Send extracted kuchi-e data to Gemini during translation
-
-**System Instruction Addition:**
-```
---- CHARACTER VISUAL CANON (FROM KUCHI-E) ---
-
-The following character descriptions are CANONICAL from official illustrations.
-Maintain consistency when translating character descriptions in text.
-
-[Insert extracted YAML data for all kuchi-e characters]
-
-RULES:
-- When character appears, reference kuchi-e visual data
-- Hair/eye color must match kuchi-e exactly
-- Outfit descriptions should align with kuchi-e design
-- Personality hints from kuchi-e inform voice/archetype choices
-- Chapter titles reference these characters (紅花姫 → Chapter 2: Crimson Blossom Princess)
-```
-
----
-
-#### **PRACTICAL APPLICATION**
-
-**Scenario: Translating Character Introduction**
-
-**Japanese Source:**
-```
-銀髪の少女が本を読んでいた。琥珀色の瞳が文字を追っている。
-```
-
-**Without Kuchi-e Reference:**
-```
-A silver-haired girl was reading a book. Her amber eyes followed the text.
-(Generic, no character identification)
-```
-
-**With Kuchi-e Reference (Luna detected):**
-```
-Luna sat reading, her silver twin braids draped over the shoulders of her blue uniform.
-Those amber eyes—so focused, so distant—traced each line with scholarly precision.
-(Specific details from kuchi-e: twin braids, blue uniform, intellectual focus)
-```
-
-**Scenario: Chapter Title Translation**
-
-**Japanese:** 第二章　紅花姫
-
-**Without Kuchi-e:**
-```
-Chapter 2: The Red Flower Princess
-(Literal, generic)
-```
-
-**With Kuchi-e (Elena's title):**
-```
-Chapter 2: The Crimson Blossom Princess
-(Matches Elena's canonical title, artistic language matches her elegance)
-```
-
----
-
-#### **KUCHI-E EXTRACTION CHECKLIST**
-
-Before starting translation:
-- [ ] Locate all kuchi-e images in source files
-- [ ] Extract character data using Gemini Vision API
-- [ ] Apply linguistic bias to names (Section 2.4)
-- [ ] Create character lore entries in glossary
-- [ ] Add kuchi-e data to system instruction for translation
-- [ ] Cross-reference chapter titles with character titles
-- [ ] Verify visual consistency throughout translation
-
----
-
-#### **TECHNICAL IMPLEMENTATION**
-
-**File Structure:**
-```
-project/
-├── source/
-│   └── image/
-│       ├── kuchie-001.jpg  (Luna)
-│       ├── kuchie-002.jpg  (Elena)
-│       └── kuchie-00X.jpg  (other characters)
-│
-├── glossary/
-│   └── kuchie_character_data.yaml  (extracted canonical data)
-│
-└── logs/
-    └── kuchie_extraction_log.md  (extraction process record)
-```
-
-**Gemini API Call (Multimodal):**
-```python
-# Extract character data from kuchi-e
-response = client.models.generate_content(
-    model="gemini-2.0-flash-thinking-exp",
-    contents=[
-        types.Part.from_image(Image.open("kuchie-001.jpg")),
-        types.Part.from_text(KUCHIE_EXTRACTION_PROMPT)
-    ]
-)
-
-# Parse response → character_data.yaml
-# Send character_data to translation system instruction
-```
-
----
-
 ### 3.3 CULTURAL REFERENCE CONVERSION
 
 #### **MEASUREMENTS & CURRENCY**
@@ -1343,9 +704,9 @@ response = client.models.generate_content(
 
 ## SECTION 4: REGISTER QUICK REFERENCE
 
-### 4.1 FIVE REGISTERS BY RTAS
+### 4.1 FIVE REGISTERS BY EPS
 
-| Register | RTAS Range | Contraction Frequency | Vocabulary | Sentence Length |
+| Register | EPS Range | Contraction Frequency | Vocabulary | Sentence Length |
 |----------|-----------|----------------------|------------|-----------------|
 | **Archaic/Noble** | N/A (archetype) | 0% | Latinate, formal | Long, flowing |
 | **Formal** | < 2.0 | < 20% | Professional | Medium-long |
@@ -1361,7 +722,7 @@ response = client.models.generate_content(
 
 | Latinate (Formal) | Germanic (Casual) | Context |
 |-------------------|-------------------|---------|
-| Request | Ask | RTAS < 2.0 vs RTAS > 3.0 |
+| Request | Ask | EPS [COLD] vs EPS [WARM/HOT] |
 | Commence | Start | Formal vs casual |
 | Inquire | Ask | Professional vs friendly |
 | Assist | Help | Distant vs close |
@@ -1370,7 +731,7 @@ response = client.models.generate_content(
 | Permit | Let | Authority vs peer |
 | Respond | Answer | Formal vs neutral |
 
-**Rule:** Higher RTAS = prefer Germanic roots; Lower RTAS = prefer Latinate.
+**Rule:** Higher EPS = prefer Germanic roots; Lower EPS = prefer Latinate.
 
 ---
 
@@ -1429,7 +790,7 @@ What was he doing here?
 **Why Different from Body Text:**
 - Titles are marketing tools (must attract readers)
 - Titles set emotional tone (evocative > literal)
-- Titles have no RTAS/register constraints (free from character voice rules)
+- Titles have no EPS/register constraints (free from character voice rules)
 
 ---
 
@@ -1717,7 +1078,7 @@ STEP 6: FINAL CHECK
 ### 6.8 INTEGRATION NOTE
 
 **Title translation is EXEMPT from:**
-- RTAS/register rules (no character voice constraints)
+- EPS/register rules (no character voice constraints)
 - Archetype consistency (titles are narrator voice, not character voice)
 - Strict literalness (artistry prioritized)
 
@@ -1743,7 +1104,7 @@ STEP 6: FINAL CHECK
 - **Consistency tracking needed → Section 8.3**
 
 **Cross-Reference:**
-- **RTAS Calculation** → Module 01 (Register/Formality System)
+- **EPS Calculation** → Module 01 (Register/Formality System)
 - **Boldness Techniques** → Module 02
 - **Rhythm & Pacing** → Module 03
 - **Quality Verification** → Module 05 (Golden Samples)
@@ -1752,350 +1113,11 @@ STEP 6: FINAL CHECK
 
 ---
 
-## SECTION 8: METADATA EXTRACTION & CANON-AWARE TRANSLATION ORDER
-
-### 8.1 PROJECT INITIALIZATION: METADATA EXTRACTION
-
-**Purpose:** Before beginning translation, extract critical metadata to establish consistency framework and determine translation order.
-
-#### **METADATA SOURCES:**
-
-**1. EPUB Metadata Files**
-- **standard.opf / package.opf**: Title, author, illustrator, publisher, volume number, ISBN
-- **navigation-documents.xhtml / toc.ncx**: Chapter structure, chapter titles, ordering
-- **content files (xhtml)**: Text content, chapter divisions, character introductions
-
-**2. Text Files (TXT/PDF)**
-- **Filename patterns**: Volume number, chapter indicators
-- **Header content**: Title, author, chapter names
-- **Structure markers**: 第○章 (Chapter X), プロローグ (Prologue), エピローグ (Epilogue), 幕間 (Interlude)
-
----
-
-#### **CRITICAL METADATA TO EXTRACT:**
-
-**A. SERIES/VOLUME INFORMATION**
-```
-- Series Title (JP): [Japanese title]
-- Series Title (EN): [English localized title] → Use Section 6 guidelines
-- Volume Number: [X]
-- Author: [Name (Japanese) / Romanized]
-- Illustrator: [Name (Japanese) / Romanized]
-- Publisher: [Publisher name]
-- Publication Date: [Year-Month]
-```
-
-**B. WORLD SETTING CLASSIFICATION**
-```
-- Setting Type: [Fantasy / Modern Japanese / Isekai / Historical / Mixed]
-- Time Period: [Medieval / Contemporary / Futuristic]
-- Cultural Context: [Western-inspired / Japanese / Mixed]
-- Magic/Supernatural: [Yes/No]
-```
-
-**→ Critical for HONORIFIC SYSTEM (Section 2.0 World-Awareness)**
-   - Fantasy/Western/Isekai → English honorifics (Sir, Lady, Miss)
-   - Modern Japanese → Japanese honorifics (kun, chan, san, sama)
-
-**C. CHAPTER STRUCTURE ANALYSIS**
-```
-- Total Chapter Count: [Number]
-- Chapter Types:
-  - Prologue: [Yes/No]
-  - Main Chapters: [Count]
-  - Interludes (幕間): [Count, positions]
-  - Epilogue: [Yes/No]
-  - Extra Chapters: [Count]
-```
-
-**D. CHARACTER ROSTER (Initial Detection)**
-```
-- Protagonist: [Name (JP) / Gender / Likely Archetype]
-- Main Heroine(s): [Names (JP) / Archetypes]
-- Supporting Characters: [Names (JP) / Roles]
-```
-
-**→ Update as translation progresses; finalize archetype assignments in Chapter 1**
-
----
-
-### 8.2 CANON-AWARE TRANSLATION ORDER
-
-**Purpose:** Establish logical translation sequence to maintain consistency and build character voice foundation.
-
-#### **STANDARD TRANSLATION ORDER:**
-
-```
-PHASE 1: FOUNDATION (Establish Canon)
-  ├─ Step 1: Extract Metadata (Section 8.1)
-  ├─ Step 2: Translate PROLOGUE (if exists)
-  │    → Establishes world setting, tone, character introductions
-  │    → Lock world-setting classification for honorific system
-  │    → Identify protagonist archetype
-  └─ Step 3: Translate CHAPTER 1
-       → Confirms character archetypes
-       → Establishes RTAS baselines for all character pairs
-       → Creates initial terminology glossary
-
-PHASE 2: MAIN NARRATIVE (Sequential Progression)
-  ├─ Step 4: Translate Chapters 2-X in order
-  │    → Maintain voice consistency using Phase 1 baselines
-  │    → Track RTAS evolution (relationship progression)
-  │    → Update terminology glossary as needed
-  └─ Step 5: Translate INTERLUDES (幕間) at their canonical positions
-       → Interludes appear between specific chapters
-       → Translate when reaching their position in chapter sequence
-       → Example: If 幕間 appears after Chapter 3, translate after Chapter 3
-
-PHASE 3: CONCLUSION (Final Chapters)
-  ├─ Step 6: Translate final chapters
-  └─ Step 7: Translate EPILOGUE (if exists)
-       → Resolves character arcs
-       → Final RTAS tier (often highest intimacy)
-       → Validates consistency with entire volume
-
-PHASE 4: EXTRTAS & QUALITY ASSURANCE
-  ├─ Step 8: Translate extra chapters/afterwords
-  └─ Step 9: Final consistency check (Module 05 quality standard)
-```
-
----
-
-#### **TRANSLATION ORDER EXAMPLES:**
-
-**Example 1: Standard LN Volume Structure**
-```
-Source Structure:
-- プロローグ (Prologue)
-- 第一章 (Chapter 1)
-- 第二章 (Chapter 2)
-- 幕間 (Interlude)
-- 第三章 (Chapter 3)
-- エピローグ (Epilogue)
-
-Translation Order:
-1. Prologue → Establish world, tone, protagonist
-2. Chapter 1 → Lock character archetypes, RTAS baselines
-3. Chapter 2 → Continue progression
-4. Interlude → Translate at canonical position
-5. Chapter 3 → Continue progression
-6. Epilogue → Final arc resolution
-7. QA Pass → Consistency verification (Module 05)
-```
-
-**Example 2: Multi-Volume Series (Volume 2+)**
-```
-Prerequisites:
-- Review Volume 1 translations for consistency
-- Import established terminology glossary
-- Verify character archetype assignments
-- Check RTAS progression from previous volume
-
-Translation Order:
-1. Extract Volume 2 metadata
-2. Review Volume 1 ending → Volume 2 opening continuity
-3. Translate Prologue (if new volume has one)
-4. Proceed with standard order (Chapters 1-X)
-5. Cross-reference terminology with Volume 1 glossary
-6. Maintain character voice consistency across volumes
-```
-
----
-
-### 8.3 CONSISTENCY TRACKING DURING TRANSLATION
-
-**Purpose:** Maintain canon accuracy and character voice consistency throughout translation process.
-
-#### **TRACKING SYSTEMS:**
-
-**A. CHARACTER CONSISTENCY TRACKER**
-```
-Character: [Name (JP) → Name (EN)]
-- Archetype: [Assigned archetype from Section 1]
-- Voice Baseline: [Key characteristics: formality, vocabulary, speech patterns]
-- RTAS Tier Progression:
-  - Prologue: [RTAS score]
-  - Chapter 1: [RTAS score]
-  - Chapter X: [RTAS score]
-  - Final Chapter: [RTAS score]
-- Honorific Usage:
-  - Addresses Protagonist as: [Title/name locked in Chapter 1]
-  - Addressed by Protagonist as: [Title/name locked in Chapter 1]
-- Name/Title Changes: [Document any progression: "Lady Elaine" → "Elaine" at Chapter 5]
-```
-
-**B. TERMINOLOGY GLOSSARY (Build During Translation)**
-```
-| Japanese Term | English Translation | Context | First Appearance |
-|---------------|---------------------|---------|------------------|
-| [JP term] | [EN equivalent] | [Usage context] | [Chapter X] |
-
-Examples:
-| 魔法学院 | Academy of Arcane Arts | School setting | Prologue |
-| 紅花姫 | Crimson Blossom Princess | Character title | Chapter 2 |
-| 専属侍女 | Personal Attendant | Job title | Chapter 1 |
-```
-
-**C. WORLD-SETTING TERMINOLOGY**
-```
-- Currency: [JP term → EN equivalent] (e.g., 円 → "gold coins" in fantasy)
-- Locations: [JP names → EN romanization or localization]
-- Titles/Ranks: [JP → EN] (e.g., 伯爵 → "Count", 令嬢 → "Lady")
-- Magic/Skills: [JP → EN] (Consistent naming for abilities)
-- Items: [JP → EN] (Weapons, artifacts, food items)
-```
-
-**D. CHAPTER-SPECIFIC NOTES**
-```
-Chapter X:
-- RTAS shifts: [Character A→B: 2.5 → 3.0 due to confession scene]
-- New characters introduced: [Name, archetype, initial voice]
-- Terminology added: [New terms encountered]
-- Continuity notes: [Important plot points affecting future chapters]
-```
-
----
-
-### 8.4 METADATA EXTRACTION WORKFLOW (EPUB SOURCES)
-
-**Step-by-Step Process for EPUB Files:**
-
-```
-STEP 1: LOCATE METADATA FILES
-  - Extract EPUB (it's a ZIP archive)
-  - Find: standard.opf or package.opf (metadata)
-  - Find: navigation-documents.xhtml or toc.ncx (table of contents)
-  - Find: xhtml/ folder (chapter content files)
-
-STEP 2: EXTRACT TITLE & AUTHOR
-  From standard.opf:
-  - <dc:title>: Japanese series title
-  - <dc:creator role="aut">: Author name
-  - <dc:creator role="art">: Illustrator name
-  - <dc:publisher>: Publisher
-  - <meta property="dcterms:modified">: Publication date
-
-STEP 3: EXTRACT CHAPTER STRUCTURE
-  From navigation-documents.xhtml:
-  - Parse <nav epub:type="toc"> section
-  - Extract chapter titles from <a> tags
-  - Identify prologue (プロローグ), chapters (第○章), interludes (幕間), epilogue (エピローグ)
-  - Note canonical order from <ol> sequence
-
-STEP 4: MAP CHAPTER FILES TO CONTENT
-  - Match href values to xhtml files (e.g., "xhtml/p-003.xhtml" = Prologue)
-  - Create translation checklist with file mappings
-
-STEP 5: DETECT WORLD SETTING (Initial Analysis)
-  - Read Prologue content
-  - Scan for keywords:
-    * Fantasy indicators: 魔法 (magic), 騎士 (knight), 王国 (kingdom), 異世界 (isekai)
-    * Modern indicators: 学校 (school), 携帯 (phone), 現代 (contemporary)
-  - Lock honorific system strategy (Section 2.0)
-
-STEP 6: CREATE PROJECT STRUCTURE
-  Project Name: [Series Title EN]_Vol[X]
-
-  Folders:
-  - /source/ (original EPUB extracted files)
-  - /translated/ (completed chapter translations)
-  - /glossary/ (terminology tracker)
-  - /notes/ (character consistency, RTAS progression)
-```
-
----
-
-### 8.5 PRACTICAL EXAMPLE: METADATA EXTRACTION
-
-**Source EPUB: 貴族令嬢。俺にだけなつく (Volume 1)**
-
-#### **EXTRACTED METADATA:**
-
-```yaml
-Series Information:
-  JP Title: 貴族令嬢。俺にだけなつく
-  EN Title: "The Noble Lady: She Bestows Her Affection Upon Me Alone"
-  Volume: 1
-  Author: 夏乃実 (Natsunomi)
-  Illustrator: GreeN
-  Publisher: KADOKAWA
-  Publication: 2022-12
-
-World Setting:
-  Type: Fantasy/Noble Romance
-  Cultural Context: Western-inspired (noble courts, European naming)
-  Honorific Strategy: ENGLISH HONORIFICS (Sir, Lady, Miss, Master)
-    → Reason: Fantasy setting with nobility (Section 2.0 rule)
-
-Chapter Structure (from navigation-documents.xhtml):
-  1. プロローグ (Prologue) → xhtml/p-003.xhtml
-  2. 第一章　専属侍女 (Chapter 1: Personal Attendant) → xhtml/p-004.xhtml
-  3. 第二章　紅花姫 (Chapter 2: Crimson Blossom Princess) → xhtml/p-005.xhtml
-  4. 第三章　本食いの才女 (Chapter 3: The Book-Loving Prodigy) → xhtml/p-006.xhtml
-  5. 幕間 (Interlude) → xhtml/p-007.xhtml
-  6. 第四章　悪評の薄どけ (Chapter 4: The Veil of Ill Repute) → xhtml/p-008.xhtml
-  7. 幕間 (Interlude) → xhtml/p-009.xhtml
-  8. 第五章　距離の縮まり (Chapter 5: Closing the Distance) → xhtml/p-010.xhtml
-  9. 第六章　慎ましデート (Chapter 6: A Modest Date) → xhtml/p-011.xhtml
-  10. 幕間 (Interlude) → xhtml/p-012.xhtml
-  11. エピローグ (Epilogue) → xhtml/p-013.xhtml
-
-Translation Order:
-  Phase 1: Prologue, Chapter 1 (establish archetypes & RTAS baselines)
-  Phase 2: Chapters 2-6 with interludes at canonical positions
-  Phase 3: Epilogue
-  Phase 4: QA consistency check
-```
-
-#### **INITIAL CHARACTER DETECTION (Prologue/Chapter 1):**
-
-```
-Protagonist (Male):
-  - Likely archetype: Commoner/Servant (専属侍女 = personal attendant)
-  - POV: First-person ("俺" = masculine "I")
-  - Initial voice: Humble, formal when addressing nobility
-
-Main Heroine:
-  - Character type: Noble lady (貴族令嬢)
-  - Archetype: Likely Ojou-sama (refined, formal speech)
-  - Initial RTAS: Low (<2.0, formal distance)
-  - Honorific: "Lady [Name]" (English honorific due to fantasy setting)
-
-Expected Progression:
-  - RTAS evolution: Formal (Lady) → Neutral (Name) → Intimate (First name)
-  - Relationship arc: Master-servant → Mutual affection
-  - Voice shift: Ojou-sama maintains refined register but increases warmth
-```
-
----
-
-### 8.6 INTEGRATION WITH TRANSLATION WORKFLOW
-
-**How Section 8 Connects to Core Workflow:**
-
-```
-BEFORE Translation (Pre-Production):
-  ├─ Section 8.1-8.2: Extract metadata, establish translation order
-  ├─ Section 8.4: Process EPUB files, map chapter structure
-  └─ Section 8.5: Create project structure, initial character detection
-
-DURING Translation (Production):
-  ├─ Master Prompt: Core translation directives
-  ├─ Module 01-06: Apply techniques (RTAS, register, boldness, rhythm)
-  ├─ Section 8.3: Track consistency (characters, terminology, RTAS progression)
-  └─ Update glossary after each chapter
-
-AFTER Translation (Post-Production):
-  ├─ Module 05: Quality verification against golden samples
-  ├─ Section 8.3: Final consistency check (voice, terminology, RTAS logic)
-  └─ Archive glossary for future volumes
-```
 
 ---
 
 **END OF MODULE 00**
 
 **STATUS:** AUTHORITATIVE REFERENCE FOR ENGLISH LOCALIZATION FOUNDATION
-**USAGE:** Primary lookup for character voices, honorifics, idioms, cultural references, **title translation**, **project setup**
+**USAGE:** Primary lookup for character voices, honorifics, idioms, cultural references, title translation, and formatting. Metadata extraction and kuchi-e visual analysis are handled by the pipeline (Phase 1 / Visual Asset Processor).
 **INTEGRATION:** Works with Modules 01-06 + EN Master Prompt
-

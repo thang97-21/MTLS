@@ -15,7 +15,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from pipeline.config import WORK_DIR
+from pipeline.config import WORK_DIR, get_phase_model, get_phase_generation_config
+from pipeline.common.chapter_kind import is_afterword_chapter
 
 from .scene_planner import ScenePlanningAgent, ScenePlanningError
 
@@ -26,7 +27,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger("ScenePlannerAgent")
 
-DEFAULT_STAGE1_MODEL = "gemini-2.5-flash"
+# Resolved from translation.phase_models.1_7 in config.yaml; string is the safe fallback.
+DEFAULT_STAGE1_MODEL = get_phase_model("1.7", "gemini-2.5-flash")
+DEFAULT_STAGE1_GEN = get_phase_generation_config("1.7")
 
 
 class Stage1PlannerRunner:
@@ -65,8 +68,8 @@ class Stage1PlannerRunner:
         chapters: Optional[List[str]] = None,
         force: bool = False,
         model: Optional[str] = None,
-        temperature: float = 0.3,
-        max_output_tokens: int = 65535,
+        temperature: float = float(DEFAULT_STAGE1_GEN.get("temperature", 0.3)),
+        max_output_tokens: int = int(DEFAULT_STAGE1_GEN.get("max_output_tokens", 65535)),
         fail_on_partial: bool = False,
     ) -> bool:
         logger.info("=" * 60)
@@ -88,6 +91,7 @@ class Stage1PlannerRunner:
             temperature=temperature,
             max_output_tokens=max_output_tokens,
         )
+        canonical_name_reference = ScenePlanningAgent.build_canonical_name_reference(manifest)
         plans_dir = work_dir / "PLANS"
         plans_dir.mkdir(parents=True, exist_ok=True)
 
@@ -104,6 +108,18 @@ class Stage1PlannerRunner:
                 skipped += 1
                 continue
 
+            source_path = work_dir / "JP" / source_file
+            if is_afterword_chapter(chapter, source_path=source_path):
+                logger.info(f"[SKIP][AFTERWORD] {chapter_id}: scene planning bypassed")
+                chapter["scene_plan_file"] = None
+                chapter["chapter_kind"] = "afterword"
+                chapter["afterword_policy"] = {
+                    "mode": "bypassed",
+                    "directive": "Use warm, informative, gratitude-forward author-note tone.",
+                }
+                skipped += 1
+                continue
+
             out_path = plans_dir / f"{chapter_id}_scene_plan.json"
             if out_path.exists() and not force:
                 logger.info(f"[SKIP] {chapter_id}: plan exists (use --force to regenerate)")
@@ -114,8 +130,13 @@ class Stage1PlannerRunner:
             try:
                 jp_text = self._load_jp_text(work_dir, source_file)
                 logger.info(f"[PLAN] {chapter_id} ({source_file})")
-                plan = planner.generate_plan(chapter_id=chapter_id, japanese_text=jp_text, model=model)
-                planner.save_plan(plan, out_path)
+                plan = planner.generate_plan(
+                    chapter_id=chapter_id,
+                    japanese_text=jp_text,
+                    model=model,
+                    canonical_name_reference=canonical_name_reference,
+                )
+                planner.save_plan(plan, out_path, manifest)
                 chapter["scene_plan_file"] = f"PLANS/{out_path.name}"
                 generated += 1
             except Exception as e:
@@ -186,14 +207,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--temperature",
         type=float,
-        default=0.3,
-        help="Planning temperature (default: 0.3)",
+        default=float(DEFAULT_STAGE1_GEN.get("temperature", 0.3)),
+        help=f"Planning temperature (default: {float(DEFAULT_STAGE1_GEN.get('temperature', 0.3))})",
     )
     parser.add_argument(
         "--max-output-tokens",
         type=int,
-        default=65535,
-        help="Max output tokens for planning response (default: 65535)",
+        default=int(DEFAULT_STAGE1_GEN.get("max_output_tokens", 65535)),
+        help=f"Max output tokens for planning response (default: {int(DEFAULT_STAGE1_GEN.get('max_output_tokens', 65535))})",
     )
     parser.add_argument(
         "--fail-on-partial",

@@ -123,10 +123,13 @@ def create_genai_client(
     Create a google.genai.Client in developer or vertex mode.
     """
     resolved_backend = resolve_genai_backend(backend)
+    
+    # Enable v1alpha for Gemini 3 media_resolution support
+    http_options = {"api_version": "v1alpha"}
 
     if resolved_backend == "developer":
         key = resolve_api_key(api_key=api_key, required=True)
-        return genai.Client(api_key=key)
+        return genai.Client(api_key=key, http_options=http_options)
 
     # Vertex mode (supports API key and/or ADC)
     vertex_project = _resolve_vertex_project(project)
@@ -137,7 +140,7 @@ def create_genai_client(
         # Graceful fallback for CLI hot-switch use: if Vertex is unavailable,
         # fall back to Developer API when API key is present.
         if key:
-            return genai.Client(api_key=key)
+            return genai.Client(api_key=key, http_options=http_options)
         raise ValueError(
             "Vertex backend requires GOOGLE_CLOUD_PROJECT (or gemini.vertex.project in config.yaml), "
             "or GOOGLE_API_KEY/GEMINI_API_KEY for fallback."
@@ -147,6 +150,7 @@ def create_genai_client(
         "vertexai": True,
         "project": vertex_project,
         "location": vertex_location,
+        "http_options": http_options,
     }
     if key:
         kwargs["api_key"] = key
@@ -155,5 +159,5 @@ def create_genai_client(
         return genai.Client(**kwargs)
     except Exception:
         if key:
-            return genai.Client(api_key=key)
+            return genai.Client(api_key=key, http_options=http_options)
         raise

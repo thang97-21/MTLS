@@ -451,7 +451,7 @@ Nhung nguoi do... em se lam ho bien mat."
 <a name="4-particle-reference"></a>
 # 4. Particle Reference
 
-## Warm Particles (RTAS >= 3.5)
+## Warm Particles (PAIR_2+)
 | Particle | Usage | Archetypes |
 |----------|-------|------------|
 | nha | Soft affirmation | GYARU, ONEE |
@@ -460,7 +460,7 @@ Nhung nguoi do... em se lam ho bien mat."
 | ha | Regional warmth | KANSAI |
 | nghen | Regional agreement | KANSAI |
 
-## Formal Particles (RTAS <= 2.5)
+## Formal Particles (PAIR_0/1)
 | Particle | Usage | Archetypes |
 |----------|-------|------------|
 | a | Respect marker | OJOU, SAMURAI |

@@ -1,9 +1,9 @@
 """
-RTAS Calculator - Derives voice settings from manifest.json via fuzzy matching.
+EPS Calculator - Derives voice settings from manifest.json via fuzzy matching.
 
 Uses rtas_config.json patterns to calculate:
-- RTAS score (1.0-5.0) from relationship + personality
-- Contraction rate from RTAS tier
+- EPS score (1.0-5.0) from relationship + personality
+- Contraction rate from EPS tier
 - Forbidden/required vocabulary from archetype match
 """
 
@@ -33,7 +33,7 @@ class VoiceSettings:
         """Generate prompt instruction for this character's voice."""
         lines = [
             f"CHARACTER: {self.character_id}",
-            f"  RTAS: {self.rtas_score:.1f} ({self._rtas_description()})",
+            f"  EPS: {self.rtas_score:.1f} ({self._rtas_description()})",
             f"  Contraction rate: {self.contraction_rate}%",
         ]
         if self.forbidden_vocab:
@@ -57,13 +57,13 @@ class VoiceSettings:
 
 class RTASCalculator:
     """
-    Calculate RTAS and voice settings from manifest.json character metadata.
+    Calculate EPS and voice settings from manifest.json character metadata.
     
     Algorithm:
     1. Load character profiles from manifest
     2. Fuzzy-match relationship_to_protagonist → baseline shift
     3. Fuzzy-match personality_traits → personality modifier
-    4. If keigo_switch.[speaking_to][target] exists → direct RTAS override
+    4. If keigo_switch.[speaking_to][target] exists → direct EPS override
     5. Derive contraction rate and vocab constraints from archetype
     """
     
@@ -79,7 +79,7 @@ class RTASCalculator:
             with open(config_path, 'r', encoding='utf-8') as f:
                 self.config = json.load(f)
         else:
-            logger.warning(f"RTAS config not found at {config_path}, using defaults")
+            logger.warning(f"EPS config not found at {config_path}, using defaults")
             self.config = self._default_config()
         
         self.baseline = self.config.get("baseline", 3.0)
@@ -147,15 +147,15 @@ class RTASCalculator:
                 continue
             settings = self._calculate_for_character(char_id, profile)
             results[char_id] = settings
-            logger.debug(f"[RTAS] {char_id}: {settings.rtas_score:.1f} ({settings.archetype})")
+            logger.debug(f"[EPS] {char_id}: {settings.rtas_score:.1f} ({settings.archetype})")
         
         return results
     
     def _calculate_for_character(self, char_id: str, profile: dict) -> VoiceSettings:
-        """Calculate RTAS and voice settings for a single character."""
+        """Calculate EPS and voice settings for a single character."""
         
         # 1. Start with baseline
-        rtas = self.baseline
+        EPS = self.baseline
         contraction_shift = 0
         
         # 2. Match relationship_to_protagonist
@@ -168,10 +168,10 @@ class RTASCalculator:
             relationship = str(relationship_raw)
         for pattern, values in self.relationship_patterns:
             if pattern.search(relationship):
-                rtas += values.get("baseline_shift", 0)
+                EPS += values.get("baseline_shift", 0)
                 # Clamp to pattern's min/max if specified
-                rtas = max(rtas, values.get("min", 1.0))
-                rtas = min(rtas, values.get("max", 5.0))
+                EPS = max(EPS, values.get("min", 1.0))
+                EPS = min(EPS, values.get("max", 5.0))
                 break
         
         # 3. Match personality_traits
@@ -198,7 +198,7 @@ class RTASCalculator:
                 required.update(values.get("required", []))
                 break
         
-        # 5. Calculate contraction rate from RTAS tier
+        # 5. Calculate contraction rate from EPS tier
         # Check for explicit contraction_rate structure first (new format)
         contraction_rate_data = profile.get("contraction_rate")
         if contraction_rate_data and isinstance(contraction_rate_data, dict):
@@ -206,7 +206,7 @@ class RTASCalculator:
             baseline = contraction_rate_data.get("baseline", contraction_rate_data.get("narration", 0.95))
             # Convert from 0.0-1.0 to 0-100 percentage
             final_contraction = int(baseline * 100)
-            logger.debug(f"[RTAS] {char_id}: Using contraction_rate.baseline = {final_contraction}%")
+            logger.debug(f"[EPS] {char_id}: Using contraction_rate.baseline = {final_contraction}%")
         elif "contraction_rate_override" in profile:
             # Legacy override format
             override = profile["contraction_rate_override"]
@@ -218,15 +218,15 @@ class RTASCalculator:
             else:
                 # Direct numeric value
                 final_contraction = int(override) if isinstance(override, (int, float)) else 60
-            logger.debug(f"[RTAS] {char_id}: Using contraction_rate_override = {final_contraction}%")
+            logger.debug(f"[EPS] {char_id}: Using contraction_rate_override = {final_contraction}%")
         else:
-            # Calculate from RTAS tier (fallback) - Default to 95% baseline
+            # Calculate from EPS tier (fallback) - Default to 95% baseline
             contraction_tiers = self.config.get("contraction_tiers", {})
             base_rate = 95  # default 95% baseline for contemporary speech
             for tier_range, tier_config in contraction_tiers.items():
                 if not tier_range.startswith("_"):
                     low, high = map(float, tier_range.split("-"))
-                    if low <= rtas <= high:
+                    if low <= EPS <= high:
                         base_rate = tier_config.get("base_rate", 95)
                         break
 
@@ -234,7 +234,7 @@ class RTASCalculator:
         
         return VoiceSettings(
             character_id=char_id,
-            rtas_score=round(rtas, 1),
+            rtas_score=round(EPS, 1),
             contraction_rate=final_contraction,
             archetype=detected_archetype,
             forbidden_vocab=forbidden,
@@ -248,10 +248,10 @@ class RTASCalculator:
         addressee_id: str
     ) -> float:
         """
-        Calculate RTAS for a specific speaker→addressee pair.
+        Calculate EPS for a specific speaker→addressee pair.
         
         Uses keigo_switch.speaking_to[addressee] if available,
-        otherwise falls back to general RTAS.
+        otherwise falls back to general EPS.
         """
         metadata_en = manifest.get("metadata_en", {})
         if not isinstance(metadata_en, dict):
@@ -285,18 +285,18 @@ class RTASCalculator:
         for name in addressee_names:
             if name and name in speaking_to:
                 register = speaking_to[name]
-                # Fuzzy match register → RTAS
+                # Fuzzy match register → EPS
                 for pattern, values in self.keigo_patterns:
                     if pattern.search(register):
                         return values.get("rtas_tier", 3.0)
         
-        # Fallback to speaker's general RTAS
+        # Fallback to speaker's general EPS
         settings = self._calculate_for_character(speaker_id, speaker)
         return settings.rtas_score
     
     def generate_prompt_context(self, manifest: dict) -> str:
         """
-        Generate RTAS context for injection into translation prompt.
+        Generate EPS context for injection into translation prompt.
         
         Returns:
             Formatted string with all character voice settings
@@ -342,7 +342,7 @@ if __name__ == "__main__":
     calc = RTASCalculator()
     settings = calc.calculate_from_manifest(manifest)
     
-    print("\n=== RTAS CALCULATION RESULTS ===\n")
+    print("\n=== EPS CALCULATION RESULTS ===\n")
     for char_id, setting in settings.items():
         print(setting.to_prompt_instruction())
         print()

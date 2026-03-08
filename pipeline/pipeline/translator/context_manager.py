@@ -15,6 +15,16 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+class ArcClosing:
+    """Prose closing of a single POV arc within a chapter."""
+    character_archetype: str       # e.g., "Koumi (Childhood Friend)"
+    section_header: str            # e.g., "─── The Childhood-Friend College Girl Gets Jealous ───"
+    closing_prose: str             # Actual last N lines of the arc (raw EN prose)
+    closing_line_count: int        # How many lines were extracted
+    emotional_register: str = ""   # e.g., "jealousy_suppressed", "dark_obsession"
+
+
+@dataclass
 class ChapterContext:
     """Context data for a single chapter."""
     chapter_id: str
@@ -23,6 +33,7 @@ class ChapterContext:
     terms_introduced: Dict[str, str] = field(default_factory=dict)
     plot_points: List[str] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
+    arc_closings: List[ArcClosing] = field(default_factory=list)
 
 
 class ContextManager:
@@ -85,13 +96,25 @@ class ContextManager:
         summaries = {}
         for chapter_id, data in raw.items():
             try:
+                raw_arc_closings = data.get("arc_closings", [])
+                arc_closings = []
+                for ac in raw_arc_closings:
+                    if isinstance(ac, dict):
+                        arc_closings.append(ArcClosing(
+                            character_archetype=ac.get("character_archetype", ""),
+                            section_header=ac.get("section_header", ""),
+                            closing_prose=ac.get("closing_prose", ""),
+                            closing_line_count=ac.get("closing_line_count", 0),
+                            emotional_register=ac.get("emotional_register", ""),
+                        ))
                 summaries[chapter_id] = ChapterContext(
                     chapter_id=data.get("chapter_id", chapter_id),
                     summary=data.get("summary", ""),
                     characters_introduced=data.get("characters_introduced", []),
                     terms_introduced=data.get("terms_introduced", {}),
                     plot_points=data.get("plot_points", []),
-                    metadata=data.get("metadata", {})
+                    metadata=data.get("metadata", {}),
+                    arc_closings=arc_closings,
                 )
             except Exception as e:
                 logger.warning(f"Failed to parse chapter context {chapter_id}: {e}")
@@ -145,6 +168,85 @@ class ContextManager:
 
         return "\n".join(parts)
 
+    def get_retrospective_arc_prompt(
+        self,
+        chapter_id: str,
+        active_characters: Optional[List[str]] = None,
+        max_arcs: int = 5,
+        lines_per_closing: int = 20,
+    ) -> str:
+        """
+        Build the retrospective POV anchor block for a chapter.
+
+        Unlike get_context_prompt() which injects summary-based metadata,
+        this method injects the actual closing prose of each POV arc from
+        prior chapters — the emotional anchors that define character entry
+        points in multi-POV retrospective series.
+
+        Args:
+            chapter_id: Current chapter being translated.
+            active_characters: Characters whose arcs are active in this chapter.
+                               If None, injects all characters with stored arc closings.
+            max_arcs: Maximum arc closings to inject (token budget control).
+            lines_per_closing: Lines to include per arc closing (informational only;
+                               actual prose was extracted at storage time).
+
+        Returns:
+            Formatted retrospective anchor string, or "" if no arc closings available.
+        """
+        previous_summaries = self._get_previous_summaries(chapter_id)
+        if not previous_summaries:
+            return ""
+
+        # Collect arc closings from previous chapters, newest first
+        all_arcs: List[tuple] = []  # (chapter_id, ArcClosing)
+        for ctx in reversed(previous_summaries):
+            for arc in ctx.arc_closings:
+                if active_characters:
+                    # Filter to active characters (substring match on archetype)
+                    if not any(
+                        ch.lower() in arc.character_archetype.lower()
+                        for ch in active_characters
+                    ):
+                        continue
+                all_arcs.append((ctx.chapter_id, arc))
+
+        if not all_arcs:
+            return ""
+
+        # Cap to max_arcs
+        all_arcs = all_arcs[:max_arcs]
+
+        lines = [
+            "=== RETROSPECTIVE POV ANCHORS ===",
+            "",
+            "The following are the EXACT CLOSING PROSE passages from each character's",
+            "most recent POV arc in prior chapters. These are not summaries — they are",
+            "the character's actual last words to the reader before the current chapter.",
+            "When you encounter this character's POV in the current chapter, their",
+            "emotional register MUST continue from this exact pitch.",
+            "",
+        ]
+
+        for src_chapter_id, arc in all_arcs:
+            sep = "─" * 50
+            lines.append(sep)
+            lines.append(f"[{src_chapter_id.upper()}] {arc.character_archetype.upper()} — \"{arc.section_header}\"")
+            lines.append(sep)
+            lines.append(arc.closing_prose.strip())
+            lines.append("")
+
+        lines.append(
+            "TRANSLATION INSTRUCTION — RETROSPECTIVE CONTINUITY:\n"
+            "When translating each POV arc in this chapter, treat the corresponding\n"
+            "anchor above as the emotional baseline. The current arc OPENS from where\n"
+            "that anchor CLOSED. The closing staccato rhythm, the italicized interior\n"
+            "voice, the specific emotional conflict — all carry forward unchanged until\n"
+            "the current arc introduces a new development."
+        )
+
+        return "\n".join(lines)
+
     def _get_previous_summaries(self, current_chapter_id: str) -> List[ChapterContext]:
         """
         Get summaries of chapters preceding the current one.
@@ -179,7 +281,8 @@ class ContextManager:
         metadata: Optional[Dict[str, Any]] = None,
         characters: Optional[List[str]] = None,
         terms: Optional[Dict[str, str]] = None,
-        plot_points: Optional[List[str]] = None
+        plot_points: Optional[List[str]] = None,
+        arc_closings: Optional[List[ArcClosing]] = None,
     ):
         """
         Add or update context for a translated chapter.
@@ -198,7 +301,8 @@ class ContextManager:
             characters_introduced=characters or [],
             terms_introduced=terms or {},
             plot_points=plot_points or [],
-            metadata=metadata or {}
+            metadata=metadata or {},
+            arc_closings=arc_closings or [],
         )
 
         self.chapter_summaries[chapter_id] = context
@@ -216,6 +320,46 @@ class ContextManager:
             self._save_json(self.glossary_path, self.glossary)
 
         logger.debug(f"Added context for {chapter_id}")
+
+    def register_chapter_complete(
+        self,
+        chapter_id: str,
+        chapter_num: Optional[int] = None,
+        chapter_title: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+        arc_closings: Optional[List[ArcClosing]] = None,
+    ) -> None:
+        """
+        Register minimal completion metadata for a translated chapter.
+
+        This replaces inline per-chapter summarizer calls in Phase 2 while keeping
+        chapter ordering and basic continuity metadata available.
+        """
+        title = (chapter_title or "").strip()
+        if title:
+            summary = title
+        elif chapter_num is not None:
+            summary = f"Chapter {chapter_num}"
+        else:
+            summary = "Translated chapter"
+
+        payload = dict(metadata or {})
+        if chapter_num is not None:
+            payload.setdefault("chapter_num", chapter_num)
+        if title:
+            payload.setdefault("chapter_title", title)
+        payload.setdefault("summary_skipped", True)
+        payload.setdefault("context_mode", "minimal_registration")
+
+        self.add_chapter_context(
+            chapter_id=chapter_id,
+            summary=summary,
+            metadata=payload,
+            characters=[],
+            terms={},
+            plot_points=[],
+            arc_closings=arc_closings or [],
+        )
 
     def register_name(self, jp_name: str, en_name: str):
         """

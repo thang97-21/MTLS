@@ -15,7 +15,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
-from pipeline.common.genai_factory import create_genai_client, resolve_api_key
+from pipeline.common.embedding_client import EmbeddingClient
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +27,6 @@ try:
     CHROMADB_AVAILABLE = True
 except ImportError:
     CHROMADB_AVAILABLE = False
-
-# Gemini embeddings
-GEMINI_AVAILABLE = True
-
 
 @dataclass
 class PanelSearchResult:
@@ -96,41 +92,38 @@ class MangaVectorStore:
             metadata={"hnsw:space": "cosine"},
         )
 
-        # Gemini embedding client
-        api_key = resolve_api_key(api_key=gemini_api_key, required=False) if GEMINI_AVAILABLE else None
-        if GEMINI_AVAILABLE and api_key:
-            self.gemini_client = create_genai_client(api_key=api_key)
-            self._embedding_model = "gemini-embedding-001"
-        else:
-            self.gemini_client = None
-            logger.warning("[MANGA] Gemini client not initialized — embeddings unavailable")
+        # Config-driven embedding client (OpenRouter/Gemini)
+        try:
+            self.embedding_client = EmbeddingClient(api_key=gemini_api_key)
+            self._embedding_provider = self.embedding_client.provider
+            self._embedding_model = self.embedding_client.model
+        except Exception as exc:
+            self.embedding_client = None
+            self._embedding_provider = "unavailable"
+            self._embedding_model = "unavailable"
+            logger.warning(f"[MANGA] Embedding client not initialized — embeddings unavailable: {exc}")
 
         logger.info(
             f"[MANGA] Vector store ready: {self.collection_name} "
             f"({self.collection.count()} documents)"
+        )
+        logger.info(
+            f"[MANGA] Embeddings: provider={self._embedding_provider}, model={self._embedding_model}"
         )
 
     # ─── Embedding ───────────────────────────────────────────────────
 
     def _embed(self, text: str) -> List[float]:
         """Generate embedding for a text string."""
-        if not self.gemini_client:
-            raise RuntimeError("Gemini client not initialized for embeddings")
-        result = self.gemini_client.models.embed_content(
-            model=self._embedding_model,
-            contents=text,
-        )
-        return result.embeddings[0].values
+        if not self.embedding_client:
+            raise RuntimeError("Embedding client not initialized")
+        return self.embedding_client.embed_text(text)
 
     def _embed_batch(self, texts: List[str]) -> List[List[float]]:
         """Batch embed multiple texts."""
-        if not self.gemini_client:
-            raise RuntimeError("Gemini client not initialized for embeddings")
-        result = self.gemini_client.models.embed_content(
-            model=self._embedding_model,
-            contents=texts,
-        )
-        return [e.values for e in result.embeddings]
+        if not self.embedding_client:
+            raise RuntimeError("Embedding client not initialized")
+        return self.embedding_client.embed_texts(texts)
 
     # ─── Indexing ────────────────────────────────────────────────────
 

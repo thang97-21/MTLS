@@ -1,0 +1,300 @@
+{
+  "language": "vi",
+  "genre": "autobiography_memoir",
+  "version": "1.0",
+  "description": "Hồi ký / tự truyện nghệ sĩ — phong cách văn xuôi nội tâm ngôi thứ nhất. Áp dụng cho tác phẩm dựa trên đời thực (non-fiction memoir). Ưu tiên tính trực tiếp về cảm xúc, giọng kể nhất quán, và chuyển đổi tự nhiên giữa quá khứ—hiện tại.",
+
+  "target_audience": {
+    "age_group": "18-35",
+    "reading_level": "phổ thông đến văn chương — không dùng thuật ngữ khó hiểu nhưng không né tránh độ sâu cảm xúc",
+    "context": "Người đọc quen với âm nhạc Nhật / văn hóa nghệ thuật, tìm kiếm sự đồng cảm và hiểu về cuộc sống nghệ sĩ"
+  },
+
+  "tone_guidelines": {
+    "narration_style": "ngôi thứ nhất, hướng nội, xúc cảm trực tiếp — không qua lớp kính",
+    "emotional_register": "thẳng thắn và dễ tổn thương — KHÔNG làm mềm cảm xúc bằng từ không chắc chắn",
+    "pacing": "nhịp chậm hơn light novel — câu dài hơn, đoạn suy tư dài hơn, ít hành động hơn",
+    "humor": "khan hiếm và tự giễu — khi xuất hiện thì thường là self-deprecating",
+    "tense_handling": "quá khứ là lớp cơ bản, hiện tại là lớp bình luận từ người kể — xem temporal_framing_markers"
+  },
+
+  "CRITICAL_ANTI_HEDGING_RULE": {
+    "priority": "ABSOLUTE",
+    "version": "2.1",
+    "description": "Tự truyện dùng khẳng định cảm xúc trực tiếp. KHÔNG thêm từ nghi ngờ vào cảm xúc đã khẳng định trong nguyên bản. Quy tắc này áp dụng tuyệt đối — kể cả trong chương cuối, kể cả trong đoạn phân tích nội tâm, kể cả khi diễn đạt 'khi nhìn lại'.",
+    "banned_insertions": [
+      "dường như — TUYỆT ĐỐI CẤM trong hồi ký. Chỉ cho phép nếu JP source dùng らしい/ようだ/みたいだ làm evidential thuần túy (không phải nhân quả).",
+      "có vẻ — chỉ cho phép nếu JP source dùng そうだ/ようだ/みたいだ làm EVIDENTIAL MARKER — KHÔNG phải ようだ trong nghĩa nhân quả/so sánh.",
+      "hình như — chỉ cho phép nếu JP source dùng かな/かしら. KHÔNG phải だろう hoặc のだろう.",
+      "phần nào — chỉ cho phép nếu JP source dùng 少し/ある程度/多少 làm qualifier trực tiếp cho cảm xúc.",
+      "tôi cảm thấy như — chỉ cho phép nếu JP source dùng ような気がする/気がした cụ thể.",
+      "có lẽ — chỉ cho phép nếu JP source dùng かもしれない/かもしれなかった/かな/じゃないかな làm EPISTEMIC MARKER. KHÔNG phải だろう, のだろう, のだ, せいか, から, ので, だから."
+    ],
+    "causal_particle_trap": {
+      "warning": "ĐÂY LÀ BẪY PHỔ BIẾN NHẤT — causal/explanatory particles trong JP KHÔNG PHẢI epistemic markers và KHÔNG được license hedging trong VN.",
+      "forbidden_mappings": [
+        "せいか (do... mà / nhờ... mà) → KHÔNG được dịch là 'có lẽ / dường như / có vẻ'. Dịch đúng: 'nhờ... mà / do... nên'",
+        "のだろう / のだ (explanatory/presupposition) → KHÔNG 'có lẽ'. Dịch đúng: 'chắc là / hẳn là / vì thế mà'",
+        "だろう (plain conjecture/softened assertion) → KHÔNG tự động thành 'có lẽ'. Nếu JP nói はっきりしているだろう (clearly) thì VN phải dịch đúng nghĩa, không thêm hedge.",
+        "から/ので/だから (causal = because/therefore) → KHÔNG 'có lẽ'. Dịch đúng quan hệ nhân quả.",
+        "言われている/とされている (reported/said to be) → KHÔNG 'có vẻ'. Dịch: 'người ta nói / được cho là / nghe nói'"
+      ],
+      "allowed_mappings": [
+        "かもしれない → có lẽ / có thể ✅",
+        "かな / じゃないかな → có lẽ / nhỉ ✅",
+        "らしい → nghe nói / hình như ✅ (reported hearsay)",
+        "ようだ (evidential) → có vẻ như ✅ — chỉ khi là inference từ dấu hiệu bên ngoài, không phải mệnh đề nhân quả"
+      ]
+    },
+    "letter_section_note": {
+      "description": "Trong các đoạn thư gửi đến độc giả / fan (closing letters), tác giả thường dùng かもしれない/かも để diễn tả sự không chắc chắn hướng đến tương lai hoặc đến phản ứng của người đọc. Đây là epistemic marker thật sự — 'có lẽ' VẪN được license trong trường hợp này.",
+      "example": "Có lẽ lại bị nói vậy. (JP: ってまた言われてしまうかも) ✅ — LICENSED vì JP dùng かも",
+      "contrast": "Có lẽ giọng hát này phù hợp. (JP: この歌い方が合ってる気がした) ❌ — KHÔNG LICENSED vì JP dùng 気がした (incidental feeling), không phải epistemic marker"
+    },
+    "principle": "Nếu JP nguyên bản nói 怖かった (I was scared), VN phải là 'tôi sợ' — KHÔNG PHẢI 'tôi dường như sợ / tôi có vẻ sợ / tôi cảm thấy như sợ'. Test duy nhất: JP source có dùng epistemic marker thật sự không? Nếu không — KHÔNG thêm hedge.",
+    "examples": {
+      "jp_source": "あの時、私は本当に怖かった",
+      "wrong_vn": "Hồi đó, tôi dường như thực sự rất sợ",
+      "correct_vn": "Hồi đó, tôi thực sự sợ hãi",
+      "jp_source_2": "怒りで全てを壊したかった",
+      "wrong_vn_2": "Tôi có vẻ muốn phá hủy tất cả vì tức giận",
+      "correct_vn_2": "Tôi muốn phá hủy tất cả vì tức giận",
+      "jp_source_3": "時間が増えたせいか、再生数が少しずつ伸びていた",
+      "wrong_vn_3": "Có lẽ nhờ thời gian lướt điện thoại tăng lên mà lượt xem tăng dần",
+      "correct_vn_3": "Nhờ thời gian lướt điện thoại tăng lên, lượt xem cũng dần tăng theo",
+      "note_3": "せいか là particle nhân quả — dịch thành nhân quả, không thêm hedge"
+    },
+    "self_check_protocol": "Sau khi dịch xong, scan toàn bộ file tìm: dường như / có vẻ / hình như / có lẽ / phần nào / cảm thấy như. Với MỖI trường hợp: tra JP source — có epistemic marker thật sự không? Nếu không có → xóa.",
+    "exception": "Hedging ĐÚNG khi chính tác giả diễn đạt sự không chắc chắn thật sự: 自分でもよくわからなかった → 'tôi cũng không hiểu rõ bản thân mình'. Test: JP source có nói không chắc không? Nếu có → giữ hedge."
+  },
+
+  "temporal_framing_markers": {
+    "description": "Hồi ký di chuyển liên tục giữa thì quá khứ (sự việc đã xảy ra) và thì hiện tại (người kể phản tư). Dùng các dấu hiệu này để phân biệt hai lớp thời gian.",
+    "present_reflection_markers": {
+      "description": "Người kể ở HÔM NAY nhìn lại — inject vào đầu đoạn khi JP source dùng thì hiện tại hoặc present-tense reflection (今思えば, 今では, 今になって, 今ならわかる)",
+      "expressions": [
+        "Nhìn lại bây giờ...",
+        "Giờ đây, khi tôi viết những dòng này...",
+        "Hôm nay tôi hiểu rằng...",
+        "Sau tất cả, tôi mới nhận ra...",
+        "Khi nhìn lại, tôi thấy...",
+        "Bây giờ tôi mới nhận ra —",
+        "Giờ đây khi nhìn lại, tôi mới hiểu:"
+      ]
+    },
+    "past_narration_markers": {
+      "description": "Người kể ở THỜI ĐIỂM ĐÓ — khi JP source rõ ràng kể về quá khứ (あの頃, その時, 当時, hồi ký quá khứ rõ ràng)",
+      "expressions": [
+        "Hồi đó...",
+        "Vào lúc đó...",
+        "Thời ấy...",
+        "Khi còn...",
+        "Ngày mà...",
+        "Hồi ấy...",
+        "Lúc đó..."
+      ]
+    },
+    "distance_markers": {
+      "description": "Nhấn mạnh khoảng cách giữa bản thân xưa và nay",
+      "expressions": [
+        "Cô bé ngày ấy không biết rằng...",
+        "Tôi của năm đó chưa hiểu được...",
+        "Bây giờ tôi mới biết, hồi đó tôi đã...",
+        "Cô gái mà tôi từng là..."
+      ]
+    },
+    "temporal_aspect_rule": {
+      "priority": "HIGH",
+      "description": "JP verb form -た (past tense) PHẢI được ánh xạ sang thì quá khứ trong VN, kể cả khi đoạn văn bao quanh là hiện tại phản tư.",
+      "warning": "BẪY PHỔ BIẾN: JP dùng -た cho hành động thói quen hoặc cảm giác thân thể trong quá khứ, nhưng VN lại dùng hiện tại thói quen. PHẢI thêm marker quá khứ.",
+      "examples": [
+        {
+          "jp": "Vocaloidを聴いて歌うかぎり、私の心の中心はいつも熱かった",
+          "wrong_vn": "Chừng nào còn nghe Vocaloid và hát, trung tâm trái tim tôi luôn nóng hổi",
+          "correct_vn": "Chừng nào còn nghe Vocaloid và hát, trung tâm trái tim tôi hồi đó luôn nóng hổi",
+          "note": "熱かった = past tense → VN phải thêm 'hồi đó' để anchor về quá khứ"
+        },
+        {
+          "jp": "あの頃、私は毎日泣いていた",
+          "wrong_vn": "Ngày đó, tôi khóc mỗi ngày",
+          "correct_vn": "Hồi ấy, tôi cứ khóc mãi mỗi ngày",
+          "note": "Thì quá khứ + hành động lặp lại → dùng marker quá khứ + 'cứ...mãi' cho thói quen"
+        }
+      ],
+      "fix_pattern": "Khi JP source dùng -た/-ていた cho hành động/trạng thái trong đoạn hồi ký, VN phải có ít nhất một trong: [hồi đó / hồi ấy / lúc ấy / ngày ấy / thời đó / khi còn] trong đoạn đó nếu chưa có marker nào."
+    },
+    "missing_marker_detection": {
+      "description": "Khi JP source có reflection marker (今思えば, あの時を振り返ると, 今ならわかる) nhưng VN đoạn không có marker tương ứng — PHẢI inject.",
+      "trigger_jp_phrases": [
+        "今思えば → Nhìn lại bây giờ,",
+        "今ならわかる → Giờ đây tôi hiểu —",
+        "あの時を振り返ると → Khi nhìn lại khoảng thời gian đó,",
+        "今になって思う → Bây giờ tôi mới nghĩ ra,",
+        "今でも忘れない → Đến tận bây giờ tôi vẫn không quên",
+        "当時の自分は → Tôi của ngày đó..."
+      ]
+    }
+  },
+
+  "inner_monologue_patterns": {
+    "description": "Tự truyện có tỷ lệ độc thoại nội tâm rất cao. Dùng đúng pattern để phân biệt với lời kể bình thường.",
+    "direct_inner_voice": {
+      "description": "Khi JP dùng 思った / 考えた / 感じた với nội dung cụ thể",
+      "patterns": [
+        "tôi tự nhủ: ...",
+        "thầm nghĩ: ...",
+        "trong đầu tôi hiện lên: ...",
+        "tôi tự hỏi: ..."
+      ]
+    },
+    "rhetorical_questions": {
+      "description": "Khi JP dùng のか/だろうか trong nội tâm — câu hỏi tự hỏi, không cần trả lời",
+      "patterns": [
+        "Tôi đang làm gì vậy?",
+        "Đây có phải là điều tôi muốn không?",
+        "Vì sao lại như thế?"
+      ],
+      "note": "Giữ nguyên tính tu từ — KHÔNG thêm câu trả lời nếu JP không có"
+    },
+    "fragmented_introspection": {
+      "description": "Khi JP dùng câu ngắn, không đầy đủ chủ vị để thể hiện dòng suy nghĩ gián đoạn",
+      "patterns": [
+        "...",
+        "Không phải vậy.",
+        "Hoặc có lẽ là vậy.",
+        "Tôi không biết."
+      ],
+      "note": "Giữ câu ngắn và gián đoạn — KHÔNG bổ sung để hoàn chỉnh ngữ pháp nếu JP để gián đoạn"
+    }
+  },
+
+  "pronoun_system": {
+    "narrator_voice": {
+      "self_reference": "tôi — dùng nhất quán cho giọng kể chính",
+      "note": "tôi giữ khoảng cách vừa phải phù hợp với hồi ký — không dùng mình (quá thân mật) hay ta (quá văn hoa) trong hồi ký nghệ sĩ hiện đại"
+    },
+    "addressing_younger_self": {
+      "strategy": "vẫn dùng tôi — phân biệt bằng temporal_framing_markers, không bằng đổi đại từ",
+      "note": "Tránh lỗi đổi sang cô bé / em gái làm mất tính liên tục giọng kể"
+    },
+    "addressing_industry_figures": {
+      "senior_exec_male": "ông (neutral/distant)",
+      "senior_exec_female": "bà (neutral/distant)",
+      "producer_peer": "anh / chị (by relative age)",
+      "fan_collective": "các bạn / mọi người"
+    },
+    "emotional_distance_shifts": {
+      "description": "Khi nhân vật kể cảm xúc tiêu cực về ngành công nghiệp, giọng trở nên khách quan hơn — dùng người ta / họ thay vì gọi tên cụ thể để tạo khoảng cách",
+      "example": "Họ muốn tôi hát những gì họ muốn nghe, không phải những gì tôi cần nói"
+    }
+  },
+
+  "code_switching_guide": {
+    "description": "Ado và nghệ sĩ cùng thể loại thường xen kẽ giữa giọng kể bình thường và đoạn bùng nổ văn chương. Nhận diện và xử lý đúng.",
+    "casual_narrative_voice": {
+      "description": "Đoạn kể chuyện bình thường — ngôn ngữ đời thường, câu trung bình",
+      "han_viet_ratio": "20-30%",
+      "markers": "không có từ láy bùng nổ, không có thành ngữ 4 tiếng",
+      "example_vn": "Tôi ngồi trong phòng thu âm một mình, nhìn vào micro và không biết phải bắt đầu từ đâu."
+    },
+    "lyrical_burst_voice": {
+      "description": "Khi JP source đột ngột chuyển sang văn phong mật độ cao / cảm xúc cao trào — dùng công cụ văn chương",
+      "han_viet_ratio": "40-55% (elevated)",
+      "tools": [
+        "từ láy cảm xúc (bâng khuâng, man mác, xao xuyến, tê tái)",
+        "thành ngữ 4 tiếng Tier A nếu phù hợp ngữ cảnh",
+        "vô cùng / hết sức (NOT quá / siêu — đây là giọng kể không phải đối thoại)",
+        "câu dài với nhiều mệnh đề lồng nhau"
+      ],
+      "example_vn": "Khoảnh khắc ánh đèn sân khấu chiếu vào tôi, tất cả những nỗi sợ hãi, mọi đêm trắng thức khóc một mình, mọi lần tôi tự hỏi liệu mình có xứng đáng hay không — tất cả vụt tan biến, và chỉ còn lại âm nhạc."
+    },
+    "transition_signal": "JP thường báo hiệu bằng câu ngắn sau đó là câu dài — hoặc dấu —/…. Mirror in VN với dấu — hoặc câu ngắn dứt khoát trước đoạn dài"
+  },
+
+  "han_viet_ratio": {
+    "base_narration": "25-35% — hồi ký không cần văn hoa nhưng cũng không phải ngôn ngữ teen",
+    "emotional_climax": "40-50% — cho đoạn bùng nổ cảm xúc",
+    "dialogue_flashback": "15-25% — đoạn tái hiện hội thoại giữ giọng tự nhiên của nhân vật",
+    "industry_description": "35-45% — mô tả ngành công nghiệp âm nhạc dùng nhiều thuật ngữ hơn"
+  },
+
+  "cultural_term_handling": {
+    "jp_song_titles": {
+      "rule": "Giữ nguyên tiêu đề bằng romaji hoặc phiên âm + ghi chú VN trong lần đầu nếu cần",
+      "example_first": "うっせぇわ (Usse wa — ca khúc debut đình đám của tôi)",
+      "example_callback": "うっせぇわ (không cần giải thích thêm sau lần đầu)",
+      "note": "Song titles are proper nouns — do NOT translate them"
+    },
+    "jp_places_venues": {
+      "rule": "Phiên âm + giải thích ngắn lần đầu nếu địa danh không quen với VN readers",
+      "example": "Budokan (Nhật Bản Vũ Đạo Quán — đấu trường âm nhạc huyền thoại tại Tokyo)"
+    },
+    "jp_industry_awards": {
+      "rule": "Giữ tên giải thưởng bằng romaji + giải thích bên cạnh lần đầu",
+      "example": "Japan Record Awards (giải thưởng âm nhạc danh giá nhất Nhật Bản)"
+    }
+  },
+
+  "sentence_rhythm": {
+    "description": "Hồi ký có nhịp điệu khác light novel — đoạn văn dài hơn, nhiều phẩy hơn, câu phức tạp hơn là dấu hiệu của thể loại",
+    "short_sentence_use": "Chỉ dùng câu cực ngắn để nhấn mạnh — đặt sau một đoạn dài, hoặc để đánh dấu khoảnh khắc quan trọng",
+    "paragraph_length": "Không bẻ đoạn văn ngắn như light novel. Giữ đoạn 4-8 câu nếu JP dùng đoạn dài",
+    "ellipsis_use": "Dùng … khi JP dùng … (suy nghĩ bỏ lửng, ký ức không hoàn chỉnh) — KHÔNG bổ sung",
+    "em_dash_use": "Dùng — khi JP dùng — (ngắt ý đột ngột, chú thích nội tâm)"
+  },
+
+  "negative_vectors": [
+    "TUYỆT ĐỐI KHÔNG thêm dường như / có vẻ / hình như / có lẽ vào cảm xúc đã khẳng định trong nguyên bản — xem CRITICAL_ANTI_HEDGING_RULE.",
+    "KHÔNG để particle nhân quả JP (せいか, から, ので, だろう) trở thành 'có lẽ / dường như' trong VN. Dịch đúng quan hệ nhân quả.",
+    "KHÔNG bỏ sót marker thời gian khi JP dùng 今思えば / 今ならわかる / あの頃を振り返って. PHẢI inject temporal_framing_marker tương ứng.",
+    "KHÔNG dùng VN hiện tại khi JP source dùng -た (past tense) cho hành động/cảm giác trong hồi ký — thêm 'hồi đó / lúc ấy / ngày đó'.",
+    "Không bẻ đoạn văn dài thành nhiều đoạn ngắn kiểu light novel — autobiography có nhịp chậm hơn",
+    "Không dùng quá / siêu / lắm trong giọng kể narrator — chỉ dùng vô cùng / hết sức cho narrator, quá/siêu chỉ trong tái hiện hội thoại",
+    "Không dùng mình thay tôi trong giọng kể chính — mình quá thân mật cho văn phong hồi ký. Ngoại lệ: trong thư gửi fan (informal letter register), 'mình' là đại từ chủ ý.",
+    "Không dịch tiêu đề bài hát JP — giữ nguyên romaji/katakana + ghi chú lần đầu",
+    "Không làm hoàn chỉnh câu gián đoạn trong độc thoại nội tâm — nếu JP để … thì VN giữ …",
+    "KHÔNG dùng *italics* (dấu sao) cho độc thoại nội tâm — dùng — (em dash) prefix"
+  ],
+
+  "icl_examples": [
+    {
+      "id": "MEMOIR_DIRECT_EMOTION",
+      "description": "Cảm xúc trực tiếp — không thêm hedge",
+      "jp": "あの時、ただ怖かった。逃げたかった。でも逃げなかった。",
+      "wrong_vn": "Hồi đó, tôi dường như chỉ cảm thấy sợ hãi. Có lẽ tôi muốn bỏ chạy. Nhưng tôi không chạy.",
+      "correct_vn": "Hồi đó, tôi chỉ sợ. Muốn bỏ chạy. Nhưng tôi không chạy.",
+      "note": "Ba câu ngắn, trực tiếp, không hedge. Giữ nhịp gián đoạn của JP."
+    },
+    {
+      "id": "MEMOIR_RETROSPECTIVE_FRAME",
+      "description": "Người kể hiện tại nhìn lại quá khứ",
+      "jp": "あの頃の自分が何も分かっていなかったことが、今ならわかる。",
+      "wrong_vn": "Bây giờ tôi mới biết rằng hồi đó tôi không hiểu gì cả.",
+      "correct_vn": "Nhìn lại bây giờ, tôi hiểu — cô gái của ngày ấy chưa biết gì cả.",
+      "note": "Dùng temporal_framing_marker (Nhìn lại bây giờ) + distance_marker (cô gái của ngày ấy) để tạo chiều sâu hồi ký."
+    },
+    {
+      "id": "MEMOIR_LYRICAL_BURST",
+      "description": "Chuyển từ giọng bình thường sang bùng nổ văn chương",
+      "jp": "マイクの前に立った瞬間、今まで抱えてきた全てが——怖さも、孤独も、怒りも——音楽になった。",
+      "wrong_vn": "Khoảnh khắc đứng trước micro, tất cả những gì tôi đã mang theo — nỗi sợ, sự cô đơn, tức giận — trở thành âm nhạc.",
+      "correct_vn": "Khoảnh khắc tôi đứng trước micro, tất cả những gánh nặng tôi đã mang suốt bao năm — nỗi sợ hãi, sự cô đơn tê tái, cơn giận không tên — đều vụt hóa thành âm nhạc.",
+      "note": "correct_vn dùng: từ láy (tê tái), từ ngữ văn chương (gánh nặng, vụt hóa), câu dài hơn để tạo bùng nổ cảm xúc tương ứng."
+    },
+    {
+      "id": "MEMOIR_INDUSTRY_TENSION",
+      "description": "Mô tả căng thẳng với ngành công nghiệp — giọng khách quan hơn",
+      "jp": "彼らは私に、彼らが聴きたいものを歌わせたかった。私が歌いたいものではなく。",
+      "correct_vn": "Họ muốn tôi hát những gì họ muốn nghe. Không phải những gì tôi cần phải nói.",
+      "note": "Dùng họ (khoảng cách) thay vì tên cụ thể. Câu ngắn sau câu dài để nhấn mạnh mâu thuẫn."
+    },
+    {
+      "id": "MEMOIR_INNER_MONOLOGUE",
+      "description": "Độc thoại nội tâm — câu hỏi tu từ không trả lời",
+      "jp": "これが本当に自分のやりたいことなのか、と何度も自問した。",
+      "wrong_vn": "Tôi tự hỏi bản thân nhiều lần rằng liệu đây có thực sự là điều tôi muốn làm hay không, và thực ra câu trả lời luôn là có.",
+      "correct_vn": "Tôi tự hỏi đi hỏi lại: đây có thực sự là điều tôi muốn không?",
+      "note": "KHÔNG thêm câu trả lời nếu JP không có. Giữ câu hỏi treo lơ lửng — đó là kỹ thuật memoir."
+    }
+  ]
+}

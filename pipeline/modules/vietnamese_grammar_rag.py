@@ -111,12 +111,12 @@ class VietnameseGrammarRAG:
             "note": arch_config.get("note", "")
         }
     
-    def get_particles_for_rtas(self, rtas: float) -> Dict:
+    def get_particles_for_rtas(self, EPS: float) -> Dict:
         """
-        Get appropriate particle style based on RTAS score.
+        Get appropriate particle style based on EPS score.
         
         Args:
-            rtas: Relationship Tension & Affection Score (1.0-5.0)
+            EPS: Relationship Tension & Affection Score (1.0-5.0)
             
         Returns:
             Dict with particle_style and examples
@@ -125,7 +125,7 @@ class VietnameseGrammarRAG:
             rtas_range = tier.get("rtas_range", "0-5.0")
             low, high = map(float, rtas_range.split("-"))
             
-            if low <= rtas <= high:
+            if low <= EPS <= high:
                 return {
                     "particle_style": tier.get("particle_style", "neutral"),
                     "examples": tier.get("examples", [])
@@ -133,7 +133,7 @@ class VietnameseGrammarRAG:
         
         return {"particle_style": "neutral", "examples": []}
     
-    def suggest_particles(self, archetype: str, rtas: float, 
+    def suggest_particles(self, archetype: str, EPS: float, 
                          sentence_type: str = "statement",
                          gender: str = "neutral") -> List[Dict]:
         """
@@ -141,7 +141,7 @@ class VietnameseGrammarRAG:
         
         Args:
             archetype: Character archetype
-            rtas: RTAS score
+            EPS: EPS score
             sentence_type: 'question', 'statement', 'exclamation', 'suggestion'
             gender: 'male', 'female', 'neutral'
             
@@ -149,7 +149,7 @@ class VietnameseGrammarRAG:
             List of particle suggestions with priority scores
         """
         archetype_config = self.get_particles_for_archetype(archetype)
-        rtas_config = self.get_particles_for_rtas(rtas)
+        rtas_config = self.get_particles_for_rtas(EPS)
         
         forbidden = set(archetype_config.get("forbidden", []))
         suggestions = []
@@ -169,9 +169,9 @@ class VietnameseGrammarRAG:
             if particle in forbidden:
                 continue
             
-            # Check RTAS range
+            # Check EPS range
             rtas_range = config.get("rtas_range", [0, 5.0])
-            if not (rtas_range[0] <= rtas <= rtas_range[1]):
+            if not (rtas_range[0] <= EPS <= rtas_range[1]):
                 continue
             
             # Check gender preference
@@ -258,7 +258,7 @@ class VietnameseGrammarRAG:
         self,
         jp_particle: str,
         archetype: str = "NEUTRAL",
-        rtas: float = 3.0,
+        EPS: float = 3.0,
         gender: str = "neutral",
         context: str = ""
     ) -> Dict:
@@ -268,7 +268,7 @@ class VietnameseGrammarRAG:
         Args:
             jp_particle: Japanese particle (e.g., 'よ', 'ね', 'わ')
             archetype: Character archetype (OJOU, TSUNDERE, GYARU, etc.)
-            rtas: RTAS score (0.0-5.0)
+            EPS: EPS score (0.0-5.0)
             gender: Character gender ('male', 'female', 'neutral')
             context: Additional context for disambiguation
 
@@ -323,12 +323,12 @@ class VietnameseGrammarRAG:
             forbidden = gender_restrictions['female_forbidden']
             suggestions = [s for s in suggestions if not any(f in s for f in forbidden)]
 
-        # Apply RTAS filtering
+        # Apply EPS filtering
         rtas_guidance = vn_mappings.get('rtas_guidance', {})
         if rtas_guidance:
-            if rtas < 2.0 and 'hostile_cold' in rtas_guidance:
+            if EPS < 2.0 and 'hostile_cold' in rtas_guidance:
                 suggestions = rtas_guidance['hostile_cold'] + suggestions
-            elif rtas >= 4.0 and 'intimate_warm' in rtas_guidance:
+            elif EPS >= 4.0 and 'intimate_warm' in rtas_guidance:
                 suggestions = rtas_guidance['intimate_warm'] + suggestions
 
         # Remove duplicates while preserving order
@@ -346,7 +346,7 @@ class VietnameseGrammarRAG:
             'vietnamese_particles': unique_suggestions[:5],  # Top 5 suggestions
             'corpus_frequency': particle_data.get('corpus_frequency', 0),
             'archetype_used': archetype_upper,
-            'rtas_used': rtas,
+            'rtas_used': EPS,
             'gender_used': gender,
             'usage_notes': particle_data.get('usage_notes', ''),
             'common_mistakes': particle_data.get('common_mistakes', [])
@@ -382,7 +382,7 @@ class VietnameseGrammarRAG:
     # =========================================================================
     
     def get_pronoun_pair(self, relationship_type: str, tier: int = 2, 
-                        rtas: float = None) -> Dict[str, str]:
+                        EPS: float = None) -> Dict[str, str]:
         """
         Get appropriate pronoun pair for a relationship.
         
@@ -390,7 +390,7 @@ class VietnameseGrammarRAG:
             relationship_type: 'male_friendship', 'female_friendship', 
                               'mixed_gender', 'romantic', 'family'
             tier: Intimacy tier (1-3) for friendships
-            rtas: RTAS score for romantic relationships
+            EPS: EPS score for romantic relationships
             
         Returns:
             Dict with 'self' and 'other' pronouns
@@ -402,12 +402,12 @@ class VietnameseGrammarRAG:
                 "mappings": self.pronoun_tiers.get("family_override", {}).get("mappings", {})
             }
         
-        if relationship_type == "romantic" and rtas is not None:
-            # Use RTAS scale
+        if relationship_type == "romantic" and EPS is not None:
+            # Use EPS scale
             rtas_scale = self.pronoun_tiers.get("romantic_rtas_scale", {})
             for range_key, pronouns in rtas_scale.items():
                 low, high = map(float, range_key.split("-"))
-                if low <= rtas <= high:
+                if low <= EPS <= high:
                     return pronouns
         
         # Friendship tiers
@@ -725,7 +725,7 @@ class VietnameseGrammarRAG:
         Args:
             context: Optional context dict with:
                     - archetype: Character archetype
-                    - rtas: RTAS score
+                    - EPS: EPS score
                     - scene_type: Scene type (dialogue, action, etc.)
                     
         Returns:
@@ -754,11 +754,11 @@ class VietnameseGrammarRAG:
             if arch_config.get("forbidden"):
                 injection += f"- **FORBIDDEN particles**: {', '.join(arch_config['forbidden'])}\n"
         
-        # Include RTAS-based guidance if provided
-        if context and context.get("rtas"):
-            rtas = context["rtas"]
-            rtas_config = self.get_particles_for_rtas(rtas)
-            injection += f"\n### RTAS {rtas}: {rtas_config.get('particle_style', 'neutral')}\n"
+        # Include EPS-based guidance if provided
+        if context and context.get("EPS"):
+            EPS = context["EPS"]
+            rtas_config = self.get_particles_for_rtas(EPS)
+            injection += f"\n### EPS {EPS}: {rtas_config.get('particle_style', 'neutral')}\n"
             if rtas_config.get("examples"):
                 injection += f"- Example: `{rtas_config['examples'][0]}`\n"
         
@@ -787,11 +787,11 @@ class VietnameseGrammarRAG:
             injection += "\n**High-Frequency Particles:**\n"
             common_particles = ['よ (yo)', 'ね (ne)', 'な (na)', 'わ (wa)']
             for jp_particle in common_particles:
-                if context.get("archetype") and context.get("rtas") and context.get("gender"):
+                if context.get("archetype") and context.get("EPS") and context.get("gender"):
                     mapping = self.get_vietnamese_particle_for_japanese(
                         jp_particle,
                         archetype=context.get("archetype", "NEUTRAL"),
-                        rtas=context.get("rtas", 3.0),
+                        EPS=context.get("EPS", 3.0),
                         gender=context.get("gender", "neutral")
                     )
                     if mapping.get('vietnamese_particles'):
@@ -894,7 +894,7 @@ class VietnameseGrammarRAG:
         
         Args:
             vietnamese_text: Translated text to validate
-            context: Optional context for archetype/RTAS checks
+            context: Optional context for archetype/EPS checks
             
         Returns:
             Validation report dict
@@ -971,7 +971,7 @@ if __name__ == "__main__":
     print(f"Archetypes: {len(rag.archetype_matrix)}")
     print(f"Particles: {len(rag.all_particles)}")
     
-    print("\n=== Particle Suggestions for TSUNDERE (RTAS 3.8) ===")
+    print("\n=== Particle Suggestions for TSUNDERE (EPS 3.8) ===")
     suggestions = rag.suggest_particles("TSUNDERE", 3.8, "statement", "female")
     for s in suggestions:
         print(f"  {s['particle']}: score={s['score']}, register={s['register']}")
@@ -1003,7 +1003,7 @@ if __name__ == "__main__":
     print("\n=== Prompt Injection Sample ===")
     injection = rag.generate_prompt_injection({
         "archetype": "GYARU",
-        "rtas": 4.2,
+        "EPS": 4.2,
         "gender": "female"
     })
     print(injection[:500] + "...")
@@ -1018,7 +1018,7 @@ if __name__ == "__main__":
             mapping = rag.get_vietnamese_particle_for_japanese(
                 "よ (yo)",
                 archetype=archetype,
-                rtas=3.5,
+                EPS=3.5,
                 gender="female"
             )
             vn_particles = mapping.get('vietnamese_particles', [])
@@ -1029,7 +1029,7 @@ if __name__ == "__main__":
         mapping = rag.get_vietnamese_particle_for_japanese(
             "ね (ne)",
             archetype="NEUTRAL",
-            rtas=3.0,
+            EPS=3.0,
             gender="neutral"
         )
         print(f"  Function: {mapping.get('function', 'N/A')}")

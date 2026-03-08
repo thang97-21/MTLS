@@ -1,0 +1,363 @@
+{
+  "schema": "lyric_rhythm_scaffold",
+  "version": "1.0",
+  "series_agnostic": true,
+  "scope": "Any translation project — memoir, autobiography, light novel, visual novel — containing embedded song lyrics, poems, or structured verse passages",
+  "icl_source": "Vivarium memoir pipeline (Ado × Chigira, 2026-02-26 fix pass). All ICL examples are from this series but encode universal principles.",
+
+  "scope_note": "This scaffold governs LYRIC TRANSCREATION MODE only. It is distinct from the Legato/Staccato/Tenuto prose rhythm system in FANTASY_TRANSLATION_MODULE_EN.md (Module 03), which governs sentence-level prose flow. Do not conflate the two. A lyric passage in RAW mode may still use prose-level Legato sentences in its surrounding narration.",
+
+  "parent_of": [
+    "pipeline/modules/MUSIC_LYRICS_AESTHETIC.json (Vivarium application layer)"
+  ],
+
+  "core_doctrine": "Two modes exist for lyric transcreation: RAW and RHYTHM. The translator must identify the correct mode before touching a single word. The mode determines the entire constraint set. There is no default mode — failing to classify is an error. The two modes are not aesthetic preferences; they are structural mandates derived from what the song IS and what it is DOING in the narrative.",
+
+  "mode_distinction": {
+    "critical_clarification": "Both RAW and RHYTHM can produce staccato lines. The staccato is structurally different.",
+    "RAW_staccato": {
+      "origin": "Impulse, anger, contempt — the line is short because it was thrown, not composed",
+      "structural_feel": "Jagged, incomplete, asymmetric line lengths, broken grammar intentional",
+      "ICL_anchor": "ICL-RAW-03 — Usseewa: 'Shut UP, shut UP, shut UP' — the UP capitalized because it is where weight was thrown, not where the composer planned a stress"
+    },
+    "RHYTHM_staccato": {
+      "origin": "Compositional craft — the line is short because the form demands it, precision not impulse",
+      "structural_feel": "Measured, symmetric or near-symmetric, short lines complete their own grammar",
+      "ICL_anchor": "ICL-RHYTHM-02 — Aku no Musume: each line is a complete clause, archaic and declarative, formally clipped"
+    },
+    "decision_rule": "Ask: was this line cut because someone was angry, or because a composer decided to stop here? Anger → RAW staccato. Craft → RHYTHM staccato."
+  },
+
+  "rhythm_read_protocol": {
+    "description": "Mandatory pre-translation scan. Execute before translating any lyric block. All five steps required. Classification must be resolved before word-choice begins.",
+    "steps": [
+      {
+        "step": 1,
+        "action": "Scan line length distribution",
+        "what_to_look_for": "Short lines (≤5 words average) AND asymmetric line lengths = RAW indicator. Consistent short-line length with regular pattern = RHYTHM indicator. Mixed = check other steps.",
+        "note": "Short lines alone do not determine mode — Aku no Musume uses short lines too. Length distribution asymmetry is the RAW signal."
+      },
+      {
+        "step": 2,
+        "action": "Scan for broken syntax",
+        "what_to_look_for": "Subject-less lines, verb-less lines, mid-clause cuts, lines that do not resolve grammatically = RAW indicator. All lines complete their own clause even if archaic = RHYTHM indicator.",
+        "note": "Archaic grammar (inverted, condensed) is not the same as broken grammar. Archaic resolves. Broken does not."
+      },
+      {
+        "step": 3,
+        "action": "Scan vocabulary register",
+        "what_to_look_for": "Street, blunt, vernacular, profanity, internet slang = RAW indicator. Elevated, archaic, theatrical, Sino-Japanese constructions, formal literary = RHYTHM indicator. Mixed register within a song = note the mixing, it may be intentional (applies to both modes — see GP-05).",
+        "note": "For VN translations: Hán-Việt vocabulary signals RHYTHM. Nôm-rooted vernacular signals RAW. Mixing Hán-Việt into a RAW song is the most common Vietnamese lyric translation error."
+      },
+      {
+        "step": 4,
+        "action": "Identify the song's origin and composer",
+        "what_to_look_for": "Is this the performer's own original work expressing their inner state? = RAW lean. Was this composed by a named composer/producer with their own distinct aesthetic? = RHYTHM lean (honor the composer). Is there no known composer (amateur, childhood, unnamed character)? = default RAW.",
+        "note": "Composer profile overrides source text signals when they conflict. The composer's intent is the ground truth for RHYTHM mode songs."
+      },
+      {
+        "step": 5,
+        "action": "Read the narrative context",
+        "what_to_look_for": "How does the narrator/character frame this song? As something they scream/inhabit/perform with their body = RAW. As something they heard, admired, studied, were transported by = RHYTHM lean. In LN: what is the lyric DOING in the story — revelation, characterization, world-building?",
+        "note": "For fictional LN: a villain's motif song may use RHYTHM even with aggressive content. A protagonist's battle cry may use RAW even with elevated diction. Narrative function matters as much as surface register."
+      },
+      {
+        "step": 6,
+        "action": "Classify and lock mode",
+        "instruction": "Based on steps 1–5, classify as RAW or RHYTHM. If signals are genuinely split 50/50, apply step 4 (composer origin) as tiebreaker. Record classification before proceeding. Do not re-evaluate mid-translation.",
+        "note": "A lyric cannot be both RAW and RHYTHM. Sub-sections of a long lyric may shift mode — treat each section as its own classification unit if there is a clear tonal break in source."
+      }
+    ]
+  },
+
+  "translation_modes": {
+    "RAW": {
+      "mandate": "Affect-equivalence over semantic precision. When forced to choose between the correct meaning and the correct feeling, choose feeling. The function of the lyric is to transmit an emotional state, not a proposition.",
+      "core_prohibitions": [
+        "DO NOT complete broken syntax — fragment lines stay fragments",
+        "DO NOT choose an elevated or literary synonym when a blunt equivalent exists",
+        "DO NOT smooth irregular stress patterns — reproduce the throw, the weight, the asymmetry",
+        "DO NOT convert exclamations into observations — the narrator is inside the emotion",
+        "DO NOT normalize profanity, vulgarity, or bluntness — these are load-bearing",
+        "DO NOT add closure punctuation to open-ended lines"
+      ],
+      "core_mandates": [
+        "Match the stress throw of the source — if a word is hit hard in source, the target word in that position must also land hard",
+        "Preserve broken grammar as broken grammar — do not rescue it",
+        "Keep intensifiers — 'damn boring' not 'boring'; 'bland-as-hell' not 'bland'",
+        "Match the exclamation/observation distinction — if the source character is yelling, the target must also be yelling"
+      ],
+      "language_specific": {
+        "EN": {
+          "preferred_register_markers": ["shut up", "damn", "hell", "trash", "flat-out", "dead", "scream", "bland-as-hell", "see?", "Whatever"],
+          "prohibited_register_markers": ["apt", "fitting", "how fitting", "remarkable", "unremarkable", "poetic", "elegantly", "beautifully rendered", "perfectly"]
+        },
+        "VN": {
+          "preferred_register_markers": ["chết", "rác", "tởm", "ầm ĩ", "thẳng thừng", "thật ra", "đơn giản là"],
+          "prohibited_register_markers": ["tuyệt vời", "kỳ diệu", "lộng lẫy", "thi vị", "thanh tao", "huy hoàng"],
+          "structural_note": "VN has deep poetic vocabulary (ca dao, lục bát, Hán-Việt compounds) that activates automatically for emotional content. RAW mode requires active resistance to this. Default to Nôm-rooted vocabulary over Hán-Việt equivalents wherever a blunt choice exists."
+        }
+      },
+      "icl_anchors": ["ICL-RAW-01", "ICL-RAW-02", "ICL-RAW-03", "ICL-RAW-04", "ICL-RAW-05"]
+    },
+    "RHYTHM": {
+      "mandate": "Honor the composer's compositional intent. The register, structure, and aesthetic of the original composer's work is correct — even if it feels over-elevated, archaic, or theatrical. Your role is fidelity to their architecture, not improvement.",
+      "core_prohibitions": [
+        "DO NOT strip archaic register — archaic constructions are correct, not errors",
+        "DO NOT modernize elevated vocabulary — if the source is formal, the target must be formal",
+        "DO NOT add street/blunt language to soften theatricality",
+        "DO NOT break rhythmic structure by splitting lines differently from source",
+        "DO NOT simplify wordplay — density is intentional"
+      ],
+      "core_mandates": [
+        "Preserve the formal or archaic register throughout",
+        "Match the rhythmic architecture — if source has regular stress beat, target should too",
+        "Honor line-break positions exactly as in source (GP-07)",
+        "If the composer uses staccato for theatrical effect, preserve the formal completeness of each clipped line"
+      ],
+      "language_specific": {
+        "EN": {
+          "preferred_register_markers": ["winters", "of age", "ere", "hath", "shall", "thy", "the weight of", "veiled in"],
+          "note": "Archaic English markers are permitted and correct for RHYTHM mode songs with archaic source register. Do not modernize."
+        },
+        "VN": {
+          "preferred_register_markers": ["Hán-Việt compounds where appropriate", "classical quantifiers (vị, đấng)", "literary connectives"],
+          "note": "For RHYTHM mode VN translations, Hán-Việt vocabulary is correct. The same register that is prohibited in RAW mode is mandatory in RHYTHM mode for songs with elevated source register."
+        }
+      },
+      "sub_profiles": {
+        "archaic_theatrical": {
+          "applies_to": "emon-P compositions (Aku no Musume, Servant of Evil), similar storybook-formality composers",
+          "key_rule": "Each line is a complete clause even when short. The brevity is formal, not jagged. Archaic time units, inverted syntax, declarative imperatives are all correct.",
+          "ICL_anchor": "ICL-RHYTHM-01, ICL-RHYTHM-02"
+        },
+        "melancholy_poetic": {
+          "applies_to": "mafumafu-P compositions, gentle bittersweet composers (kira-P)",
+          "key_rule": "Flowing metaphor and poeticism are intentional. Do not strip them. Do not over-sharpen melancholy into aggression."
+        },
+        "wordplay_dense": {
+          "applies_to": "DECO*27, composers who use semantic compression, internet-register-mixing",
+          "key_rule": "Preserve wordplay density. Do not simplify for readability. Compression is the point."
+        },
+        "epic_declarative": {
+          "applies_to": "Commissioned anthems (anime themes, ending themes, promotional songs)",
+          "key_rule": "Declarative forms over conditional. 'We change the world' not 'If we change the world'. World-scale vocabulary. Volitional imperative."
+        }
+      },
+      "icl_anchors": ["ICL-RHYTHM-01", "ICL-RHYTHM-02", "ICL-RHYTHM-03"]
+    }
+  },
+
+  "global_prohibitions": {
+    "applies_to": "Both RAW and RHYTHM modes — these override everything",
+    "rules": [
+      {
+        "id": "GP-01",
+        "rule": "DO NOT complete syntactically broken lines. Broken syntax is intentional affect in RAW. Compositional precision in RHYTHM. Either way, it is not an error to fix.",
+        "test": "Would a native speaker consider this unfinished? Keep it unfinished."
+      },
+      {
+        "id": "GP-02",
+        "rule": "DO NOT smooth irregular stress patterns into readable flow. Stress irregularity is structural in both modes, for different reasons (thrown weight in RAW; formal beat in RHYTHM).",
+        "test": "Read aloud. Does it feel intentional? If yes, preserve it."
+      },
+      {
+        "id": "GP-03",
+        "rule": "DO NOT add closure punctuation where the source line is open-ended.",
+        "test": "Match terminal punctuation character-for-character unless target grammar makes it structurally impossible."
+      },
+      {
+        "id": "GP-04",
+        "rule": "DO NOT choose a synonymous register upgrade. In RAW: no elevated synonyms for blunt words. In RHYTHM: no modernized synonyms for archaic words.",
+        "test": "Is this the same word, just more acceptable? Then it is wrong for both modes."
+      },
+      {
+        "id": "GP-05",
+        "rule": "DO NOT normalize register inconsistency within a single song. Mixed register is a compositional choice in both modes.",
+        "test": "Map register shift points in source. Verify same shift points exist in target."
+      },
+      {
+        "id": "GP-06",
+        "rule": "DO NOT convert exclamations into observations. The narrator is inside the emotion, not analyzing it.",
+        "test": "Is this line something the narrator is SAYING/FEELING (exclamation), or NOTING (observation)? Apply accordingly."
+      },
+      {
+        "id": "GP-07",
+        "rule": "Preserve line breaks exactly as they appear in source. Line breaks are structural — breath, beat, silence, separation. Do not reflow.",
+        "note": "In RHYTHM mode, the line break may be part of the formal meter. In RAW mode, it is a physical pause or throw. Both are load-bearing."
+      }
+    ]
+  },
+
+  "taxonomy": {
+    "description": "Classification system for lyric types across memoir and LN contexts. Each type maps to a default mode and sub-profile. Override with Rhythm Read Protocol results if signals conflict.",
+    "types": {
+      "performer_voice": {
+        "description": "Songs that are the performer's own emotional expression — written to showcase their voice, or songs they identified with so strongly the song became self-expression",
+        "default_mode": "RAW",
+        "note": "This is the performer speaking. Their voice, their register, their emotional state. Do not refine it.",
+        "ICL": "Usseewa (Ado × syudou) — staccato, stress throw, blunt vocabulary, broken syntax, exclamations"
+      },
+      "composed_piece": {
+        "description": "Songs composed by a named producer/composer, performed by the narrator or character. The aesthetic belongs to the composer, not the performer.",
+        "default_mode": "RHYTHM",
+        "sub_profile_required": true,
+        "note": "The performer is a vessel for the composer's intent. Honor the composer. Sub-profiles (archaic_theatrical, melancholy_poetic, wordplay_dense) apply here.",
+        "ICL": "Aku no Musume (Kagamine Rin / Ado cover, emon-P) — theatrical archaic register, 'fourteen winters of age', formal staccato, complete clause structure"
+      },
+      "commissioned_anthem": {
+        "description": "Songs composed for institutional/media purposes — anime opening/ending, game theme, promotional song. Declarative world-scale register.",
+        "default_mode": "RHYTHM",
+        "sub_profile": "epic_declarative",
+        "ICL": "Shin Jidai (Ado × Yasutaka Nakata, ONE PIECE Film: RED) — 'We change the whole world'"
+      },
+      "amateur_original": {
+        "description": "Songs written by the narrator or character as an amateur, child, or before formal training. Unformed quality is authentic.",
+        "default_mode": "RAW",
+        "note": "Do NOT improve these lyrics. The clunkiness, naive word choices, forced rhymes are the documentary evidence of who this person was. Smoothing them destroys the record.",
+        "ICL": "Childhood song fragments in memoir — painful sincerity intact"
+      },
+      "narrative_device": {
+        "description": "For fictional LN/VN: lyrics inserted as plot device, character's in-world composition, world-building element (idol's setlist, villain's motif song, opening ceremony anthem). Mode is NOT determined by surface register alone — narrative function is primary.",
+        "default_mode": "Determine via Rhythm Read Protocol — no default",
+        "decision_guidance": [
+          "A villain's formal motif song → RHYTHM (archaic_theatrical) even if content is aggressive",
+          "A protagonist's improvised battle cry → RAW even if diction is elevated",
+          "An idol character's commercial song → RHYTHM (epic_declarative or composed_piece depending on in-universe authorship)",
+          "A character's childhood composition → amateur_original → RAW",
+          "A sacred/ritual text used as a lyric → RHYTHM"
+        ],
+        "key_rule": "Ask: what is this lyric DOING in the story? It exists to create an effect on the reader. Identify that effect, then choose the mode that serves it.",
+        "note": "This type is unique to LN/VN contexts. Memoir does not have narrative_device lyrics — all memoir lyrics are either performer_voice, composed_piece, commissioned_anthem, or amateur_original."
+      }
+    }
+  },
+
+  "mode_decision_matrix": {
+    "description": "When Rhythm Read Protocol steps produce conflicting signals, apply this priority order to resolve.",
+    "priority_order": [
+      {
+        "priority": 1,
+        "rule": "Explicit composer/artist profile if identifiable",
+        "reason": "Composer intent is ground truth for RHYTHM. Performer's own song is ground truth for RAW. Overrides everything else."
+      },
+      {
+        "priority": 2,
+        "rule": "Narrative context — what is the lyric DOING in the text",
+        "reason": "A lyric's function in the narrative determines what register serves the reader, especially for narrative_device taxonomy type."
+      },
+      {
+        "priority": 3,
+        "rule": "Vocabulary register of source text",
+        "reason": "Street/blunt → RAW. Elevated/archaic → RHYTHM. Reliable when no composer profile is known."
+      },
+      {
+        "priority": 4,
+        "rule": "Line length distribution and syntax completeness",
+        "reason": "Tiebreaker only. Unreliable in isolation because both modes can produce short lines."
+      }
+    ]
+  },
+
+  "icl_library": {
+    "source_note": "All ICL examples drawn from Vivarium memoir pipeline (2026-02-26 fix pass). These are series-specific instances encoding universal principles. Apply the principle, not the word choice, to other series.",
+
+    "ICL-RAW-01": {
+      "song": "Usseewa (syudou / Ado)",
+      "mode": "RAW",
+      "type": "stress_throw",
+      "principle": "GP-02 — Stress falls on the object of contempt, not the verb. Capitalize where weight is thrown.",
+      "source_signal": "ウッセェワ — the stress in Japanese is on the final syllable of the repeat unit",
+      "before": "shut up, shut up, shut up",
+      "after": "Shut UP, shut UP, shut UP",
+      "universal_rule": "Identify where the source throws weight. That position must land hard in target. Use capitalization, heavy consonants, or monosyllabic words in that position."
+    },
+    "ICL-RAW-02": {
+      "song": "Usseewa (syudou / Ado)",
+      "mode": "RAW",
+      "type": "blunt_register_over_critical_distance",
+      "principle": "GP-04 — The narrator is not a critic. They are not composing a review. They are expressing visceral disgust.",
+      "before": "That perfectly unremarkable melody",
+      "after": "That bland-as-hell melody",
+      "universal_rule": "When source expresses contempt, disgust, or dismissal: blunt compound intensifiers ('bland-as-hell', 'dead boring', 'total trash') over composed critical vocabulary ('unremarkable', 'pedestrian', 'underwhelming')."
+    },
+    "ICL-RAW-03": {
+      "song": "Usseewa (syudou / Ado)",
+      "mode": "RAW",
+      "type": "exclamation_vs_observation",
+      "principle": "GP-06 — The narrator is inside the emotion. 'How fitting' exits to observe. 'How *perfect*' stays inside.",
+      "before": "Ahh, how fitting",
+      "after": "Ahh, how *perfect*",
+      "universal_rule": "Observation words ('fitting', 'apt', 'appropriate', 'remarkable') imply distance. Exclamation words ('perfect', 'right', 'exactly', 'THAT') imply immersion. RAW mode requires immersion words. Italics/emphasis can mark the immersion when the word itself is borderline."
+    },
+    "ICL-RAW-04": {
+      "song": "Usseewa Seg.2 (syudou / Ado)",
+      "mode": "RAW",
+      "type": "intensifier_is_load_bearing",
+      "principle": "GP-04 — Neutral affect is incorrect for RAW. The intensifier carries the venom.",
+      "before": "Ahh, so boring",
+      "after": "Ahh, so damn boring",
+      "universal_rule": "Intensifiers in RAW mode lyrics are not optional ornamentation. 'Boring', 'bad', 'loud', 'empty' — in isolation these are neutral. 'Damn boring', 'flat-out bad', 'dead loud', 'hollow as hell' — these carry affect. The source affect must transfer."
+    },
+    "ICL-RAW-05": {
+      "song": "Kirai Kirai Jigahidai (Pinocchio-P / Ado)",
+      "mode": "RAW",
+      "type": "anarchic_comedy_marker",
+      "principle": "ado_voice — violence tipping into self-aware anarchic comedy is distinct from pure aggression",
+      "before": "trample the trash flat",
+      "after": "trample the trash flat, see?",
+      "universal_rule": "When source contains performative aggression (announcing violence to an audience), a trailing address marker ('see?', 'right?', 'yeah?') converts pure violence into anarchic comedy. This is a register signal, not a softening — it makes the violence MORE Ado, not less."
+    },
+    "ICL-RHYTHM-01": {
+      "song": "Aku no Musume (emon-P / Kagamine Rin, Ado cover)",
+      "mode": "RHYTHM",
+      "sub_profile": "archaic_theatrical",
+      "type": "archaic_time_unit",
+      "principle": "RHYTHM/archaic_theatrical — archaic vocabulary is correct, not elevated error",
+      "before": "I was fourteen years old",
+      "after": "fourteen winters of age",
+      "universal_rule": "For archaic_theatrical songs: archaic time units ('winters', 'moons', 'seasons'), archaic quantifiers ('of age', 'upon', 'ere'), inverted syntax — these are all correct. Do not modernize. The archaism is the point."
+    },
+    "ICL-RHYTHM-02": {
+      "song": "Aku no Musume (emon-P / Kagamine Rin, Ado cover)",
+      "mode": "RHYTHM",
+      "sub_profile": "archaic_theatrical",
+      "type": "formal_staccato_vs_raw_staccato",
+      "principle": "RHYTHM staccato — each clipped line is a complete, formally resolved clause. Not jagged. Precise.",
+      "example": "Each line in Aku no Musume completes its own grammar even when short. The brevity is theatrical formality, not impulse fragmentation.",
+      "contrast": "Compare to Usseewa (RAW) — lines fragment mid-clause because they are thrown. Aku no Musume lines are clipped because the meter ends there. Both are staccato; they are structurally different.",
+      "universal_rule": "Test whether a short line is grammatically complete. Complete = RHYTHM staccato (formal, composed). Incomplete = RAW staccato (thrown, broken). Translate accordingly."
+    },
+    "ICL-RHYTHM-03": {
+      "song": "Shin Jidai (Yasutaka Nakata / Ado — commissioned)",
+      "mode": "RHYTHM",
+      "sub_profile": "epic_declarative",
+      "type": "declarative_vs_conditional",
+      "principle": "RHYTHM/epic_declarative — anthem is a declaration, not a hypothesis",
+      "before": "If we change the whole world",
+      "after": "We change the whole world",
+      "universal_rule": "Commissioned anthems, opening themes, world-scale songs: declarative/volitional over conditional/subjunctive. 'We stand' not 'We could stand'. 'This is ours' not 'This could be ours'. The anthem has already decided — it is announcing, not wishing."
+    }
+  },
+
+  "application_layers": {
+    "description": "Series-specific modules that extend this scaffold with project-specific song entries, required word choices, and additional reference anchors.",
+    "known_layers": [
+      {
+        "file": "pipeline/modules/MUSIC_LYRICS_AESTHETIC.json",
+        "series": "Vivarium (ビバリウム Adoと私)",
+        "coverage": "12 named songs, artist-specific taxonomy, 9 reference anchors from fix pass, GP-01–GP-07 full list",
+        "relationship": "Implements this scaffold for the Vivarium project. When translating Vivarium, load MUSIC_LYRICS_AESTHETIC.json — it supersedes this scaffold for song-specific decisions while inheriting all global prohibitions."
+      }
+    ],
+    "creating_new_layers": "For any new series with embedded lyrics: create a new JSON following MUSIC_LYRICS_AESTHETIC.json structure. Declare `parent_scaffold: LYRIC_RHYTHM_SCAFFOLD.json`. Add only the series-specific overrides — do not duplicate global_prohibitions. Reference ICL_library entries from this scaffold by ID for universal principles; add new ICL entries only for series-specific before/after examples."
+  },
+
+  "metadata": {
+    "last_updated": "2026-02-26",
+    "status": "Active",
+    "applies_to": ["All translation projects", "Memoir", "Autobiography", "Light Novel", "Visual Novel", "Any format with embedded lyrics/verse"],
+    "does_not_apply_to": ["Prose sentence rhythm (see FANTASY_TRANSLATION_MODULE_EN.md Module 03 — Legato/Staccato/Tenuto)", "Character dialogue register (see MEGA_CHARACTER_VOICE_SYSTEM.md)"],
+    "design_note": "This scaffold uses prohibition-based structural constraints, not aesthetic descriptions. 'DO NOT complete broken syntax' overrides RLHF defaults. 'Be raw' does not. The design principle: Opus's aesthetic defaults are toward polish and elevation. Structural prohibitions fight this directly. The Legato/Staccato/Tenuto system in FANTASY_TRANSLATION_MODULE_EN.md works for prose for the same reason — it constrains sentence length structurally, not aesthetically."
+  }
+}

@@ -218,11 +218,55 @@ class SeriesBible:
         return self.world_setting
 
     @staticmethod
+    def _normalize_habitual_gestures(value: Any) -> List[Dict[str, Any]]:
+        """Normalize habitual gesture payload for Bible storage/prompt use."""
+        normalized: List[Dict[str, Any]] = []
+        if isinstance(value, str) and value.strip():
+            return [{"gesture": value.strip()}]
+        if not isinstance(value, list):
+            return normalized
+
+        for item in value:
+            if isinstance(item, dict):
+                gesture = str(item.get("gesture", "")).strip()
+                if not gesture:
+                    continue
+                entry: Dict[str, Any] = {"gesture": gesture}
+                for key in ("trigger", "intensity", "narrative_effect"):
+                    v = item.get(key)
+                    if isinstance(v, str) and v.strip():
+                        entry[key] = v.strip()
+                chapters = item.get("evidence_chapters")
+                if isinstance(chapters, list):
+                    items = [str(ch).strip() for ch in chapters if str(ch).strip()]
+                    if items:
+                        entry["evidence_chapters"] = items[:6]
+                confidence = item.get("confidence")
+                if isinstance(confidence, (int, float)):
+                    entry["confidence"] = round(max(0.0, min(1.0, float(confidence))), 3)
+                normalized.append(entry)
+            else:
+                text = str(item).strip()
+                if text:
+                    normalized.append({"gesture": text})
+            if len(normalized) >= 6:
+                break
+        return normalized
+
+    @staticmethod
     def _compact_visual_value(value: Any) -> str:
         """Compact visual identity values into a single prompt-safe string."""
         if isinstance(value, str):
             return value.strip()
         if isinstance(value, list):
+            if value and any(isinstance(v, dict) for v in value):
+                gestures: List[str] = []
+                for item in value:
+                    if isinstance(item, dict):
+                        g = str(item.get("gesture", "")).strip()
+                        if g:
+                            gestures.append(g)
+                return ", ".join(gestures[:3])
             parts = [str(v).strip() for v in value if str(v).strip()]
             return ", ".join(parts[:4])
         if isinstance(value, dict):
@@ -233,6 +277,7 @@ class SeriesBible:
                 "expression_signature",
                 "posture_signature",
                 "accessory_signature",
+                "habitual_gestures",
                 "identity_summary",
             ):
                 v = value.get(key)
@@ -271,6 +316,7 @@ class SeriesBible:
                 ("expr", "expression_signature"),
                 ("pose", "posture_signature"),
                 ("acc", "accessory_signature"),
+                ("habit", "habitual_gestures"),
                 ("id", "identity_summary"),
             ]
             chunks: List[str] = []
@@ -361,6 +407,45 @@ class SeriesBible:
                 visual_suffix = f" | visual-id: {visual_tag}" if visual_tag else ""
                 lines.append(f"  {jp_name} = {en}{suffix}{cat_tag}{visual_suffix}")
             lines.append("")
+
+            eps_entries: List[str] = []
+            for jp_name, char_data in chars.items():
+                if not isinstance(char_data, dict):
+                    continue
+                latest_eps = char_data.get("latest_eps_state")
+                if not isinstance(latest_eps, dict):
+                    continue
+                en = str(
+                    latest_eps.get("canonical_name_en")
+                    or char_data.get("canonical_en")
+                    or jp_name
+                ).strip()
+                if not en:
+                    continue
+                eps_score = latest_eps.get("eps_score")
+                try:
+                    eps_text = f"{float(eps_score):+.2f}"
+                except (TypeError, ValueError):
+                    eps_text = "n/a"
+                band = str(latest_eps.get("voice_band", "")).strip().upper() or "NEUTRAL"
+                source_volume = str(latest_eps.get("source_volume_id", "")).strip()
+                source_chapter = str(latest_eps.get("source_chapter_id", "")).strip()
+                scene_intents = latest_eps.get("scene_intents", [])
+                intent_text = ""
+                if isinstance(scene_intents, list):
+                    items = [str(v).strip() for v in scene_intents if str(v).strip()]
+                    if items:
+                        intent_text = f" | intents: {', '.join(items[:4])}"
+                source_bits = [bit for bit in (source_volume, source_chapter) if bit]
+                source_text = f" | source: {' / '.join(source_bits)}" if source_bits else ""
+                eps_entries.append(
+                    f"  {en}: EPS {eps_text} [{band}]{source_text}{intent_text}"
+                )
+
+            if eps_entries:
+                lines.append("=== CHARACTER ARC CONTINUITY ===")
+                lines.extend(eps_entries)
+                lines.append("")
 
         # Geography
         geo = self.data.get('geography', {})
@@ -630,13 +715,22 @@ class BibleController:
 
         Returns SeriesBible or None (standalone volume with no series).
         """
+        def _hydrate_and_return(bible: Optional[SeriesBible]) -> Optional[SeriesBible]:
+            if not bible:
+                return None
+            try:
+                self._hydrate_world_setting_from_manifest(bible, manifest)
+            except Exception as _e:
+                logger.debug(f"[BIBLE] world_setting hydration skipped: {_e}")
+            return bible
+
         # 1. Explicit bible_id
         bible_id = manifest.get('bible_id')
         if bible_id:
             series_entry = self.index.get('series', {}).get(bible_id)
             if series_entry:
                 logger.info(f"Bible resolved via bible_id: {bible_id}")
-                return self._get_or_load(bible_id, series_entry)
+                return _hydrate_and_return(self._get_or_load(bible_id, series_entry))
 
         # 2. Volume ID lookup
         volume_id = manifest.get('volume_id', '')
@@ -652,17 +746,171 @@ class BibleController:
             for sid, entry in self.index.get('series', {}).items():
                 if probe_id in entry.get('volumes', []):
                     logger.info(f"Bible resolved via volume ID {probe_id}: {sid}")
-                    return self._get_or_load(sid, entry)
+                    return _hydrate_and_return(self._get_or_load(sid, entry))
 
         # 3. Series metadata pattern match
         series_id = self.detect_series(manifest)
         if series_id:
             entry = self.index['series'][series_id]
             logger.info(f"Bible resolved via series detection: {series_id}")
-            return self._get_or_load(series_id, entry)
+            return _hydrate_and_return(self._get_or_load(series_id, entry))
 
         logger.debug("No bible found for this volume")
         return None
+
+    @staticmethod
+    def _coalesce_world_setting_candidate(manifest: dict) -> Dict[str, Any]:
+        """
+        Prefer explicit manifest world_setting payloads in this order:
+          1) manifest.metadata_en.world_setting
+          2) manifest.world_setting
+        """
+        if not isinstance(manifest, dict):
+            return {}
+        meta_en = manifest.get("metadata_en", {})
+        if isinstance(meta_en, dict):
+            ws = meta_en.get("world_setting")
+            if isinstance(ws, dict) and ws:
+                return dict(ws)
+        ws = manifest.get("world_setting")
+        if isinstance(ws, dict) and ws:
+            return dict(ws)
+        return {}
+
+    @staticmethod
+    def _manifest_has_reincarnation_cues(manifest: dict) -> bool:
+        """Detect reincarnation/transmigration cues from high-signal metadata fields."""
+        if not isinstance(manifest, dict):
+            return False
+
+        kws_ascii = (
+            "reincarnat",
+            "reincarnation",
+            "transmigration",
+            "reborn",
+            "tensei",
+            "isekai",
+        )
+        kws_jp = ("転生", "異世界", "生まれ変わり")
+
+        def _contains_kw(value: Any, depth: int = 0) -> bool:
+            if depth > 4:
+                return False
+            if isinstance(value, str):
+                lower = value.lower()
+                return any(k in lower for k in kws_ascii) or any(k in value for k in kws_jp)
+            if isinstance(value, list):
+                for item in value[:120]:
+                    if _contains_kw(item, depth + 1):
+                        return True
+                return False
+            if isinstance(value, dict):
+                # Restrict scan to representative content fields for speed/stability.
+                for key, item in list(value.items())[:200]:
+                    key_str = str(key)
+                    if _contains_kw(key_str, depth + 1) or _contains_kw(item, depth + 1):
+                        return True
+                return False
+            return False
+
+        meta = manifest.get("metadata", {})
+        meta_en = manifest.get("metadata_en", {})
+        scan_nodes = [
+            manifest.get("world_setting", {}),
+            meta_en.get("world_setting", {}) if isinstance(meta_en, dict) else {},
+            meta_en.get("character_profiles", {}) if isinstance(meta_en, dict) else {},
+            meta_en.get("cultural_terms", {}) if isinstance(meta_en, dict) else {},
+            meta if isinstance(meta, dict) else {},
+        ]
+        return any(_contains_kw(node) for node in scan_nodes)
+
+    @classmethod
+    def _normalize_world_setting_from_manifest(
+        cls,
+        world_setting: Dict[str, Any],
+        manifest: dict,
+    ) -> Dict[str, Any]:
+        """
+        Normalize world setting for prompt/runtime use.
+
+        Rule added for modern-Japan reincarnation LN:
+          modern_japan + reincarnation cues -> explicit contemporary-reincarnation label.
+        """
+        if not isinstance(world_setting, dict):
+            world_setting = {}
+        ws = dict(world_setting)
+
+        ws_type_raw = str(ws.get("type", "")).strip()
+        ws_type = ws_type_raw.lower().replace("-", "_")
+        label = str(ws.get("label", "")).strip()
+        has_reincarnation = cls._manifest_has_reincarnation_cues(manifest)
+
+        if ws_type in {"modern_japan", "contemporary_japan"} or ws_type.startswith("modern_japan") or ws_type.startswith("contemporary_japan"):
+            hon = ws.get("honorifics")
+            if not isinstance(hon, dict):
+                hon = {}
+            # Force retain for modern/contemporary Japan — schema agents may incorrectly
+            # emit "localize" for these settings; we always correct it here.
+            hon["mode"] = "retain"
+            hon.setdefault(
+                "policy",
+                "Retain Japanese honorifics to preserve social hierarchy and relationship nuance.",
+            )
+            ws["honorifics"] = hon
+
+            no = ws.get("name_order")
+            if not isinstance(no, dict):
+                no = {}
+            no.setdefault("default", "family_given")
+            no.setdefault(
+                "policy",
+                "Use Japanese family-given order for JP names unless explicitly overridden.",
+            )
+            ws["name_order"] = no
+
+            if has_reincarnation:
+                target_label = "Contemporary Japan in reincarnated Manga/LN world"
+                if not label or "reincarn" not in label.lower():
+                    ws["label"] = target_label
+            elif not label:
+                ws["label"] = "Contemporary Japan"
+        elif ws_type and not label:
+            ws["label"] = ws_type.replace("_", " ").title()
+
+        if ws_type:
+            ws["type"] = ws_type
+        return ws
+
+    def _hydrate_world_setting_from_manifest(self, bible: SeriesBible, manifest: dict) -> bool:
+        """
+        Fill/normalize bible.world_setting from manifest when bible lacks it.
+        Returns True when bible data was updated in-memory.
+        """
+        if not isinstance(manifest, dict):
+            return False
+
+        current = bible.world_setting if isinstance(bible.world_setting, dict) else {}
+        current_type = str(current.get("type", "")).strip()
+        current_label = str(current.get("label", "")).strip()
+        candidate = self._coalesce_world_setting_candidate(manifest)
+
+        if current_type or current_label:
+            merged = self._normalize_world_setting_from_manifest(current, manifest)
+        elif candidate:
+            merged = self._normalize_world_setting_from_manifest(candidate, manifest)
+        else:
+            merged = self._normalize_world_setting_from_manifest({}, manifest)
+
+        if not merged or merged == current:
+            return False
+
+        bible.data["world_setting"] = merged
+        logger.info(
+            "[BIBLE] Hydrated world_setting from manifest: type=%s | label=%s",
+            merged.get("type", "?"),
+            merged.get("label", "?"),
+        )
+        return True
 
     def detect_series(self, manifest: dict) -> Optional[str]:
         """Detect which registered series a manifest belongs to.
@@ -966,11 +1214,11 @@ class BibleController:
         """
         identity = profile_data.get("visual_identity_non_color")
         if isinstance(identity, str) and identity.strip():
-            return {"identity_summary": identity.strip()}
+            return {"identity_summary": identity.strip(), "habitual_gestures": []}
         if isinstance(identity, list):
             markers = [str(v).strip() for v in identity if str(v).strip()]
             if markers:
-                return {"non_color_markers": markers[:8]}
+                return {"non_color_markers": markers[:8], "habitual_gestures": []}
         if isinstance(identity, dict):
             cleaned: Dict[str, Any] = {}
             for key in (
@@ -990,12 +1238,15 @@ class BibleController:
                     items = [str(v).strip() for v in value if str(v).strip()]
                     if items:
                         cleaned[key] = items[:8]
+            habitual = SeriesBible._normalize_habitual_gestures(identity.get("habitual_gestures"))
+            if habitual:
+                cleaned["habitual_gestures"] = habitual
             if cleaned:
                 return cleaned
 
         appearance = profile_data.get("appearance")
         if isinstance(appearance, str) and appearance.strip():
-            return {"identity_summary": appearance.strip()}
+            return {"identity_summary": appearance.strip(), "habitual_gestures": []}
         return {}
 
     # ── Import from Manifest ─────────────────────────────────────
@@ -1027,6 +1278,10 @@ class BibleController:
 
         metadata_en = manifest.get('metadata_en', {})
         summary: Dict[str, int] = {}
+
+        # Ensure world_setting is present in bible when manifest provides it.
+        if self._hydrate_world_setting_from_manifest(bible, manifest):
+            summary["world_setting_hydrated"] = 1
 
         # Character names → characters (basic entry)
         if 'character_names' in categories:

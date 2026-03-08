@@ -247,7 +247,7 @@ def main():
         sys.exit(1)
     
     work_dir = Path(sys.argv[1])
-    grammar_rag_path = Path(sys.argv[2]) if len(sys.argv) > 2 else Path(__file__).parent.parent / "common/english_grammar_rag.json"
+    grammar_rag_path = Path(sys.argv[2]) if len(sys.argv) > 2 else Path(__file__).parent.parent / "config" / "english_grammar_rag.json"
     
     if not grammar_rag_path.exists():
         print(f"❌ Grammar RAG file not found: {grammar_rag_path}")

@@ -5,11 +5,11 @@ project:
       master_prompt: prompts/master_prompt_en_compressed.xml
       prompts:
         romcom: prompts/master_prompt_en_compressed.xml
-        fantasy: prompts/master_prompt_fantasy_en.xml
+        fantasy: prompts/master_prompt_en_compressed.xml
       modules_dir: modules/
       grammar_rag:
         enabled: true
-        config_file: config/english_grammar_rag_compressed.json  # Optimized: 154KB (was 283KB)
+        config_file: config/english_grammar_rag_compressed.json
         inject_mode: always
         max_patterns_per_prompt: 8
         vector_store:
@@ -33,6 +33,12 @@ project:
       - MEGA_CHARACTER_VOICE_SYSTEM_VN.md
       - ANTI_TRANSLATIONESE_MODULE_VN.md
       reference_dir: VN/Reference/
+      translation:
+        enable_self_healing_anti_ai_ism: true
+        enable_contraction_enforcement: true
+        max_ai_isms_per_chapter: 3
+        target_contraction_rate: 0.85
+        target_particle_density: 0.8
       reference_modules:
       - Library_LOCALIZATION_PRIMER_VN.md
       - Library_REFERENCE_ICL_SAMPLES.md
@@ -49,36 +55,40 @@ project:
         toc_title: Mục Lục
         cover_title: Bìa
         start_content: Bắt Đầu
-translator_provider: anthropic  # "google" | "anthropic" — routes translator LLM only; sub-agents always use Gemini
-
+translator_provider: anthropic
 anthropic:
   model: claude-opus-4-6
   fallback_model: claude-sonnet-4-6
+  api_key_env: ANTHROPIC_API_KEY
+  base_url: https://api.anthropic.com
   http_timeout_seconds: 600
   generation:
     temperature: 1.0
-    max_output_tokens: 128000  # Opus 4.6 native 128K — no beta headers needed
+    max_output_tokens: 128000
   thinking_mode:
-    enabled: true               # Opus 4.6 exclusive features:
-    thinking_type: adaptive     #   1. Adaptive thinking — self-managed budget (Opus only; Sonnet rejects this type)
-                                #   2. effort=max — applied automatically in code for claude-opus-4-6
-                                #   3. 128K output — max_output_tokens above; code enforces 128000 for Opus
-                                # Note: budget_tokens is NOT sent for adaptive type (API rejects it)
+    enabled: true
+    thinking_type: adaptive
+    thinking_budget: 12000
   caching:
-    enabled: true               # Anthropic ephemeral cache_control on system prompt
-    ttl_minutes: 5              # 5m = free refresh; inter-chapter cadence ~30-120s so 5m is sufficient
+    enabled: true
+    ttl_minutes: 60
   fast_mode:
-    enabled: false              # 2x cost for 2.2x speed — enable when throughput > 5 vol/day
+    enabled: false
     fallback_on_rate_limit: true
-
+  batch:
+    promote_cache_ttl_1h: true
+    cache_shared_brief: true
+    token_preflight: true
+    log_payload_preview: false
+  use_env_key: true
 gemini:
-  backend: auto   # auto | developer (GenAI) | vertex
+  backend: auto
   vertex:
-    project: ""   # Optional override; falls back to GOOGLE_CLOUD_PROJECT
-    location: asia-southeast1 ## Alternative: us-central1
-  model: gemini-3.1-pro-preview ## Alternative when frontier model is more stable: gemini-3.1-pro-preview
+    project: ''
+    location: asia-southeast1
+  model: gemini-3.1-pro-preview
   fallback_model: gemini-2.5-pro
-  http_timeout_seconds: 1800  # Per-request timeout; set <=0 to disable (not recommended)
+  http_timeout_seconds: 1800
   generation:
     temperature: 1.0
     top_p: 0.95
@@ -124,14 +134,108 @@ kimi:
     cache_file: WORK/.kimi_validation_cache.json
     cache_ttl_hours: 168
 translation:
+  phase2_anthropic_endpoint: official
   enable_multimodal: true
-  enable_chapter_summarizer: true
-  chapter_summarizer_model: gemini-2.5-flash
+  debug_log_to_project: true
+  enable_chapter_summarizer: false
+  chapter_summarizer_model: gemini-3.1-flash-lite-preview
+  phase_models:
+    '1':
+      model: gemini-3-flash-preview
+      temperature: 0.7
+      top_p: 0.95
+      top_k: 40
+      max_output_tokens: 65536
+      thinking_budget: -1
+    '1_5':
+      model: gemini-3-flash-preview
+      temperature: 0.7
+      top_p: 0.95
+      top_k: 40
+      max_output_tokens: 65536
+      thinking_budget: -1
+    '1_55':
+      model: gemini-3-flash-preview
+      temperature: 0.7
+      top_p: 0.95
+      top_k: 40
+      max_output_tokens: 65536
+      thinking_budget: -1
+    '1_6':
+      model: gemini-3-flash-preview
+      temperature: 0.3
+      top_p: 0.95
+      top_k: 40
+      max_output_tokens: 65536
+      thinking_budget: -1
+    '1_7':
+      model: gemini-3-flash-preview
+      temperature: 0.5
+      top_p: 0.95
+      top_k: 40
+      max_output_tokens: 65535
+      thinking_budget: -1
+    '2_5':
+      model: gemini-3-flash-preview
+      temperature: 0.7
+      top_p: 0.95
+      top_k: 40
+      max_output_tokens: 65535
+      thinking_budget: -1
+  phase_2_5:
+    run_bible_update: false
+    qc_cleared: false
+    model: gemini-3-flash-preview
+    max_output_tokens: 65535
   enable_self_healing_anti_ai_ism: false
   quality:
     contraction_rate_min: 0.95
     contraction_rate_gold: 0.99
     max_ai_isms_per_chapter: 5
+  tool_mode:
+    enabled: true
+    auto_disable_for_batch_adaptive_thinking: true
+    force_pre_commit: true
+    log_tool_calls: true
+    tools:
+      declare_translation_parameters: true
+      validate_glossary_term: true
+      lookup_cultural_term: true
+      report_translation_qc: true
+      flag_structural_constraint: true
+  full_prequel_cache_gate:
+    enabled: true
+    fallback_mode: series_bible_rag
+    require_anthropic_provider: true
+    require_openrouter_route: true
+    require_adn_v2_enforcement: true
+    require_name_order_preflight: true
+    require_cache_warm_success: true
+    context_safety_ratio: 0.85
+    target_context_window_tokens: 1000000
+    estimated_system_tokens: 18000
+    estimated_prequel_bundle_tokens: 120000
+    estimated_chapter_prompt_tokens: 24000
+    max_transport_5xx_before_fallback: 2
+    reason_codes:
+      default_rag_mode: FULL_PREQUEL_DEFAULT_RAG_MODE
+      enabled: FULL_PREQUEL_CACHE_ENABLED
+      disabled_by_config: FULL_PREQUEL_DISABLED_BY_CONFIG
+      provider_mismatch: FULL_PREQUEL_PROVIDER_MISMATCH
+      route_not_openrouter: FULL_PREQUEL_ROUTE_NOT_OPENROUTER
+      adn_v2_required: FULL_PREQUEL_ADN_V2_REQUIRED
+      name_order_guard_failed: FULL_PREQUEL_NAME_ORDER_GUARD_FAILED
+      context_budget_exceeded: FULL_PREQUEL_CONTEXT_BUDGET_EXCEEDED
+      cache_warm_failed: FULL_PREQUEL_CACHE_WARM_FAILED
+      fallback_auth_401: FULL_PREQUEL_FALLBACK_AUTH_401
+      fallback_transport_5xx: FULL_PREQUEL_FALLBACK_TRANSPORT_5XX
+      fallback_adn_hard_fail: FULL_PREQUEL_FALLBACK_ADN_HARD_FAIL
+  phase1_56_prequel_brief_injection:
+    enabled: false
+    max_chars: 20000
+  adn_v2_enforcement:
+    enabled: true
+    mode: fail
   contraction_rules:
     casual_introspective:
       required_rate: 0.995
@@ -159,14 +263,116 @@ translation:
       - would have -> would've
       - could have -> could've
       - should have -> should've
+  vn_contraction_rules:
+    casual_introspective:
+      required_rate: 0.9
+      critical_forms_map:
+        tôi đã: tôi dạ
+        anh ấy: nó
+        cô ấy: cô
+        bạn ấy: bạn
+        tôi tôi: tôi
+        anh anh: anh
+        em em: em
+        mình mình: mình
+        đã rồi: rồi
+        đang đây: đây
+        vừa mới: vừa
+        đâu có: đâu
+        có gì đâu: đâu có gì
+      high_priority_map:
+        thì thôi: thôi
+        rồi rồi: rồi
+        đi đi: đi
+        được rồi: được
+        xong rồi: xong
+    formal_polite:
+      required_rate: 0.7
+      exceptions:
+      - emphasis
+      - keigo_honorifics
+      - character_defined_formal
+      - official_speech
+    internal_monologue:
+      required_rate: 0.95
+      rules_map:
+        tôi nghĩ rằng: tôi nghĩ
+        anh ấy nghĩ rằng: anh ấy nghĩ
+        cô ấy nói rằng: cô ấy nói
+        thật là: thật
+        quả là: quả
+        đúng là: đúng
+    particle_integration:
+      required_particle_density: 0.8
+      particle_patterns:
+      - rồi
+      - đấy
+      - đó
+      - nè
+      - nha
+      - nhé
+      - ạ
+      - ơi
+      - à
+      - ờ
+      - hử
+      - đúng không
   context:
-    lookback_chapters: 2
+    lookback_chapters: 3
     enforce_name_consistency: true
+    volume_context_legacy_mode: false
+    prose_anchor:
+      enabled: true
+      lines_per_closing: 20
+      max_arcs_per_chapter: 5
+      characters_priority: auto
+      system_cache_placement: true
   massive_chapter:
     enable_smart_chunking: false
     chunk_threshold_chars: 60000
     chunk_threshold_bytes: 120000
     enable_volume_cache: true
+  hallucination_reduction:
+    enabled: true
+    retry_on_violation: true
+    max_retries: 1
+  eps_signal_extraction:
+    enabled: true
+    strict_non_afterword: false
+    min_name_mentions: 1
+    window_chars: 120
+    series_overrides:
+      default:
+        enabled: true
+  eps_calibration:
+    enabled: true
+    weak_evidence:
+      threshold: 0.22
+      shrink: 0.35
+    continuity:
+      max_jump_per_chapter: 0.65
+    trope_bias:
+      enabled: true
+      cool_beauty:
+        raw_score_gate: 0.45
+        min_intimacy: 0.20
+        penalty: -0.12
+      tsundere:
+        raw_score_gate: 0.35
+        keigo_conflict_penalty: -0.08
+      gyaru:
+        dialogue_volume_gate: 0.25
+        particle_gate: 0.15
+        bonus: 0.05
+    series_overrides:
+      default:
+        enabled: true
+      sample_series_id:
+        continuity:
+          max_jump_per_chapter: 0.45
+        trope_bias:
+          cool_beauty:
+            penalty: -0.16
 critics:
   qc_rubric: prompts/qc_rubric.md
   auto_fix:
@@ -233,14 +439,16 @@ multimodal:
     - plot_revelation
     routing:
       enabled: true
-      version: v1
+      version: v2
       levels:
+      - low
       - medium
       - high
       high_triggers:
       - climax
       - emotional_peak
       - plot_revelation
+      - eps_band_shift
       high_confidence_min: 0.75
       low_confidence_margin: 0.15
   lookahead:
@@ -306,5 +514,44 @@ cli:
   verbose_mode: true
   show_progress: true
   confirm_caching: true
+proxy:
+  enabled_default: false
+  inference:
+    provider: openrouter
+    base_url: https://openrouter.ai/api/v1
+    api_key_env: OPENROUTER_API_KEY
+    embedding_model: openai/text-embedding-3-large
+    default_model: google/gemini-2.5-flash-lite
+    fallback_model: google/gemini-3.1-flash-lite-preview
+    timeout_seconds: 600
+    app_headers:
+      referer_env: OPENROUTER_HTTP_REFERER
+      title_env: OPENROUTER_APP_TITLE
+  control_plane:
+    base_url: https://web-api.yescale.vip
+    access_key_env: YESCALE_ACCESS_KEY
+    log_pull_enabled: true
+    balance_check_before_run: true
+  phase_overrides:
+    '1.5': proxy
+    '1.55': proxy
+    '1.7': proxy
+    '1.56': proxy
+    '2.5': proxy
+    '1.6': direct
+    '2': direct
+  capability_gates:
+    claude_opus_1m_confirmed: true
+    google_search_grounding: true
+    response_schema: true
+    thinking_token_tracking: true
+    thinking_config_input: false
+    server_side_caching: false
+    vision: false
+    safety_settings: false
+    count_tokens: false
+  spend:
+    max_per_run_usd: 5.0
+    warn_threshold_usd: 2.0
   confirm_inheritance: true
   auto_proceed: false

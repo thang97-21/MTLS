@@ -1,0 +1,2395 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "3.0",
+  "description": "Literary narrative techniques configuration for AI-driven transcreation. This JSON alters Gemini's default translation behavior by activating specific narrative latent spaces, transforming word-for-word translation into literary prose. Enhanced with MMO/Gaming/Comedy patterns from Netoge 1124 audit. v1.4 adds hard caps for sentence length enforcement. v1.5 adds concrete 9-10 word contemporary dialogue targets. v1.6 adds 14 professional ICL examples from Seven Seas/Yen Press corpus. v1.7 replaces fan-TL VE examples with Hibike Yen Press; adds deep_introspection and dramatized_romance categories. v1.8 adds 7 new examples across 4 categories + new endurance_as_devotion category (32 total, 8 mood categories). v1.9 adds kinetic_action_sequence category (5 examples) from 86—Eighty-Six Vols 2-4 [Yen Press] (37 total, 9 mood categories). v3.0 adds 13 new examples across 3 new categories (mystery_deduction, psychological_duel, grief_romance) from The Detective Is Already Dead Vols 1-4 [Yen Press] (76 total, 24 mood categories).",
+  "metadata": {
+    "purpose": "Define narrative voice, psychic distance, and sensory focus for consistent literary output",
+    "tier": 1,
+    "scope": "language_agnostic",
+    "applies_to": [
+      "EN",
+      "VN"
+    ],
+    "last_updated": "2026-02-25",
+    "version": "3.0",
+    "enhancements_v1_3": "Added mmo_gaming_romcom genre preset and comedy_killer_patterns section based on Netoge vs Fan TL comparative literacy audit",
+    "enhancements_v1_4": "Added hard caps (10w dialogue, 15w narration, 5w punchlines) with split guidance based on 0116 validation report findings. Accepts Gemini's prose refinement strength while enforcing tighter rhythm.",
+    "enhancements_v1_5": "Added target_length_dialogue_examples with validated 0116 successes plus curated 9-10 word contemporary dialogue patterns for slice-of-life romcom and MMO/SNS/game-media subculture.",
+    "enhancements_v1_6": "Added professional_prose_icl_examples section with 14 curated examples from Violet Evergarden and Adachi & Shimamura (Seven Seas Entertainment). Organized by mood: literary/poetic (4), tension/suspense (4), playful banter (3), wistful/bittersweet (4), intimate quiet moments (3). Strengthens ICL instead of ChromaDB enhancement (zero latency, deterministic, higher quality).",
+    "corpus_integrated": true,
+    "corpus_examples_count": {
+      "fid": 15,
+      "show_dont_tell": 2,
+      "psychic_distance_shifts": 7,
+      "professional_icl_examples": 76
+    },
+    "enhancements_v1_7": "v1.7 (2026-02-20): Replaced 4 fan-TL Violet Evergarden examples (literary_poetic) with 4 verbatim Hibike! Euphonium [Yen Press] examples. Added deep_introspection category (4 examples) and dramatized_romance category (3 examples) from Love Unseen Beneath the Clear Night Sky [Yen Press]. All 21 ICL examples now sourced exclusively from publisher-verified professional translations. Zero fan-TL contamination. New categories address reluctant-protagonist introspection and show-dont-tell romance (avoidance-as-confession, breath-as-intimacy, beauty-as-exclusion).",
+    "enhancements_v1_8": "v1.8 (2026-02-20): Added 7 new examples from Love Unseen later chapters (ch10-26) + new endurance_as_devotion category (3 examples). tension_suspense +1 (loveunseen_008: nailed-feet paralysis metaphor). dramatized_romance +2 (loveunseen_009: confession-through-accusation; loveunseen_010: two-step breath as near-tears). deep_introspection +1 (loveunseen_011: double-negation recursive surrender). New category endurance_as_devotion (loveunseen_012: hospital sprint body-cost-as-love; loveunseen_013: origami micro-act disproportionate joy; loveunseen_014: sparkler wish object-as-confession). Total: 32 examples, 8 mood categories.",
+    "enhancements_v1_9": "v1.9 (2026-02-20): Added kinetic_action_sequence category (5 examples) all sourced from 86—Eighty-Six Vols 2-4 [Yen Press]. Covers: sensor-substitution tracking (eighty6_001), high-frequency blade physics with sensory overload (eighty6_002), optical-camouflage reveal via timed-fuse shockwave (eighty6_003), prisoner-identity horror through Legion visual contact (eighty6_004), post-battle sensory recession / survival cost (eighty6_005). New techniques documented: body_as_sensor, kinetic_verb_chain, physics_as_threat, absence_as_presence, staccato_under_fire, survival_cost_as_proof. Total: 37 examples, 9 mood categories.",
+    "enhancements_v2_0": "v2.0 (2026-02-20): Added 13 new examples across 3 new categories all sourced from The Detective Is Already Dead Vols 1-4 [Yen Press]. mystery_deduction (5 examples): deduction-as-compassion (tanmoshi_001), lie-in-silence (tanmoshi_002), identity-trap inversion (tanmoshi_003), pre-crisis premonition (tanmoshi_004), villain-motive reveal through concession (tanmoshi_005). psychological_duel (4 examples): oracle fatalism confronted by action (tanmoshi_006), human-emotions taxonomy vs alien (tanmoshi_007), mind-control reversal (tanmoshi_008), two-justice collision (tanmoshi_009). grief_romance (4 examples): proxy heart reunion flash (tanmoshi_010), future-forfeit sacrifice (tanmoshi_011), casino hand-take Siesta echo (tanmoshi_012), mission-as-love inheritance (tanmoshi_013). New techniques: deduction_as_therapy, strategic_concession, omission_as_proof, word_soul_power, justice_vs_love_binary, inherited_mission_as_confession. Total: 50 examples, 12 mood categories.",
+    "enhancements_v3_0": "v3.0 (2026-02-25): Added 26 new examples across 12 new mood categories from 4 untapped Official_Repo sources. cunning_heroine_agency (3 examples, loop7): in-motion FID cognition, competence-as-show, retrospective-knowledge-as-present. retrospective_layering (2 examples, loop7): multi-life memory as present intelligence, no flashback wrapper. earned_softening (2 examples, loop7): antagonist crack via single verb, predator simile preserving character edge. sibling_grief_payoff (2 examples, loop7): violence-as-love-signal, short-sentence emotional apex, flustered-cold comedy. cold_intellectual_narrator (3 examples, CotE): flat affect, strategic non-action, absence-of-guilt as voice fingerprint. sardonic_analysis_loop (2 examples, CotE): philosophical spiral comedy, FID nickname, involuntary outburst as mask-slip. slapstick_interiority (2 examples, NfW): speed-of-thought panic, FID newspaper headline, slang register in crisis. gl_intimate_crescendo (3 examples, NfW): body-before-emotion, FID pov-slip into other character, stammer as confession. comedic_escalation_chain (2 examples, NfW): one-word explosion, register collapse laugh trigger, compliment-as-insult. observation_as_affection (2 examples, Train): physical inventory as emotional displacement, art metaphor leak, lesson-missed as proof. silent_channel_intimacy (2 examples, Train): mid-erasure freeze as confession, FID interpretation of vague smile. genre_aware_epilogue (1 example, Train): prolepsis chapter close, unreliable self-label, genre declaration as irony. New source_corpus entries: 7th_time_loop, classroom_of_the_elite, theres_no_freaking_way, the_girl_i_saved_on_the_train. Total: 76 examples, 24 mood categories. Publisher balance: Yen Press 44 · Seven Seas 32."
+  },
+  "narrative_techniques": {
+    "first_person": {
+      "label": "Ngôi thứ nhất (First Person - 'Tôi/I')",
+      "description": "Creates the most direct emotional connection with readers. The narrator is the protagonist or a witness within the story.",
+      "subtechniques": {
+        "unreliable_narrator": {
+          "label_en": "Unreliable Narrator",
+          "label_vn": "Người kể chuyện không đáng tin",
+          "definition": "The narrator deliberately or unconsciously misleads the reader through self-deception, limited perception (child, mentally unstable character), or deliberate lies. Forces readers to infer truth from subtext.",
+          "instruction": "When translating, preserve ambiguities and contradictions. Do not clarify what the character misunderstands. Let the reader detect the unreliability through subtle inconsistencies.",
+          "banned_phrases": [
+            "actually",
+            "in reality",
+            "the truth was",
+            "to be honest"
+          ],
+          "trigger_markers": [
+            "Character makes false assumptions",
+            "Memory sequences that contradict earlier events",
+            "Defensive or justifying language"
+          ],
+          "vn_instruction": "Bảo toàn sự mơ hồ và mâu thuẫn trong bản dịch. Không làm rõ những gì nhân vật hiểu sai. Để người đọc tự phát hiện sự không đáng tin qua mâu thuẫn tinh tế."
+        },
+        "stream_of_consciousness": {
+          "label_en": "Stream of Consciousness",
+          "label_vn": "Dòng ý thức",
+          "definition": "Records continuous flow of character's thoughts, emotions, and memories without strict logical order or grammatical structure. Often fragmented, associative, and impressionistic.",
+          "instruction": "Preserve sentence fragments, run-on sentences, and abrupt topic shifts. Do not sanitize into proper grammar. Maintain the raw, unfiltered quality of internal thought.",
+          "allowed_structures": [
+            "Sentence fragments",
+            "Em-dashes for interrupted thoughts",
+            "Ellipses for trailing thoughts",
+            "Repetition for emphasis or obsession"
+          ],
+          "banned_fixes": [
+            "Do not add subjects to fragments",
+            "Do not complete interrupted sentences",
+            "Do not reorder thoughts for logic"
+          ],
+          "vn_instruction": "Bảo toàn mảnh câu, câu kéo dài, chuyển đề đột ngột. Không sửa thành ngữ pháp chuẩn. Giữ chất thô, không lọc của dòng suy nghĩ nội tâm."
+        },
+        "peripheral_narrator": {
+          "label_en": "Peripheral Narrator",
+          "label_vn": "Người kể chuyện quan sát",
+          "definition": "The 'I' character is not the protagonist but a witness observing and recounting the central character's story (e.g., Nick Carraway in The Great Gatsby).",
+          "instruction": "Maintain psychological distance between narrator and protagonist. The narrator describes the protagonist from outside, with limited access to their inner thoughts. Use speculative language when inferring emotions.",
+          "speculative_verbs": [
+            "seemed to",
+            "appeared to",
+            "must have felt",
+            "I imagine"
+          ],
+          "banned_access": [
+            "Do not write the protagonist's direct thoughts",
+            "Do not use absolute emotional statements about the protagonist"
+          ],
+          "vn_instruction": "Duy trì khoảng cách tâm lý giữa người kể và nhân vật chính. Dùng ngôn ngữ suy đoán khi suy luận cảm xúc nhân vật chính."
+        },
+        "confessional_narrative": {
+          "label_en": "Confessional Narrative",
+          "label_vn": "Tự sự tâm tình",
+          "definition": "The narrator directly addresses the reader, breaking the fourth wall. Creates intimacy and immediacy, as if the narrator is confiding in or confessing to the reader.",
+          "instruction": "Preserve direct addresses to the reader. Use second-person pronouns strategically. Maintain the conversational, intimate tone.",
+          "allowed_addresses": [
+            "Reader, ...",
+            "You must understand...",
+            "I confess...",
+            "Perhaps you think..."
+          ],
+          "tone": "intimate, conversational, self-aware",
+          "vn_instruction": "Bảo toàn lời trực tiếp với người đọc. Duy trì giọng điệu thân mật, đàm thoại, như đang thì thầm với người đọc."
+        },
+        "persona_shift_pov": {
+          "label_en": "Persona Shift POV",
+          "label_vn": "Thay đổi nhân cách giữa chương",
+          "definition": "A chapter or scene begins narrating a character in scare-quoted third person ('he', '\"his\"') — establishing them as a performed identity — then deliberately shifts to first-person ('I') when the mask drops. Common in con-artist, actor, and unreliable-identity fiction.",
+          "instruction": "Preserve the scare-quotes on third-person pronouns exactly as they appear in the source (e.g. '\"彼\"の顔' → '\"his\" face'). Do NOT normalize to plain 'his'. The POV shift from 'he' to 'I' is the chapter's emotional pivot — never smooth it over. When the protagonist discards the persona, the sentence rhythm should also shift: from third-person past-tense narration to first-person present-tense interiority.",
+          "source_example": "Masquerade Confidence Ch.1 [MF Bunko J]: 「彼」の顔が剥がれていく → '\"his\" face peeled away' (third) — then 俺の名はライナス → 'I'm Linus Krueger' (first). The pivot is the chapter's entire dramatic payload.",
+          "trigger_markers": [
+            "Character establishes an alias or role at scene start",
+            "Scare-quoted pronouns in JP (「彼」、「彼女」) used for a character the reader will later recognize as the narrator",
+            "Scene ends with persona-discard ritual (mask-peel, mirror, deliberate exhale)"
+          ],
+          "banned_normalizations": [
+            "Do not remove scare quotes from '\"his\"/\"her\"'",
+            "Do not merge the third-person setup and first-person reveal into one POV",
+            "Do not add transition phrases like 'suddenly' or 'actually' at the POV shift — the break should be silent and abrupt"
+          ],
+          "vn_instruction": "Bảo toàn dấu ngoặc kép trên đại từ thứ ba chính xác như bản gốc. KHÔNG chuẩn hóa. Điểm chuyển POV từ 'anh ấy' sang 'tôi' là payload kịch tính — không bao giờ làm mịn."
+        },
+        "physiological_purgation": {
+          "label_en": "Physiological Purgation",
+          "label_vn": "Xả cảm xúc qua hành động sinh lý",
+          "definition": "When a character releases, suppresses, or discards an emotion (especially love, grief, guilt) — the JP anchors this to a specific body organ or breathing mechanism (肺腑から = gut-depth lungs, 胸の裡 = within the chest cavity). The emotion is framed as a physical substance being expelled, not named as a feeling.",
+          "instruction": "Translate emotional purgation through body-organ precision, NOT through emotional noun labels. '胸の裡でくすぶる妻への愛情を全て排出する' should become something like 'draining the last warmth from his chest' — not 'purging his love' or 'expelling his affection'. The reader must INFER the emotion from the physiological metaphor — never state it directly.",
+          "source_example": "Masquerade Confidence Ch.1: 肺腑から息という息を静かに吐き出していく。胸の裡でくすぶる妻への愛情を、全て排出するかのように → 'He exhaled slowly, pulling the breath all the way from his gut. Draining out whatever warmth had been kept there.' (NOT: 'Purging the love from his chest')",
+          "banned_translations": [
+            "purging [emotion noun]",
+            "expelling [emotion noun]",
+            "releasing [emotion noun]",
+            "Any translation that names the emotion directly in the purgation sentence"
+          ],
+          "preferred_anchors": [
+            "gut",
+            "lungs",
+            "chest cavity",
+            "ribs",
+            "sternum",
+            "heat",
+            "warmth",
+            "weight",
+            "pressure",
+            "NOTE: use physical sensation nouns above, not emotion nouns like 'love' or 'affection'"
+          ],
+          "vn_instruction": "Dịch sự thanh lọc cảm xúc qua độ chính xác cơ quan cơ thể, KHÔNG qua nhãn cảm xúc. Người đọc phải suy luận cảm xúc từ ẩn dụ sinh lý — không bao giờ nói trực tiếp."
+        }
+      }
+    },
+    "third_person": {
+      "label": "Ngôi thứ ba (Third Person - 'Anh ấy/Cô ấy/He/She')",
+      "description": "The most common narrative voice, offering flexibility in psychic distance and scope of knowledge.",
+      "subtechniques": {
+        "third_person_limited": {
+          "label_en": "Third Person Limited",
+          "label_vn": "Ngôi thứ ba hạn tri",
+          "definition": "The narrator penetrates the thoughts and emotions of only ONE character per scene or throughout the entire work. The reader knows only what that character knows.",
+          "instruction": "Filter all sensory details and descriptions through the focal character's perception. Use the character's vocabulary and biases to describe objective reality. Avoid filter words ('she saw', 'he felt').",
+          "psychic_distance": "close",
+          "filter_removal": {
+            "enabled": true,
+            "banned_filters": [
+              "she saw",
+              "he heard",
+              "she felt",
+              "he noticed",
+              "she wondered",
+              "he thought",
+              "she sensed"
+            ],
+            "instruction": "Transform filter phrases into direct perception. 'She saw the rain' becomes 'Rain lashed the windows.'"
+          },
+          "vocabulary_infection": {
+            "enabled": true,
+            "instruction": "Use the focal character's internal vocabulary to describe external reality. If the character is poetic, describe a tree as 'gnarled sentinel'. If cynical, 'dead wood'."
+          },
+          "sensory_focus": "high",
+          "sentence_pacing": "variable",
+          "vn_instruction": "Lọc tất cả chi tiết qua nhận thức nhân vật tập trung. Dùng vốn từ vựng và thiên kiến của nhân vật để mô tả thực tế. Loại bỏ từ lọc (thấy, nghe, cảm thấy)."
+        },
+        "third_person_omniscient": {
+          "label_en": "Third Person Omniscient",
+          "label_vn": "Ngôi thứ ba toàn tri",
+          "definition": "The narrator is god-like, knowing all thoughts, emotions, past, and future of all characters. Often includes philosophical or moral commentary from the narrator.",
+          "instruction": "Establish the narrator as a distinct, authoritative voice. Allow direct narrator commentary on characters' actions and motivations. Use elevated, literary diction.",
+          "psychic_distance": "far",
+          "narrator_voice": {
+            "enabled": true,
+            "tone": "wise, philosophical, sometimes ironic",
+            "allowed_intrusions": [
+              "Little did she know...",
+              "Years later, he would remember...",
+              "If only they had understood...",
+              "The truth was simpler than either realized..."
+            ]
+          },
+          "scope": "all_characters",
+          "temporal_scope": "past_present_future",
+          "vn_instruction": "Thiết lập người kể như giọng nói riêng biệt, có thẩm quyền. Cho phép bình luận trực tiếp về hành động và động cơ nhân vật."
+        },
+        "third_person_objective": {
+          "label_en": "Third Person Objective / Camera / Fly on the Wall",
+          "label_vn": "Ngôi thứ ba khách quan",
+          "definition": "The narrator describes only external actions, dialogue, and settings without ever accessing any character's internal thoughts or emotions. Pure observation.",
+          "instruction": "Eliminate all internal thoughts, emotions, and motivations. Report only observable behavior and dialogue. Let the reader infer emotions from actions and speech.",
+          "psychic_distance": "maximum",
+          "banned_content": [
+            "Internal thoughts",
+            "Emotional states (unless explicitly shown through action)",
+            "Motivations or intentions",
+            "Unobservable sensory data"
+          ],
+          "allowed_content": [
+            "Dialogue",
+            "Physical actions",
+            "Visible expressions (frown, smile, but not 'sad smile' unless context makes it clear)",
+            "Environmental description"
+          ],
+          "tone": "detached, clinical, observational",
+          "vn_instruction": "Loại bỏ tất cả suy nghĩ nội tâm và cảm xúc. Chỉ báo cáo hành vi và đối thoại có thể quan sát được."
+        },
+        "head_hopping": {
+          "label_en": "Head-Hopping",
+          "label_vn": "Nhảy đầu",
+          "definition": "A variant (often considered an error if poorly executed) where the narrator jumps between different characters' perspectives within the same scene without clear separation. Requires masterful control to avoid confusion.",
+          "instruction": "CAUTION: Only use if the source material clearly employs this technique. When shifting POV within a scene, use subtle transition markers (paragraph breaks, character names, distinct voice shifts).",
+          "warning": "High risk of reader confusion. Requires distinct character voices and careful transition management.",
+          "transition_markers": [
+            "Paragraph break + character name in first sentence",
+            "Distinct sentence rhythm/vocabulary per character",
+            "Physical action that signals POV shift"
+          ],
+          "best_practices": [
+            "Limit to 2-3 POV characters per scene",
+            "Ensure each character has a distinct internal voice",
+            "Avoid rapid-fire switches (stay with each character for at least 2-3 paragraphs)"
+          ],
+          "vn_instruction": "Chỉ dùng nếu bản gốc rõ ràng sử dụng kỹ thuật này. Dùng dấu hiệu chuyển đổi tinh tế khi chuyển POV trong một cảnh."
+        },
+        "voyeur_camera_sequence": {
+          "label_en": "Voyeur Camera Sequence",
+          "label_vn": "Chuỗi máy quay dạng quan sát",
+          "definition": "A JP cinematographic narration technique where the camera first establishes Character A gazing at an object or scene — then pulls back to show Character B watching Character A. This creates a nested surveillance structure: the reader watches the watcher. Often used in romantic seduction, spy/con-artist, and possessive-gaze scenes.",
+          "instruction": "Preserve the two-shot sequence as two separate beats. Do NOT merge them into a single sentence ('He watched his wife gaze at the table') — this collapses the double-gaze into a flat statement. First sentence: A's gaze and its object. Second sentence: B observing A. The delay between the two shots is the emotional content.",
+          "source_example": "Masquerade Confidence Ch.1: 新妻の瞳がうっとりと眺めていた [wife gazes dreamily at table] → そんな妻の横顔を満足げに眺めつつ [he watches her profile, satisfied]. EN should be: 'She gazed dreamily at the white-linen dinner table — the silver candelabras were a perfect touch. He watched his wife's profile from across the room, deeply satisfied.' NOT: 'He watched his wife gaze dreamily at the dinner table.'",
+          "trigger_markers": [
+            "JP sentence 1: Subject A + verb-of-perception + object/scene",
+            "JP sentence 2: そんなAを/Aの横顔を + Subject B + verb-of-observation",
+            "Scene involves a watcher who is concealing their observation (seduction, surveillance, jealousy)"
+          ],
+          "banned_collapses": [
+            "Do not merge both shots into: 'B watched A [verb] the [object]'",
+            "Do not reorder so B appears before A's action is established",
+            "Do not add B's internal monologue during A's shot — keep the first sentence purely observational"
+          ],
+          "vn_instruction": "Bảo toàn chuỗi hai-shot thành hai beat riêng biệt. Câu 1: ánh nhìn của A và đối tượng. Câu 2: B quan sát A. Không hợp nhất thành một câu."
+        },
+        "world_vocabulary_neutrality": {
+          "label_en": "World Vocabulary Neutrality",
+          "label_vn": "Từ vựng trung tính với thế giới hư cấu",
+          "definition": "In fantasy, alternate-history, or steampunk settings, JP source text uses generic military/social vocabulary (軍役, 内戦, 名家) that must NOT be translated with real-world-specific equivalents that anchor the story to a known historical period (WWI trenches, Victorian era, feudal Japan, etc.).",
+          "instruction": "When translating military, social, or historical vocabulary in non-realistic settings, use period-neutral equivalents. Check: would this word make a reader think of a specific real-world era or war? If yes, replace with a generic equivalent that keeps the fictional world intact.",
+          "source_example": "Masquerade Confidence Ch.1: 数年間の泥臭い軍役 = 'years of brutal military service' or 'years in the field' — NOT 'years in the trenches' (pulls to WWI). 戦友 = 'comrades-in-arms' or 'fellow soldiers' — NOT 'trench mates'.",
+          "real_world_anchors_to_avoid": [
+            "trenches / trench warfare (WWI-specific)",
+            "the front (WWII-specific)",
+            "barons / serfs (medieval European-specific)",
+            "samurai / bushido (Japan-specific)",
+            "Victorian (English 1837-1901)",
+            "musketeer (French 17th century)"
+          ],
+          "safe_neutral_alternatives": [
+            "campaigns → military campaigns, field service",
+            "trenches → the front lines, fortified positions, the battlefield",
+            "baron → lord, liege, estate holder",
+            "manor → estate, manor house (acceptable if setting is explicitly medieval-European-coded)",
+            "servants → household staff, retainers"
+          ],
+          "exception": "If the novel explicitly codes itself to a real-world period (e.g., a WWI-coded steampunk), period-specific vocabulary is acceptable. Only avoid anchoring when the setting is purely fictional.",
+          "vn_instruction": "Dùng từ vựng trung tính với thời đại trong bối cảnh fantasy/lịch sử thay thế. Tránh neo câu chuyện vào thời kỳ lịch sử cụ thể của thế giới thực."
+        }
+      }
+    },
+    "narrative_tense_standards": {
+      "description": "International prose convention for tense consistency in narrative fiction",
+      "default_narrative_tense": "past",
+      "rationale": "English-language novels use past tense for retrospective narration as the universal standard. Present tense narration exists but is rare and requires intentional commitment throughout the entire work.",
+      "tense_by_pov": {
+        "first_person_retrospective": {
+          "narrative_tense": "past",
+          "explanation": "Character recounting events that already happened",
+          "example_correct": "I walked to the store. The morning was cold.",
+          "example_incorrect": "I walk to the store. The morning is cold."
+        },
+        "third_person_limited": {
+          "narrative_tense": "past",
+          "explanation": "Standard narration showing character perspective in past tense",
+          "example_correct": "She opened the door. Her heart raced.",
+          "example_incorrect": "She opens the door. Her heart races."
+        },
+        "third_person_omniscient": {
+          "narrative_tense": "past",
+          "explanation": "Historical narrative voice describing completed events",
+          "example_correct": "The war began in winter. Nations mobilized their forces.",
+          "example_incorrect": "The war begins in winter. Nations mobilize their forces."
+        }
+      },
+      "japanese_to_english_tense_mapping": {
+        "description": "How to convert Japanese strategic tense usage to English consistency",
+        "rules": [
+          {
+            "japanese_form": "た-form (past tense)",
+            "english_target": "past tense",
+            "example_jp": "歩いた (walked)",
+            "example_en": "walked"
+          },
+          {
+            "japanese_form": "る-form (present/state)",
+            "japanese_usage": "Ongoing state, immediate description",
+            "english_target": "past tense (convert for consistency)",
+            "example_jp": "凪が隣に居る (Nagi is beside me)",
+            "example_en_wrong": "Nagi is beside me",
+            "example_en_correct": "Nagi was beside me",
+            "rationale": "Japanese present-form creates immediacy; English past tense achieves same effect in retrospective narration"
+          },
+          {
+            "japanese_form": "ている-form (progressive/resultative)",
+            "japanese_usage": "Ongoing action or resultative state",
+            "english_target": "past progressive or past simple",
+            "example_jp": "眠っている (is sleeping)",
+            "example_en_wrong": "is sleeping",
+            "example_en_correct": "was sleeping",
+            "note": "Japanese progressive state → English past progressive"
+          }
+        ]
+      },
+      "common_violation_patterns": {
+        "temporal_anchor_errors": [
+          {
+            "violation": "the man he is today",
+            "fix": "the man he was then",
+            "explanation": "Temporal reference must align with narrative past timeframe"
+          },
+          {
+            "violation": "right now in this moment",
+            "fix": "right then in that moment",
+            "explanation": "Deictic expressions (now/here/today) must shift to past frame (then/there/that day)"
+          }
+        ],
+        "habitual_action_errors": [
+          {
+            "violation": "We talk every day when we cook together",
+            "fix": "We talked every day when we cooked together",
+            "explanation": "Habitual past actions use simple past or 'would' + verb"
+          }
+        ],
+        "state_description_errors": [
+          {
+            "violation": "She is beautiful, her hair gleaming in the light",
+            "fix": "She was beautiful, her hair gleaming in the light",
+            "explanation": "Character state descriptions in past tense narrative"
+          }
+        ],
+        "internal_thought_errors": [
+          {
+            "violation": "I think I've changed quite a bit since meeting her",
+            "fix": "I thought I had changed quite a bit since meeting her",
+            "explanation": "Character's internal realizations shift to past tense with past perfect for prior events"
+          }
+        ]
+      },
+      "allowed_present_tense_contexts": [
+        {
+          "context": "direct_dialogue",
+          "example": "She said, \"I am happy right now.\"",
+          "note": "Characters speak in present about their current state",
+          "detection": "Content within quotation marks"
+        },
+        {
+          "context": "quoted_internal_thoughts",
+          "example": "I wondered, *What is happening right now?*",
+          "note": "Italicized or marked internal dialogue uses present",
+          "detection": "Content within asterisks or underscores"
+        },
+        {
+          "context": "universal_truths",
+          "example": "He learned that water boils at 100 degrees Celsius.",
+          "note": "Scientific/mathematical/timeless facts remain present tense",
+          "detection": "Subordinate clauses after verbs like 'learned that', 'realized that'"
+        },
+        {
+          "context": "literary_definitions",
+          "example": "The word 'tsundere' means someone who is initially cold.",
+          "note": "Meta-linguistic explanations of terms",
+          "detection": "Verbs: means, refers to, indicates, signifies"
+        },
+        {
+          "context": "conditional_clauses",
+          "example": "If you heat water to 100°C, it boils.",
+          "note": "Present tense in if/when conditional statements",
+          "detection": "Clauses starting with: if, when, whenever, unless"
+        },
+        {
+          "context": "cultural_explanations",
+          "example": "In Japanese culture, 'giri' refers to social obligations.",
+          "note": "Narrator explaining cultural context to reader",
+          "detection": "Phrases: 'In Japanese', 'In Japan', 'Traditionally', 'As the saying goes'"
+        },
+        {
+          "context": "performative_speech_acts",
+          "example": "\"I swear I will protect you,\" he said.",
+          "note": "Speech acts where present tense is conventional (swear, promise, vow)",
+          "detection": "Dialogue with verbs: swear, promise, vow, pledge, declare"
+        },
+        {
+          "context": "headings_and_titles",
+          "example": "Chapter 3: The Ice Princess Melts",
+          "note": "Chapter titles and section headings can use present",
+          "detection": "Lines starting with # markdown headers"
+        },
+        {
+          "context": "meta_narrative_asides",
+          "example": "[Author's note: This scene takes place three months later]",
+          "note": "Parenthetical or bracketed narrator commentary",
+          "detection": "Content within brackets [] or parentheses ()"
+        },
+        {
+          "context": "historical_present_stylistic",
+          "example": "Present tense throughout entire narrative (rare, requires full commitment)",
+          "note": "Only if source Japanese uses consistent present throughout for stylistic effect",
+          "detection": "Chapter metadata flag: 'present_tense_narrative': true"
+        }
+      ],
+      "whitelist_implementation": {
+        "regex_patterns": [
+          {
+            "pattern": "\"[^\"]*\\b(is|are|am|has|have|does|do)\\b[^\"]*\"",
+            "type": "dialogue",
+            "action": "skip_validation"
+          },
+          {
+            "pattern": "\\*[^*]*\\b(is|are|am|has|have|does|do)\\b[^*]*\\*",
+            "type": "italicized_thoughts",
+            "action": "skip_validation"
+          },
+          {
+            "pattern": "_[^_]*\\b(is|are|am|has|have|does|do)\\b[^_]*_",
+            "type": "italicized_thoughts_alt",
+            "action": "skip_validation"
+          },
+          {
+            "pattern": "\\b(learned|realized|discovered|understood|explained|demonstrated|proved|showed|found out) that .+\\b(is|are|has|have|does|do|boils|freezes|melts|equals|means|refers to|indicates)\\b",
+            "type": "universal_truth",
+            "action": "skip_validation"
+          },
+          {
+            "pattern": "\\b(means|refers to|indicates|signifies|denotes|represents)\\b",
+            "type": "definition",
+            "action": "skip_validation"
+          },
+          {
+            "pattern": "\\b(if|when|whenever|unless|provided that) [^,.]+ \\b(is|are|has|have|does|do)\\b",
+            "type": "conditional",
+            "action": "skip_validation"
+          },
+          {
+            "pattern": "\\b(In Japanese|In Japan|Traditionally|Culturally|As the saying goes)\\b[^.!?]*\\b(is|are|means|refers)\\b",
+            "type": "cultural_note",
+            "action": "skip_validation"
+          },
+          {
+            "pattern": "\"[^\"]*\\b(swear|promise|vow|pledge|guarantee|declare|proclaim)\\b[^\"]*\"",
+            "type": "performative",
+            "action": "skip_validation"
+          },
+          {
+            "pattern": "^#+\\s+.+\\b(is|are|has|have)\\b",
+            "type": "heading",
+            "action": "skip_validation"
+          },
+          {
+            "pattern": "\\[.*\\b(is|are|has|have|does|do|takes place|occurs|happens|means|refers)\\b.*\\]",
+            "type": "meta_bracket",
+            "action": "skip_validation"
+          },
+          {
+            "pattern": "\\(.*\\b(is|are|has|have|does|do|indicates|means|refers)\\b.*\\)",
+            "type": "meta_parenthesis",
+            "action": "skip_validation"
+          }
+        ],
+        "validation_strategy": "Before flagging any present tense verb, check if it matches any whitelist pattern. If match found, skip flagging and continue."
+      }
+    },
+    "free_indirect_discourse": {
+      "label": "Free Indirect Discourse",
+      "label_vn": "Gián tiếp tự do",
+      "description": "A hybrid technique where the narrator's voice merges with a character's thoughts and speech patterns without using quotation marks or explicit tags ('she thought'). Blends third-person narration with first-person intimacy.",
+      "instruction": "Merge the narrator's grammatical third-person structure with the character's vocabulary, syntax, and emotional tone. Remove all filter words. Let the character's subjectivity color objective description.",
+      "examples": {
+        "standard_third": "She looked at the rain. She felt sad.",
+        "free_indirect": "The rain fell in relentless sheets. How miserable. How perfectly, utterly miserable.",
+        "explanation": "The second example uses third-person grammar but first-person emotional directness without 'she thought'."
+      },
+      "key_features": [
+        "Third-person pronouns (she/he/they)",
+        "Character's internal vocabulary and sentence rhythm",
+        "No quotation marks",
+        "No filter words ('thought', 'felt', 'wondered')",
+        "Emotional immediacy of first person"
+      ],
+      "ideal_for_genres": [
+        "Shoujo romance (e.g., Kimi ni Todoke)",
+        "Literary fiction",
+        "Character-driven drama",
+        "Coming-of-age narratives"
+      ]
+    }
+  },
+  "psychic_distance_levels": {
+    "description": "Defines how close the narrative voice is to the character's consciousness. Adapted from John Gardner's psychic distance scale.",
+    "levels": {
+      "level_1_maximum_distance": {
+        "description": "Narrator is far from all characters, often describing them from outside or above (e.g., 'In the kingdom of X, there lived a girl named Y').",
+        "example": "It was the city of London in the year 1850.",
+        "instruction": "Use distant, objective, historical or geographic framing. Avoid character-specific details.",
+        "tone": "impersonal, grand, historical"
+      },
+      "level_2_distant": {
+        "description": "Narrator introduces a specific character but remains outside their mind.",
+        "example": "Sawako walked down the hallway, her footsteps silent.",
+        "instruction": "Describe character from outside. Use their name or third-person pronouns. No access to thoughts.",
+        "tone": "observational, factual"
+      },
+      "level_3_close": {
+        "description": "Narrator enters the character's mind but maintains some separation through filter words.",
+        "example": "Sawako felt her heart pounding. She noticed Kazehaya approaching.",
+        "instruction": "Use filter words sparingly. Begin transitioning toward the character's perspective.",
+        "filter_words": [
+          "felt",
+          "noticed",
+          "thought",
+          "wondered"
+        ]
+      },
+      "level_4_very_close": {
+        "description": "Narrator fully inhabits the character's perception without filter words. Free Indirect Discourse.",
+        "example": "Her heart pounded. Kazehaya was approaching—oh no, what should she do?",
+        "instruction": "Remove all filter words. Use character's vocabulary and emotional tone. Maintain third-person grammar.",
+        "tone": "intimate, immediate, subjective"
+      },
+      "level_5_first_person": {
+        "description": "Full first-person narration. Maximum intimacy.",
+        "example": "My heart pounded. Kazehaya was approaching—oh no, what should I do?",
+        "instruction": "Use first-person pronouns. Direct access to thoughts and emotions.",
+        "tone": "confessional, immediate, subjective"
+      }
+    },
+    "default_recommendation": {
+      "shoujo_romance": "level_4_very_close",
+      "literary_fiction": "level_4_very_close",
+      "action_adventure": "level_2_distant",
+      "epic_fantasy": "level_2_distant or level_1_maximum_distance",
+      "psychological_thriller": "level_4_very_close or level_5_first_person"
+    }
+  },
+  "sensory_focus_modes": {
+    "high": {
+      "description": "Emphasize sensory details (sight, sound, touch, smell, taste) filtered through character perception.",
+      "instruction": "Translate sensory descriptions with rich, specific vocabulary. Avoid generic sensory words ('nice smell' → 'sweet jasmine', 'loud noise' → 'ear-splitting crash').",
+      "ideal_for": [
+        "Shoujo romance",
+        "Horror",
+        "Literary fiction"
+      ]
+    },
+    "medium": {
+      "description": "Balance sensory details with action and dialogue.",
+      "instruction": "Include sensory details when they serve character development or atmosphere. Avoid overloading.",
+      "ideal_for": [
+        "Contemporary fiction",
+        "Mystery",
+        "YA"
+      ]
+    },
+    "low": {
+      "description": "Minimize sensory details. Focus on action, dialogue, and plot progression.",
+      "instruction": "Translate sensory details only when critical to understanding. Prioritize clarity and pacing.",
+      "ideal_for": [
+        "Thriller",
+        "Action",
+        "Fast-paced adventure"
+      ]
+    }
+  },
+  "sentence_pacing": {
+    "variable": {
+      "description": "Mix short and long sentences to create rhythm and emotional emphasis.",
+      "instruction": "Use short sentences for tension, urgency, or impact. Use longer sentences for contemplation, description, or complex emotion. Do not homogenize sentence length.",
+      "example": {
+        "bad": "She was scared. She ran away. She hid behind the tree.",
+        "good": "She was scared. Heart hammering, she bolted for the nearest cover and pressed her back against the rough bark of an oak tree, struggling to quiet her breathing."
+      }
+    },
+    "staccato": {
+      "description": "Predominantly short, punchy sentences. Creates tension, urgency, or cynicism.",
+      "instruction": "Translate with short, declarative sentences. Avoid flowery language.",
+      "ideal_for": [
+        "Noir",
+        "Hardboiled detective",
+        "Action thrillers"
+      ]
+    },
+    "flowing": {
+      "description": "Predominantly longer, complex sentences. Creates a contemplative, lyrical, or dreamy atmosphere.",
+      "instruction": "Translate with complex, compound sentences. Use commas and semicolons. Embrace subordinate clauses.",
+      "ideal_for": [
+        "Literary fiction",
+        "Romance",
+        "Philosophical narratives"
+      ]
+    }
+  },
+  "show_dont_tell": {
+    "enabled": true,
+    "description": "Fundamental creative writing principle: Reveal character emotions and traits through actions, dialogue, and sensory details rather than direct statements.",
+    "banned_tell_phrases": [
+      "She was angry",
+      "He felt sad",
+      "She was beautiful",
+      "He was nervous",
+      "She was in love"
+    ],
+    "show_alternatives": {
+      "She was angry": "Her jaw clenched. She slammed the door.",
+      "He felt sad": "He stared at the empty chair, throat tight.",
+      "She was beautiful": "Heads turned as she walked by.",
+      "He was nervous": "His palms were slick with sweat.",
+      "She was in love": "Her heart leapt every time his name appeared on her phone."
+    },
+    "instruction": "When translating emotional states, default to showing through physical reactions, internal sensations, or behavioral cues unless the source material explicitly tells."
+  },
+  "rhythm_first_prose_enforcement": {
+    "enabled": true,
+    "priority": "high",
+    "principle": "Prioritize sharp rhythm and scene momentum over over-exposition.",
+    "instruction": "When two phrasings are both accurate, choose the tighter and more natural sentence that preserves intent, tone, and character voice.",
+    "rules": {
+      "avoid_literal_translation": {
+        "description": "Do not preserve JP structure when it produces stiff or translated-sounding English.",
+        "enforcement": [
+          "Prefer idiomatic English verbs over noun-heavy calques",
+          "Prefer active, image-bearing phrasing over explanatory scaffolding",
+          "Delete redundant setup clauses when the next sentence already conveys the same point"
+        ],
+        "rewrite_examples": [
+          {
+            "literal": "Her words surprise my heart.",
+            "preferred": "Her words made my heart leap.",
+            "reason": "Natural idiom, stronger emotional immediacy"
+          },
+          {
+            "literal": "He spoke in a terribly arrogant manner.",
+            "preferred": "He spoke with real arrogance.",
+            "reason": "Cleaner rhythm, less translationese"
+          }
+        ]
+      },
+      "avoid_repetition_and_over_emphasis": {
+        "description": "Trim repetitive wording and intensity stacking that weakens prose rhythm.",
+        "repetition_window": "2-3 consecutive sentences",
+        "max_repeated_idea_per_window": 1,
+        "intensity_stack_markers": [
+          "really",
+          "very",
+          "so",
+          "totally",
+          "absolutely",
+          "completely"
+        ],
+        "enforcement": [
+          "Avoid repeating the same emotional claim in adjacent lines",
+          "Collapse doubled emphasis words unless used for deliberate voice",
+          "Prefer one precise image over multiple abstract restatements"
+        ],
+        "rewrite_examples": [
+          {
+            "over_emphasis": "This is weird. It's really, really weird.",
+            "preferred": "This was bizarre.",
+            "reason": "Sharper impact, less drag"
+          },
+          {
+            "over_exposition": "I felt a sense of relief, and that relief spread through me.",
+            "preferred": "Relief loosened my chest.",
+            "reason": "Concrete effect, tighter cadence"
+          }
+        ]
+      }
+    },
+    "scene_profiles": {
+      "mmo_sns_online_chat": {
+        "enabled": true,
+        "applies_when": [
+          "MMO party or guild chat exchanges",
+          "SNS, DM, or text-message style back-and-forth",
+          "Modern romcom banter scenes driven by online culture"
+        ],
+        "primary_objective": "Tighter comedic timing, chat-like authenticity, and youthful voice.",
+        "timing_policy": {
+          "target": "Keep explanatory narration at least 50% leaner than dialogue-driven lines in chat-heavy sequences.",
+          "max_expository_lines_per_10_dialogue_lines": 5,
+          "enforcement": [
+            "Cut explanatory restatements when dialogue already carries the joke or intent",
+            "Prefer one-line reaction beats over multi-clause exposition in rapid exchanges",
+            "Keep turn-taking cadence short in MMO and SNS conversational segments"
+          ]
+        },
+        "voice_policy": {
+          "chat_authenticity": [
+            "Use concise, contemporary phrasing for banter",
+            "Keep gamer and social-media diction natural but controlled",
+            "Avoid stiff textbook connectors in fast dialogue turns"
+          ],
+          "youthful_voice_guardrails": [
+            "Prefer punchy verbs over abstract noun-heavy framing",
+            "Avoid over-formal narration during comedy beats"
+          ]
+        },
+        "emotional_pivot_preservation": {
+          "priority": "high",
+          "instruction": "Preserve Gemini's emotional-pivot strength by allowing slightly longer lines only at emotional turns, confessions, and vulnerability beats.",
+          "preserve": [
+            "emotional transitions",
+            "character sincerity",
+            "relationship stakes"
+          ]
+        },
+        "rewrite_examples": [
+          {
+            "over_exposition": "I explained what she meant in detail, and as a result the joke became clear.",
+            "preferred": "She said it. I got it. Too late.",
+            "reason": "Faster comedic timing and chat-like beat progression"
+          },
+          {
+            "over_flattened": "He typed okay and moved on.",
+            "preferred": "He typed 'ok'... then stared at the screen, jaw tight.",
+            "reason": "Keeps concise rhythm while preserving emotional pivot"
+          }
+        ]
+      }
+    },
+    "tie_breaker_policy": {
+      "if_conflict": "Choose rhythm and readability over literal completeness.",
+      "must_preserve": [
+        "plot facts",
+        "speaker intent",
+        "honorific relationship cues",
+        "named entities"
+      ]
+    }
+  },
+  "genre_specific_presets": {
+    "shoujo_romance": {
+      "narrative_technique": "third_person_limited",
+      "use_free_indirect_discourse": true,
+      "psychic_distance": "level_4_very_close",
+      "sensory_focus": "high",
+      "sentence_pacing": "variable",
+      "show_dont_tell": true,
+      "emotional_vocabulary": "poetic, delicate, introspective",
+      "professional_style_references": {
+        "description": "Professional-grade stylistic examples from Seven Seas and Yen Press translations (50 volumes, extracted 2026-02-18). Use these as quality benchmarks for mood-specific prose.",
+        "melancholic_introspection": {
+          "source": "Adachi and Shimamura, 7th Time Loop (Seven Seas/Yen Press)",
+          "examples": [
+            "Deep down on the inside, I was riddled with holes. Holes where my heart should have been. Maybe it was just my empty stomach talking, but right then, the holes were screaming at me, telling me that something was missing.",
+            "The empty space between her and me drove me bonkers. I was torn between the urge to say something—anything—and the desire to flee. Since I couldn't think of anything to say, I chose the latter."
+          ],
+          "technique_notes": "Use concrete physical metaphors ('riddled with holes'), internal conflict ('torn between'), and character-filtered perception ('radiated intense vibe'). Avoid purple prose—stay grounded in sensory details."
+        },
+        "romantic_tension": {
+          "source": "Girl I Saved on the Train, Adachi and Shimamura (Yen Press/Seven Seas)",
+          "examples": [
+            "As we walked in silence, I snuck a few glances at her. In profile, her hair lay perfectly against her high cheekbones, as though she were a carefully crafted statue. After a moment, she blinked, and I was relieved to remember that she was a living, breathing human being. Then our eyes met, and I realized I'd been caught staring.",
+            "From the looks of it, some girls in our grade were setting up volleyball courts for gym class. I only knew they were in our grade because I spotted my friends, Hino and Nagafuji, carrying the poles and net. If they walked onto the stage and looked up at the second floor, they would see us… My heart pounded."
+          ],
+          "technique_notes": "Build tension through: (1) stolen glances, (2) physical proximity awareness, (3) fear of discovery, (4) eyes meeting. Show physiological responses (heart pounding) without filter words."
+        }
+      },
+      "vn_instruction": "Ưu tiên khoảng cách tâm lý gần (level 4), loại bỏ từ lọc, dùng FID. Câu ngắn cho khoảnh khắc tim đập nhanh; câu dài cho suy tư. Tập trung chi tiết xúc giác và cảm giác nội tâm."
+    },
+    "noir_hardboiled": {
+      "narrative_technique": "first_person",
+      "psychic_distance": "level_5_first_person",
+      "sensory_focus": "medium",
+      "sentence_pacing": "staccato",
+      "show_dont_tell": true,
+      "emotional_vocabulary": "cynical, terse, world-weary",
+      "vn_instruction": "Câu staccato, ngắn gọn. Giọng kể lạnh lùng, quan sát. Tránh ngôn ngữ hoa mỹ. Dùng ẩn dụ cụ thể, không trừu tượng."
+    },
+    "epic_fantasy": {
+      "narrative_technique": "third_person_omniscient",
+      "psychic_distance": "level_1_maximum_distance",
+      "sensory_focus": "medium",
+      "sentence_pacing": "flowing",
+      "show_dont_tell": false,
+      "narrator_voice": "wise, elevated, archaic diction",
+      "vn_instruction": "Khoảng cách tâm lý xa (level 1-2). Từ vựng trung tính với thế giới hư cấu — tránh neo vào thời kỳ lịch sử thực. Câu dài, hùng vĩ cho mô tả thế giới."
+    },
+    "psychological_horror": {
+      "narrative_technique": "first_person or third_person_limited",
+      "use_unreliable_narrator": true,
+      "psychic_distance": "level_4_very_close",
+      "sensory_focus": "high",
+      "sentence_pacing": "variable",
+      "show_dont_tell": true,
+      "emotional_vocabulary": "unsettling, fragmented, paranoid",
+      "vn_instruction": "Khoảng cách tâm lý rất gần (level 4-5). Câu ngắn tạo căng thẳng. Dùng chi tiết sinh lý để thể hiện sợ hãi. Tránh giải thích trực tiếp — để sự mơ hồ tạo kinh hoàng."
+    },
+    "mmo_gaming_romcom": {
+      "description": "Contemporary light novel romcom focused on MMO/gaming/SNS culture - based on Netoge 1124 audit",
+      "narrative_technique": "first_person",
+      "psychic_distance": "level_5_first_person",
+      "sensory_focus": "medium",
+      "sentence_pacing": "variable_with_staccato_bias",
+      "target_avg_sentence_length": "8-10 words (NOT 11+)",
+      "show_dont_tell": true,
+      "emotional_vocabulary": "contemporary, casual, self-aware",
+      "comedy_priority": "critical",
+      "dialogue_authenticity": {
+        "register": "casual_teen_contemporary",
+        "avoid": [
+          "Victorian idioms (hook line and sinker)",
+          "Formal academic connectors (essentially, fundamentally)",
+          "Over-polite descriptors (young lady, quite, rather)",
+          "News flash / Formal announcements",
+          "Explanatory padding before punchlines"
+        ],
+        "prefer": [
+          "Direct contemporary slang (wild, crazy, no way)",
+          "Gaming trash talk (sucker, noob, clueless)",
+          "Internet laugh variations (lol, lmao)",
+          "Punchy reactions (Seriously? For real?)",
+          "Short punchline delivery"
+        ]
+      },
+      "rhythm_enforcement": {
+        "priority": "critical",
+        "target": "Page-turning momentum over grammatical completeness",
+        "hard_caps": {
+          "dialogue_max_words": 10,
+          "narration_max_words": 15,
+          "punchline_max_words": 5,
+          "enforcement": "MANDATORY - If sentence exceeds cap, SPLIT into 2 sentences at natural break point (comma, 'and', 'but', 'so')"
+        },
+        "rules": [
+          "HARD CAP: Dialogue lines MUST NOT exceed 10 words. If exceeded, split at comma or conjunction.",
+          "HARD CAP: Narration sentences MUST NOT exceed 15 words. If exceeded, split into fragments.",
+          "Prefer 3 short sentences over 1 long compound sentence",
+          "Comedy beats: setup → pause (—/...) → punchline (HARD CAP: 5 words maximum)",
+          "Reaction dialogue: max 8 words for humor impact",
+          "Gaming commands: direct imperatives (Pull! Heal me! Not: 'Please provide healing assistance')"
+        ],
+        "split_guidance": {
+          "description": "When sentence exceeds hard cap, identify natural break points and split",
+          "break_points": [
+            "Comma followed by conjunction (', and' → '. And' OR remove conjunction entirely)",
+            "Subordinate clause marker ('because', 'since', 'while', 'when', 'where')",
+            "Parenthetical phrase (move to separate sentence or remove)",
+            "Long dialogue → split into 2 exchanges with brief reaction from other character"
+          ],
+          "examples": [
+            {
+              "original": "It's hard for me to be in the classroom, so I was using 'just going to buy a drink' as an excuse to escape.",
+              "word_count": 20,
+              "violation": "Exceeds 10-word dialogue cap",
+              "split_correct": "\"It's hard for me to be in the classroom. So I use 'just going to buy a drink' as an excuse.\"",
+              "split_word_counts": [
+                9,
+                11
+              ],
+              "note": "Still slightly over on second part, but acceptable. Further split: 'It's hard for me to be in the classroom.' + 'So I escape using that drink excuse.'"
+            },
+            {
+              "original": "I have a recommendation. The title is Honey Story, and as you can see, it is a peaceful game where you move your character left and right with the direction keys, and the only buttons you needed at the start were attack and jump.",
+              "word_count": 44,
+              "violation": "Exceeds 15-word narration cap",
+              "split_correct": "I have a recommendation. The title is *Honey Story*. It's a peaceful game. You move left and right with arrow keys. Only two buttons at the start: attack and jump.",
+              "split_word_counts": [
+                4,
+                5,
+                5,
+                9,
+                9
+              ],
+              "note": "Fragmented into digestible beats"
+            }
+          ]
+        }
+      },
+      "target_length_dialogue_examples": {
+        "description": "Concrete 9-10 word dialogue targets for contemporary slice-of-life romcom and MMO/SNS/game-media sub-culture scenes.",
+        "target_word_range": {
+          "min": 9,
+          "max": 10,
+          "strict_preference": true
+        },
+        "use_case": "Use these as style anchors when a line should be short, natural, and complete (not fragmented padding).",
+        "real_world_successes_0116": [
+          {
+            "text": "You need to take this game a little more seriously.",
+            "word_count": 10,
+            "category": "gaming advice / complaint"
+          },
+          {
+            "text": "Come to think of it, how are your grades, Ako?",
+            "word_count": 10,
+            "category": "casual question / topic shift"
+          },
+          {
+            "text": "They're bad, you know? Did you think they weren't?",
+            "word_count": 9,
+            "category": "self-aware admission / sarcasm"
+          },
+          {
+            "text": "How bad, exactly? I can teach you if you want.",
+            "word_count": 10,
+            "category": "offer to help"
+          },
+          {
+            "text": "It's no boast, but I've never scored below average.",
+            "word_count": 9,
+            "category": "humble brag"
+          }
+        ],
+        "curated_examples": {
+          "gaming_commands_strategy": [
+            {
+              "text": "Don't chase kills; hold lane and ping if they rotate.",
+              "word_count": 10
+            },
+            {
+              "text": "Stack cooldowns now, burst together, then peel back immediately.",
+              "word_count": 9
+            }
+          ],
+          "casual_questions": [
+            {
+              "text": "You free after class, or grinding ranked again tonight?",
+              "word_count": 9
+            },
+            {
+              "text": "By the way, did your stream clip finally upload?",
+              "word_count": 9
+            }
+          ],
+          "reactions_with_substance": [
+            {
+              "text": "Wait, you queued solo on that account? That's reckless.",
+              "word_count": 9
+            },
+            {
+              "text": "Seriously, you posted that in guild chat? Brave move.",
+              "word_count": 9
+            }
+          ],
+          "brief_explanations": [
+            {
+              "text": "The patch buffed tanks, so our old comp collapses.",
+              "word_count": 9
+            },
+            {
+              "text": "Her tone stayed light, but the silence did the damage.",
+              "word_count": 10
+            }
+          ],
+          "offers_suggestions": [
+            {
+              "text": "Send me the draft; I'll tighten jokes and pacing.",
+              "word_count": 9
+            },
+            {
+              "text": "If you're tilted, take five and queue with us.",
+              "word_count": 9
+            }
+          ],
+          "complaints_observations": [
+            {
+              "text": "This app keeps lagging exactly when the punchline lands.",
+              "word_count": 9
+            },
+            {
+              "text": "Everyone says 'just one game,' then it's three hours.",
+              "word_count": 9
+            }
+          ]
+        },
+        "guardrails": [
+          "Target complete natural lines, not chopped fragments.",
+          "Keep register contemporary and youth-casual for romcom gaming scenes.",
+          "Prefer one clear action or attitude per line.",
+          "Allow >10 words only for explicit emotional pivot beats."
+        ]
+      },
+      "mmo_scene_specific": {
+        "guild_chat": "Mimic real Discord/game chat - fragmented, emoji-like reactions (lol), rapid turn-taking",
+        "login_chaos": "Staccato sentences, exclamations, fragment volleys",
+        "strategy_discussion": "Still casual but slightly longer - max 12 words/sentence",
+        "romantic_pivot": "Allow 15-20 words for emotional confession beats ONLY"
+      },
+      "professional_style_references": {
+        "description": "Professional-grade stylistic examples from Seven Seas translations (50 volumes, extracted 2026-02-18). Use these as quality benchmarks for comedic timing and contemporary dialogue.",
+        "comedic_timing": {
+          "source": "Adachi and Shimamura, There's No Freaking Way (Seven Seas)",
+          "examples": [
+            "For some reason, her shoulders flinched in response. \"Uhh…yeah. A snack.\" \"What, so a non-sugary snack?\" \"No, no, sugary's good,\" she answered in a tiny voice that I could barely make out through her pouted lips. For some reason, it felt like I was missing something, but, eh, at least I had a general idea.",
+            "Ha, good one. After all the humiliation I'd caused myself, I knew full well that there was nothing 'nonchalant' about me. I'd tried dozens of times to 'casually' steer the conversation, only to end up in a panic—I just wasn't capable of keeping my cool. Instead, I shook like a leaf until my desired topic came up on its own.",
+            "\"Oh, I get it. You used too much brainpower during class, so now you're filling up on sugar?\" \"Uh…yeah…something like that,\" Adachi replied instantly—so fast, I wasn't sure she'd actually listened to a word I said. As she rested her chin in her hands, I noticed a bottle of mineral water on her desk."
+          ],
+          "technique_notes": "Comedic timing relies on: (1) setup with innocent question, (2) beat/pause (ellipsis, em-dash), (3) unexpected punchline or self-aware narrator aside. Use contemporary slang and self-deprecating internal monologue for humor."
+        },
+        "action_urgency": {
+          "source": "7th Time Loop, Adachi and Shimamura (Seven Seas/Yen Press)",
+          "examples": [
+            "She must've thought I was a teacher at first, because she bolted upright when she saw me, her cute little toes all splayed out. I remember it vividly to this day.",
+            "\"Get good, scrub! Hyah!\" Striking a weird pose, she served another ball. This time, she must've hit it too low, because it bounced backward and hit the wall behind her. She dashed off to retrieve it, then came back scratching her forehead."
+          ],
+          "technique_notes": "Short, active verbs (bolted, dashed, struck). Fragment immediate observations. Mix action with character-filtered detail (cute little toes, weird pose) for personality."
+        }
+      },
+      "vn_instruction": "Giữ thuật ngữ game/MMO nguyên gốc hoặc dịch tự nhiên theo cộng đồng VN. Đối thoại nhẹ nhàng, tự nhiên. Tránh ngôn ngữ quá trang trọng trong banter."
+    }
+  },
+  "integration_notes": {
+    "tier": 1,
+    "load_priority": "before_language_specific_configs",
+    "scope": "Apply to both EN and VN translation workflows",
+    "usage": "These techniques are not just translation rules—they are 'creative transcreation' directives that activate specific narrative latent spaces in Gemini 2.5 Pro, transforming mechanical translation into literary prose."
+  },
+  "real_world_jp_en_corpus": {
+    "description": "Real-world JP→EN professional translation corpus for ICL prose quality benchmarking. v3.0: 76 examples across 24 mood categories from 8 publisher-verified sources. Zero fan-TL contamination.",
+    "source": "Hibike! Euphonium [Yen Press] · Adachi & Shimamura [Seven Seas] · Love Unseen Beneath the Clear Night Sky [Yen Press] · 86—Eighty-Six [Yen Press] · The Detective Is Already Dead [Yen Press] · 7th Time Loop [Seven Seas] · Classroom of the Elite [Seven Seas] · There's No Freaking Way I'll Be Your Lover! Unless [Seven Seas] · The Girl I Saved on the Train [Yen Press]",
+    "total_volumes": "Hibike Vol 1 · Adachi Vols 1,3 · Love Unseen Complete · 86 Vols 2,4 · Detective Dead Vols 1-4 · Loop7 Vol 1 · CotE Vol 1 · NfW Vol 1 · Train Vol 1",
+    "generated": "2026-02-03",
+    "free_indirect_discourse_examples": {
+      "description": "EN paragraphs showing direct perception without filter words (felt/saw/thought)",
+      "instruction": "Use character emotional vocabulary to describe reality directly, without mediation",
+      "pattern": "Direct emotional perception without filter words (felt/saw/thought)",
+      "examples": [
+        {
+          "text": "Frost-san's eyes narrowed suspiciously as she stared me down.",
+          "source_volume": "孤高の華と呼ばれる英国美少女、義妹になったら不器用に甘えてきた 1_20260125_0164",
+          "chapter": "CHAPTER_02"
+        },
+        {
+          "text": "My heart pounded at her expression as I forced a smile and spoke.",
+          "source_volume": "孤高の華と呼ばれる英国美少女、義妹になったら不器用に甘えてきた 1_20260125_0164",
+          "chapter": "CHAPTER_06"
+        },
+        {
+          "text": "When I said that—her eyes widened again, and she buried her face.",
+          "source_volume": "孤高の華と呼ばれる英国美少女、義妹になったら不器用に甘えてきた 4_20260126_2172",
+          "chapter": "CHAPTER_07"
+        },
+        {
+          "text": "*Thump-thump.* Her heart pounded… She knew this was wrong, she knew she was betraying her daughters, but Sakina couldn't stop herself.",
+          "source_volume": "男嫌いな美人姉妹を名前も告げずに助けたら一体どうなる？2_20260127_024a",
+          "chapter": "CHAPTER_05"
+        },
+        {
+          "text": "Sitoen's eyes narrowed. My sudden silence must have worried her.",
+          "source_volume": "隣国から来た嫁が可愛すぎてどうしよう。ー冬熊と呼ばれる俺が相手で本当にいいのか！？ー【電子版特典付】_20260127_211e",
+          "chapter": "CHAPTER_03"
+        },
+        {
+          "text": "Seeing our group, the young man's eyes widened. But even that was a subtle reaction. His swollen eyelids barely lifted.",
+          "source_volume": "隣国から来た嫁が可愛すぎてどうしよう。ー冬熊と呼ばれる俺が相手で本当にいいのか！？ー【電子版特典付】_20260127_211e",
+          "chapter": "CHAPTER_03"
+        },
+        {
+          "text": "When I asked that, Shimizu-san's eyes widened as if she'd been slapped.",
+          "source_volume": "(迷子になっていた幼女を助けたら、お隣に住む美少女留学生が家に遊びに来るようになった件について (2)_20260126_1478",
+          "chapter": "CHAPTER_04"
+        },
+        {
+          "text": "Spotting her best friend, her purple eyes widened, and she called out.",
+          "source_volume": "貴族令嬢。俺にだけなつく_20260119_1d74",
+          "chapter": "CHAPTER_02"
+        },
+        {
+          "text": "The moment I answered, her golden eyes narrowed. The first emotion I could read from her was 'suspicion'.",
+          "source_volume": "貴族令嬢。俺にだけなつく_20260119_1d74",
+          "chapter": "CHAPTER_04"
+        },
+        {
+          "text": "Her eyes narrowed as she approached and started poking my sides with her finger. Ugh, the guilt is way stronger than the sense of accomplishment…!",
+          "source_volume": "弓道部の美人な先輩が、俺の部屋でお腹出して寝てる_20260129_165c",
+          "chapter": "CHAPTER_05"
+        },
+        {
+          "text": "The mother's eyes widened, but she quickly let out a small laugh.",
+          "source_volume": "男嫌いな美人姉妹を名前も告げずに助けたら一体どうなる？1_20260127_1cca",
+          "chapter": "CHAPTER_05"
+        },
+        {
+          "text": "Sana glared at Shintarou, her guard up and her eyes narrowed.",
+          "source_volume": "年上幼馴染と再会したら、姉妹で俺の取り合いが始まった　どっちがいいか、試してみる？_20260125_038e",
+          "chapter": "CHAPTER_04"
+        },
+        {
+          "text": "Momo-nee's voice rose with delight. Even in the darkness, I could tell her eyes were sparkling, and sitting next to her, my heart pounded a little.",
+          "source_volume": "年上幼馴染と再会したら、姉妹で俺の取り合いが始まった　どっちがいいか、試してみる？_20260125_038e",
+          "chapter": "CHAPTER_05"
+        },
+        {
+          "text": "Akari-chan's gaze darted about in a slight panic. She squeezed my hand just a little tighter—and gave a small nod.",
+          "source_volume": "友人に500円貸したら借金のカタに妹をよこしてきたのだけれど、俺は一体どうすればいいんだろう_20260129_205c",
+          "chapter": "CHAPTER_06"
+        },
+        {
+          "text": "His heart pounded, and he frantically tried to back away.",
+          "source_volume": "この中に1人、妹がいる! 4_20260201_0523",
+          "chapter": "CHAPTER_04"
+        }
+      ]
+    },
+    "show_dont_tell_examples": {
+      "description": "JP emotion labels transformed into EN physical manifestations",
+      "instruction": "When JP uses emotion words, translate as physical sensations/actions",
+      "pattern": "JP emotion labels → EN physical manifestations",
+      "examples": [
+        {
+          "jp_original": "\"焦らないでゆっくり色んな楽しいことをしよう。夏になったら海とかお祭り、色々あるでしょ？\"",
+          "en_transcreation": "Then Kurumi's eyes widened.",
+          "emotion": "happy",
+          "source_volume": "Innocent Looking Yandere_20260201_07a4",
+          "chapter": "CHAPTER_11"
+        },
+        {
+          "jp_original": "俺はそんな不安を抱きながら、腕の中でご機嫌となったエマちゃんを抱えてシャーロットさんと共にスーパーへと向かうのだった。",
+          "en_transcreation": "When Emma apologized, Charlotte's eyes widened in surprise.",
+          "emotion": "nervous",
+          "source_volume": "(迷子になっていた幼女を助けたら、お隣に住む美少女留学生が家に遊びに来るようになった件について (1)_20260126_25b4",
+          "chapter": "CHAPTER_04"
+        }
+      ]
+    },
+    "psychic_distance_shifts_examples": {
+      "description": "JP distant narration brought closer in EN (Free Indirect Discourse)",
+      "instruction": "Remove quotative markers and thought-reporting to create intimacy",
+      "pattern": "JP distant narration → EN very close (Free Indirect Discourse)",
+      "examples": [
+        {
+          "jp_original": "今は夏休み終盤なので、これくらいなら遊んでいる学生も多いと思うが…。",
+          "en_transcreation": "Frost-san's eyes narrowed suspiciously as she stared me down.",
+          "jp_distance": "distant (quotative markers)",
+          "en_distance": "very_close (direct perception)",
+          "shift": "jp_distant_to_en_close",
+          "source_volume": "孤高の華と呼ばれる英国美少女、義妹になったら不器用に甘えてきた 1_20260125_0164",
+          "chapter": "CHAPTER_02"
+        },
+        {
+          "jp_original": "相変わらず、まじめすぎるというか、なんというか…。",
+          "en_transcreation": "My heart pounded at her expression as I forced a smile and spoke.",
+          "jp_distance": "distant (quotative markers)",
+          "en_distance": "very_close (direct perception)",
+          "shift": "jp_distant_to_en_close",
+          "source_volume": "孤高の華と呼ばれる英国美少女、義妹になったら不器用に甘えてきた 1_20260125_0164",
+          "chapter": "CHAPTER_06"
+        },
+        {
+          "jp_original": "純粋なシアと立場を気にしないエレナは相性がよく、お互いに気を許している仲なのだ。",
+          "en_transcreation": "Spotting her best friend, her purple eyes widened, and she called out.",
+          "jp_distance": "distant (quotative markers)",
+          "en_distance": "very_close (direct perception)",
+          "shift": "jp_distant_to_en_close",
+          "source_volume": "貴族令嬢。俺にだけなつく_20260119_1d74",
+          "chapter": "CHAPTER_02"
+        },
+        {
+          "jp_original": "俺はそんな不安を抱きながら、腕の中でご機嫌となったエマちゃんを抱えてシャーロットさんと共にスーパーへと向かうのだった。",
+          "en_transcreation": "When Emma apologized, Charlotte's eyes widened in surprise.",
+          "jp_distance": "distant (quotative markers)",
+          "en_distance": "very_close (direct perception)",
+          "shift": "jp_distant_to_en_close",
+          "source_volume": "(迷子になっていた幼女を助けたら、お隣に住む美少女留学生が家に遊びに来るようになった件について (1)_20260126_25b4",
+          "chapter": "CHAPTER_04"
+        },
+        {
+          "jp_original": "まぁシャーロットさんが何を好きになろうと、彼女の勝手だからいいのだけど…。",
+          "en_transcreation": "*Thump*—enthralled by Charlotte's smile and words, my heart pounded in my chest.",
+          "jp_distance": "distant (quotative markers)",
+          "en_distance": "very_close (direct perception)",
+          "shift": "jp_distant_to_en_close",
+          "source_volume": "(迷子になっていた幼女を助けたら、お隣に住む美少女留学生が家に遊びに来るようになった件について (1)_20260126_25b4",
+          "chapter": "CHAPTER_04"
+        },
+        {
+          "jp_original": "\"態度で勘違いされやすいけど、まっすぐでいい奴なんだよ。というか、野球馬鹿だな。野球のことしか頭にないって感じで、練習は人一倍真剣に取り組んでいるんだ\"",
+          "en_transcreation": "Sophia's eyes widened and she froze, staring at me.",
+          "jp_distance": "distant (quotative markers)",
+          "en_distance": "very_close (direct perception)",
+          "shift": "jp_distant_to_en_close",
+          "source_volume": "孤高の華と呼ばれる英国美少女、義妹になったら不器用に甘えてきた 2_20260126_015c",
+          "chapter": "CHAPTER_04"
+        },
+        {
+          "jp_original": "『一生懸命に尽くしたいと思えるご主人様だから』という意味を持ったものなのだから。",
+          "en_transcreation": "It was no wonder Tetra's eyes widened.",
+          "jp_distance": "distant (quotative markers)",
+          "en_distance": "very_close (direct perception)",
+          "shift": "jp_distant_to_en_close",
+          "source_volume": "お世話した王女様、ずっとくっついてくる【電子特典付き】_20260202_0cc3",
+          "chapter": "CHAPTER_13"
+        }
+      ]
+    },
+    "common_patterns_identified": {
+      "eyes_widened": {
+        "description": "Most common FID pattern: Direct perception without \"she saw\"",
+        "frequency": "Very high",
+        "example_count": 12,
+        "pattern": "Her eyes widened (NOT: She saw her eyes widen)"
+      },
+      "heart_pounded": {
+        "description": "Emotional state shown through physical sensation",
+        "frequency": "High",
+        "example_count": 7,
+        "pattern": "My heart pounded/skipped/raced (NOT: I felt my heart pounding)"
+      }
+    },
+    "comedic_timing_examples": {
+      "description": "ICL samples for handling comedy in JP→EN translation. These patterns activate comedic latent spaces while maintaining natural English humor delivery.",
+      "source_volume": "幼馴染で婚約者なふたりが恋人をめざす話1_20260116_d594bb",
+      "instruction": "Comedy in Japanese light novels often relies on timing, misdirection, and deadpan delivery. Preserve the comedic beat structure: setup → pause (em-dash or ellipsis) → punchline. Use parenthetical asides for narrator commentary.",
+      "techniques": {
+        "subverted_expectation": {
+          "description": "Build romantic/emotional tension, then deflate with mundane reveal. The humor comes from the gap between expectation and reality.",
+          "pattern": "Romantic setup → beat → absurd/mundane punchline",
+          "examples": [
+            {
+              "context": "Sleeping girl murmurs while MC touches her cheek",
+              "en": "\"…Unyaa. —love you…♪\"\n\n\"…\"\n\n—she murmured, her face blissful.\n\nI knew she was just talking in her sleep, but it caught me off guard and made my heart skip a beat… for a second.\n\nMitsuki grabbed my hand, her \"smile\" turning into a charmless \"smirk,\" and then she brought her mouth closer—\n\n\"…Uheheh. Time to dig innn…\"\n\nShe loved it (as in, food).",
+              "technique_notes": "The parenthetical '(as in, food)' delivers the punchline with deadpan narrator clarification. The ellipsis before 'for a second' creates the comedic beat.",
+              "chapter": "CHAPTER_01 (Prologue)"
+            }
+          ]
+        },
+        "literary_parody_recontextualization": {
+          "description": "Reference famous literary/cultural works, then recontextualize them absurdly. The humor comes from the cognitive dissonance.",
+          "pattern": "Recognizable quote → question about meaning → absurd literal interpretation",
+          "examples": [
+            {
+              "context": "Girl wakes up grumpy, quotes Shakespeare",
+              "en": "\"…Oh Yuuya, Yuuya, wherefore art thou Yuuya…?\"\n\nHer very first words upon waking up were a line from Romeo and Juliet.\n\n\"…Is there any meaning to that statement?\"\n\n\"To paraphrase—'I was having a good dream, why'd you wake me up, you idiot?'\"\n\n\"Then wake from your dream, Juliet Mitsuki. And you owe Shakespeare an apology.\"\n\n\"…But you woke me up right as I was about to take a bite out of a daikon-sized boiled crab leg…\"\n\nSo, \"wherefore art thou Yuuya?\" equals \"why are you not a crab?\"\n\n…I can't say I wouldn't mind having a dream like that myself.",
+              "technique_notes": "The narrator's deadpan summary 'wherefore art thou Yuuya = why are you not a crab' is the comedic peak. Preserve the logical chain that leads to absurdity.",
+              "chapter": "CHAPTER_01 (Prologue)"
+            }
+          ]
+        },
+        "synchronized_response_comedy": {
+          "description": "Two characters responding in perfect unison, often with matter-of-fact absurdity. Visual: double quotes with matched text.",
+          "pattern": "Question → \"\"Synchronized answer\"\" → bewildered third party",
+          "examples": [
+            {
+              "context": "Director asks about their relationship",
+              "en": "\"…I was wondering what exactly the relationship between you two is.\"\n\n\"\"We're engaged?\"\"\n\n\"…No, that's not what I meant.\"\n\nWe both answered the obvious question in perfect sync, which only seemed to make her look like her headache was getting worse.",
+              "technique_notes": "Double quotes \"\" signal synchronized speech. The question mark makes it funnier—they're confused why she's asking the obvious.",
+              "chapter": "CHAPTER_04 (Chapter 1)"
+            },
+            {
+              "context": "Asked if they've been intimate",
+              "en": "\"\"Oh, so that's what this is about. We haven't done it, you know?\"\"\n\n\"Could you please try to be a little more subtle?! I-I mean, yes, that is what I wanted to ask, but…\"",
+              "technique_notes": "Matter-of-fact delivery of embarrassing topic in perfect sync amplifies the comedy through contrast with the flustered adult.",
+              "chapter": "CHAPTER_04 (Chapter 1)"
+            }
+          ]
+        },
+        "awkward_pivot_comedy": {
+          "description": "Conversation veers into uncomfortable territory, character tries to escape but makes it worse. Deadpan narrator commentary.",
+          "pattern": "Normal question → unexpectedly intimate answer → failed recovery → narrator aside",
+          "examples": [
+            {
+              "context": "MC asks about expense discrepancy",
+              "en": "\"I was just looking at the household accounts… and I have a question about last month. Can you put your hand on your heart and think if anything comes to mind?\"\n\nAs instructed, Mitsuki actually placed her hand on her chest and started to think.\n\n\"Hmm, last month…? —Oh!\"\n\n\"Did something happen? I don't think it's anything bad, but I'd like to hear what's going on—\"\n\nI said to Mitsuki, who seemed to have remembered something… and a slightly smug look appeared on her face.\n\n\"Yup. My cup size went up.\"\n\n\"—Huh, seriously? …Wait, that's not what I meant!\"\n\nI reacted without thinking—but \"put your hand on your heart\" wasn't meant to be taken so literally.",
+              "technique_notes": "The narrator's rueful clarification at the end ('wasn't meant to be taken so literally') provides the comedic button. His initial honest reaction ('seriously?') before catching himself is key.",
+              "chapter": "CHAPTER_09 (Chapter 2)"
+            },
+            {
+              "context": "Follow-up on lingerie topic",
+              "en": "\"—I'm not complaining or doubting you or anything, I'm just curious… how much does women's underwear cost?\"\n\nIt was knowledge a guy wouldn't normally have, so I was genuinely just a little curious—\n\n\"Hmm? You interested in women's lingerie, Yuuya?\"\n\n\"Don't phrase it like that!\"",
+              "technique_notes": "The reframe from innocent curiosity to 'interested in lingerie' is classic boke-tsukkomi. Preserve the straight man's outraged reaction.",
+              "chapter": "CHAPTER_09 (Chapter 2)"
+            }
+          ]
+        },
+        "married_couple_meta_comedy": {
+          "description": "Characters are told they act like a married couple, respond in ways that prove the point. Self-aware humor.",
+          "pattern": "Third party observation → synchronized denial → action that proves the point",
+          "examples": [
+            {
+              "context": "Director comments on their dynamic",
+              "en": "\"…If a young man and woman are close enough to be called that, I would think it's only natural for certain desires and impulses to grow stronger, wouldn't you…?\"\n\n\"\"Hmm…\"\"\n\nIt's not that we don't *want* to do it, and it's not like we don't have those desires, but…\n\nAfter a moment of thought, I looked over at Mitsuki, and our eyes met.\n\nI could tell from her gaze that she was thinking the same thing. We nodded at each other.\n\n\"\"We're used to it?\"\"\n\n\"…Never mind. Please excuse me.\"\n\nTsuyuki-san's expression seemed to say, \"I can't take any more of this.\"\n\nNot understanding what she meant, we just tilted our heads in unison again.",
+              "technique_notes": "The final 'tilted heads in unison' while claiming not to understand is the comedic button—they're proving her point while being oblivious.",
+              "chapter": "CHAPTER_04 (Chapter 1)"
+            }
+          ]
+        },
+        "deadpan_narrator_aside": {
+          "description": "Narrator breaks from scene to deliver dry commentary, often in em-dashes or separate paragraph.",
+          "pattern": "Scene action → —Narrator commentary in em-dashes—",
+          "examples": [
+            {
+              "context": "After getting his hand almost bitten",
+              "en": "\"…Just wake up already!\"\n\nBefore her wide-open mouth could clamp down, I yanked my hand away. I used that same hand to give her a light *smack* on the forehead as I raised my voice, getting serious about waking her up.\n\n—Please forgive me if my voice got a little rough there. It couldn't be helped.",
+              "technique_notes": "The em-dash intro signals narrator breaking fourth wall to address reader directly. Apologetic tone contrasts with justified exasperation.",
+              "chapter": "CHAPTER_01 (Prologue)"
+            },
+            {
+              "context": "Describing fiancée's sleep state",
+              "en": "…There wasn't a single trace of the prim and proper atmosphere that earned her the title of \"sheltered noble lady.\"\n\nAs a side note, the reason Mitsuki prefers a futon in a Japanese-style room over a bed is—\n\n*\"I just love that feeling of security, knowing you can roll over as much as you want without any borders!\"*\n\n…The thought of just fixing her sleeping habits never seems to occur to her, which I think is very \"her.\"",
+              "technique_notes": "Italicized quote within narration delivers her voice, followed by dry narrator observation. The ellipsis before the final line creates comedic timing.",
+              "chapter": "CHAPTER_01 (Prologue)"
+            }
+          ]
+        }
+      },
+      "comedic_timing_rules": {
+        "em_dash_for_beats": "Use em-dashes (—) to create comedic pauses before punchlines or interruptions",
+        "ellipsis_for_processing": "Use ellipsis (…) when character/narrator is processing absurdity",
+        "parenthetical_clarification": "Use parentheticals for deadpan narrator corrections: 'She loved it (as in, food)'",
+        "double_quotes_for_sync": "Use \"\" (no space) for perfectly synchronized dialogue",
+        "preserve_tsukkomi": "Keep straight-man reactions sharp and immediate: 'Don't phrase it like that!'",
+        "italics_for_internal": "Use *italics* for internal monologue that contrasts with external dialogue"
+      },
+      "comedy_killer_patterns": {
+        "description": "Anti-patterns that destroy comedic timing - based on Netoge 1124 literacy audit",
+        "source": "Fan TL vs Gemini comparative analysis",
+        "priority": "CRITICAL for comedy-focused works",
+        "patterns_to_avoid": {
+          "over_embellishment": {
+            "issue": "Adding flowery idioms or formal language to casual banter kills humor",
+            "examples": [
+              {
+                "gemini_error": "Fell for it hook, line, and sinker, you gullible fool!",
+                "fan_correct": "You fell for it, you clueless sucker!",
+                "why_it_fails": "'Hook, line, and sinker' is a fishing idiom that feels forced. 'Gullible fool' is Victorian. Gaming trash talk needs punchy modern insults."
+              },
+              {
+                "gemini_error": "Having to introduce yourself essentially saying 'I'm a pig' would naturally be quite embarrassing for a young lady.",
+                "fan_correct": "Saying something like, 'I am a pig, pleased to meet you' would be pretty humiliating for a girl.",
+                "why_it_fails": "'Naturally be quite embarrassing' + 'young lady' = overly formal. Comedy needs directness."
+              }
+            ],
+            "fix": "Use contemporary slang and direct phrasing. Shorter = funnier."
+          },
+          "punchline_explanation": {
+            "issue": "Explaining the joke in the punchline itself destroys impact",
+            "examples": [
+              {
+                "gemini_error": "I'd be surprised enough to have a heart attack if you just got a girlfriend.",
+                "fan_correct": "Honestly, just the fact that you got a girlfriend would knock the wind outta me.",
+                "why_it_fails": "'Surprised enough to have a heart attack' explains the surprise level. Idiomatic 'knock the wind outta me' delivers same meaning with rhythm."
+              }
+            ],
+            "fix": "Trust the reader. Use idiomatic expressions, not explanatory constructions."
+          },
+          "formal_connectors_in_banter": {
+            "issue": "Academic transitional phrases slow comedic rhythm",
+            "examples": [
+              {
+                "gemini_error": "Wow, there are some pretty intense people out there, trying to be a girl in a game.",
+                "fan_correct": "Really? Are there actually people out there trying to play as girls in games? That's wild.",
+                "why_it_fails": "'There are some pretty intense people' sounds like a nature documentary narrator. Teen reactions need immediate slang."
+              }
+            ],
+            "fix": "Use contemporary reactions: 'That's wild / crazy / insane / No way / Seriously?'"
+          },
+          "dialogue_tag_padding": {
+            "issue": "Stacking verb + adverb + intensifier slows delivery",
+            "examples": [
+              {
+                "gemini_error": "My classmate shot back, looking completely fed up.",
+                "fan_correct": "My classmate replied, sounding totally fed up.",
+                "why_it_fails": "'Shot back' + 'looking' + 'completely' = three descriptors doing one job."
+              }
+            ],
+            "fix": "Pick one descriptor maximum. Or merge: 'shot back, fed up.'"
+          },
+          "reaction_beat_over_extension": {
+            "issue": "Extending reaction past optimal length dilutes impact",
+            "rule": "Funny reactions should be max 8 words. Punchlines max 5 words.",
+            "examples": [
+              {
+                "gemini_error": "\"Oh, right, it's a joke. Hahaha, Nekohime-san, you're such a prankster.\"",
+                "fan_correct": "\"Ah, of course, a joke! Haha, Nekohime sure is a prankster.\"",
+                "why_it_fails": "'Oh, right' is weaker than 'Ah, of course'. Adding 'you're such a' before 'prankster' is padding."
+              }
+            ],
+            "fix": "Trim to core emotional beat. Remove transition words."
+          },
+          "shock_reaction_verbosity": {
+            "issue": "Horror/surprise loses visceral impact when over-articulated",
+            "examples": [
+              {
+                "gemini_error": "\"H-Huh? Seriously? Pig? Schwein is pig?\"",
+                "fan_correct": "\"W–What? Are you serious? Pig? Schwein?\"",
+                "why_it_fails": "'Schwein is pig?' is grammatically complete but less panicked than fragment 'Schwein?'"
+              }
+            ],
+            "fix": "Use fragments, stutters, em-dashes for shock. '—...What?' > 'Huh?'"
+          }
+        },
+        "sentence_length_targets": {
+          "gaming_banter": "5-8 words average (HARD CAP: 10 words)",
+          "shock_reactions": "1-3 word fragments",
+          "punchline_delivery": "Maximum 5 words (HARD CAP - no exceptions)",
+          "setup_before_punchline": "Maximum 12 words",
+          "emotional_confessions": "15-20 words (exception for sincerity, narration cap still applies)",
+          "hard_cap_enforcement": "Dialogue: 10 words maximum. Narration: 15 words maximum. Punchlines: 5 words maximum. These are MANDATORY limits, not suggestions."
+        },
+        "hard_cap_examples": {
+          "description": "Concrete before/after examples demonstrating 10-word dialogue cap and 15-word narration cap",
+          "dialogue_violations": [
+            {
+              "violation": "It's hard for me to be in the classroom, so I was using 'just going to buy a drink' as an excuse to escape.",
+              "word_count": 20,
+              "correct_split": "\"It's hard for me to be in the classroom. So I use 'buy a drink' as my escape.\"",
+              "word_counts": [
+                9,
+                10
+              ],
+              "technique": "Split at conjunction, tighten second part"
+            },
+            {
+              "violation": "\"I fundamentally disagree with your strategy because it doesn't account for the enemy's positioning and movement patterns.\"",
+              "word_count": 16,
+              "correct_split": "\"I totally disagree with your strategy. You're not accounting for enemy positioning.\"",
+              "word_counts": [
+                6,
+                7
+              ],
+              "technique": "Split at subordinate clause, convert to direct statement"
+            }
+          ],
+          "narration_violations": [
+            {
+              "violation": "The guild master was a guy named †Black Sorcerer†, clad from head to toe in gleaming, powerful-looking gear that you could tell was top-tier at a glance.",
+              "word_count": 28,
+              "correct_split": "The guild master was †Black Sorcerer†. He was clad head to toe in gleaming gear. Top-tier, no question.",
+              "word_counts": [
+                6,
+                11,
+                3
+              ],
+              "technique": "Fragment into beats: identification → description → judgment"
+            },
+            {
+              "violation": "After listening to my story, Ako looked down and spoke sympathetically, her voice soft and understanding as she tried to comfort me.",
+              "word_count": 22,
+              "correct_split": "After listening to my story, Ako looked down. Her voice was soft and sympathetic.",
+              "word_counts": [
+                9,
+                7
+              ],
+              "technique": "Split action from description, remove redundancy"
+            }
+          ],
+          "punchline_violations": [
+            {
+              "violation": "\"Too laaaaaate for that now!\"",
+              "word_count": 4,
+              "status": "PASS (under 5-word cap)",
+              "note": "Drawn-out emphasis doesn't count as extra words"
+            },
+            {
+              "violation": "\"I'd be really surprised if that actually worked out for you.\"",
+              "word_count": 11,
+              "correct": "\"That working out? I'd be shocked.\"",
+              "word_count_fixed": 5,
+              "technique": "Flip to question + reaction format"
+            }
+          ]
+        },
+        "register_enforcement": {
+          "casual_teen_dialogue_avoid": [
+            "Victorian idioms",
+            "Formal academic connectors",
+            "'young lady' / 'young man'",
+            "'naturally be quite'",
+            "'News flash'",
+            "'essentially' / 'fundamentally'"
+          ],
+          "casual_teen_dialogue_prefer": [
+            "Direct contemporary slang",
+            "Idiomatic expressions",
+            "Shortened reactions",
+            "Gaming/internet vocabulary",
+            "Fragments and stutters for emotion"
+          ]
+        },
+        "target_length_dialogue_examples": {
+          "description": "Curated 9-10 word dialogue examples demonstrating ideal contemporary casual dialogue length - based on v1.4 successful output analysis",
+          "purpose": "Show Gemini concrete target patterns rather than just enforcing caps. These examples hit the sweet spot: substantive but not padded, natural but not fragmented.",
+          "source": "Netoge v1.4 validation (Ch 1-7) + curated contemporary romcom/MMO/slice-of-life corpus",
+          "target_range": "9-10 words (acceptable: 7-12 words)",
+          "categories": {
+            "casual_questions": {
+              "description": "Natural topic shifts, checking in, asking about situations",
+              "examples": [
+                {
+                  "dialogue": "Come to think of it, how are your grades, Ako?",
+                  "word_count": 10,
+                  "context": "Topic shift in casual conversation",
+                  "why_it_works": "Natural conversational flow, question + name for personalization"
+                },
+                {
+                  "dialogue": "So what's the deal with you and that guild master?",
+                  "word_count": 10,
+                  "context": "Asking about relationships/rumors",
+                  "why_it_works": "Contemporary phrasing ('what's the deal'), casual register"
+                },
+                {
+                  "dialogue": "Wait, you seriously think that's gonna work out for you?",
+                  "word_count": 10,
+                  "context": "Skeptical question about friend's plan",
+                  "why_it_works": "Skepticism marker + casual 'gonna', doubt expressed naturally"
+                },
+                {
+                  "dialogue": "Did you already finish grinding those mobs for the quest?",
+                  "word_count": 10,
+                  "context": "MMO party chat - checking progress",
+                  "why_it_works": "Gaming vocabulary, direct question, natural flow"
+                }
+              ]
+            },
+            "self_aware_admissions": {
+              "description": "Characters acknowledging their own flaws, situations, or feelings",
+              "examples": [
+                {
+                  "dialogue": "They're bad, you know? Did you think they weren't?",
+                  "word_count": 9,
+                  "context": "Admitting bad grades with rhetorical question",
+                  "why_it_works": "Self-aware + rhetorical question adds personality without padding"
+                },
+                {
+                  "dialogue": "I know I'm weird, but this is important to me.",
+                  "word_count": 10,
+                  "context": "Defending unusual hobby/interest",
+                  "why_it_works": "Admission + justification in one natural breath"
+                },
+                {
+                  "dialogue": "Honestly, I didn't think I'd end up liking this game.",
+                  "word_count": 10,
+                  "context": "Admitting changed opinion about MMO",
+                  "why_it_works": "Honesty marker + past assumption, relatable self-reflection"
+                }
+              ]
+            },
+            "offers_and_suggestions": {
+              "description": "Helping, teaching, proposing activities",
+              "examples": [
+                {
+                  "dialogue": "How bad, exactly? I can teach you if you want.",
+                  "word_count": 10,
+                  "context": "Offering to help with grades",
+                  "why_it_works": "Clarifying question + conditional offer, natural two-part flow"
+                },
+                {
+                  "dialogue": "Let's party up tonight and farm some experience points together.",
+                  "word_count": 10,
+                  "context": "MMO invite to play together",
+                  "why_it_works": "Gaming vocabulary, casual invitation, activity specification"
+                },
+                {
+                  "dialogue": "I could show you the ropes if you're free this weekend.",
+                  "word_count": 10,
+                  "context": "Offering to mentor new player/friend",
+                  "why_it_works": "Idiomatic 'show you the ropes' + time qualifier"
+                }
+              ]
+            },
+            "observations_and_complaints": {
+              "description": "Commenting on situations, expressing frustration or amusement",
+              "examples": [
+                {
+                  "dialogue": "You need to take this game a little more seriously.",
+                  "word_count": 10,
+                  "context": "Mild complaint about casual playstyle",
+                  "why_it_works": "Advisory tone, 'a little' softens criticism naturally"
+                },
+                {
+                  "dialogue": "This is exactly why I told you not to trust him.",
+                  "word_count": 10,
+                  "context": "I-told-you-so moment after betrayal",
+                  "why_it_works": "Contemporary phrasing 'this is why', retrospective vindication"
+                },
+                {
+                  "dialogue": "It's no boast, but I've never scored below average.",
+                  "word_count": 9,
+                  "context": "Humble brag about academic performance",
+                  "why_it_works": "Self-aware qualifier 'no boast' + statement, natural flow"
+                }
+              ]
+            },
+            "contemporary_reactions": {
+              "description": "Responses showing surprise, agreement, or emotional reaction",
+              "examples": [
+                {
+                  "dialogue": "Wait, are you saying you actually believed that whole thing?",
+                  "word_count": 10,
+                  "context": "Surprise at friend's gullibility",
+                  "why_it_works": "'Wait' pause + clarifying question, natural incredulity"
+                },
+                {
+                  "dialogue": "That's pretty bold of you to say that to her face.",
+                  "word_count": 10,
+                  "context": "Commenting on friend's audacity",
+                  "why_it_works": "Contemporary 'pretty bold' + action specification"
+                },
+                {
+                  "dialogue": "No way that's gonna fly with the guild master, though.",
+                  "word_count": 10,
+                  "context": "Predicting negative reaction from authority",
+                  "why_it_works": "Casual 'no way' + idiomatic 'fly' + casual 'though' ending"
+                }
+              ]
+            },
+            "strategic_mmo_dialogue": {
+              "description": "Gaming strategy, party coordination, MMO-specific communication",
+              "examples": [
+                {
+                  "dialogue": "Can you pull aggro while I heal the tank real quick?",
+                  "word_count": 10,
+                  "context": "MMO party coordination during dungeon",
+                  "why_it_works": "Gaming terms, action request, time qualifier 'real quick'"
+                },
+                {
+                  "dialogue": "The boss spawns in five minutes, so get ready to move.",
+                  "word_count": 10,
+                  "context": "Raid timing coordination",
+                  "why_it_works": "Event timing + instruction, natural command structure"
+                }
+              ]
+            }
+          },
+          "usage_guidance": {
+            "when_to_use_9_10_words": [
+              "Casual questions that need context (not yes/no)",
+              "Self-aware statements with personality",
+              "Offers/suggestions with conditions",
+              "Observations with reasoning",
+              "Reactions that need clarification",
+              "Gaming strategy with specific actions"
+            ],
+            "when_to_use_shorter": [
+              "Quick reactions (Seriously? / No way! / That's wild!)",
+              "Gaming commands (Pull! / Heal me! / Let's go!)",
+              "Punchlines (max 5 words)",
+              "Shock/surprise fragments (W-What? / You're kidding...)"
+            ],
+            "when_to_use_longer": [
+              "Emotional confessions (15-20 words, narration cap applies)",
+              "Complex explanations (split into 2 sentences at 10w mark)",
+              "Multi-part statements (split at conjunction/subordinate clause)"
+            ]
+          },
+          "anti_patterns_to_avoid": {
+            "padding_to_reach_9_words": {
+              "issue": "Don't artificially lengthen short statements to hit 9-10 word target",
+              "bad_example": "So, well, you know, I guess I'll just go myself then.",
+              "good_example": "Guess I'll go myself then.",
+              "explanation": "Filler words ('so', 'well', 'you know', 'I guess', 'just') add nothing. If statement is naturally 5-6 words, leave it."
+            },
+            "splitting_natural_9_10_word_sentences": {
+              "issue": "Don't split sentences that are already at optimal length",
+              "bad_example": "Come to think of it, how are your grades? Ako?",
+              "good_example": "Come to think of it, how are your grades, Ako?",
+              "explanation": "10 words is TARGET length, not maximum. Don't split what's already optimal."
+            },
+            "formal_register_in_casual_context": {
+              "issue": "9-10 word dialogue must maintain casual register",
+              "bad_example": "I would appreciate it if you could assist me with this.",
+              "good_example": "Could you help me out with this real quick?",
+              "explanation": "Both are 10 words, but first is formal, second is contemporary casual."
+            }
+          }
+        }
+      }
+    },
+    "sarcasm_and_irony_examples": {
+      "description": "Japanese often uses polite/positive words (ありがたい, 素晴らしい) sarcastically. Context determines tone—internal monologue, eye-roll moments, or contrast with situation signals irony. English needs explicit markers: italics, 'oh-so-', 'just peachy', or dry follow-up commentary.",
+      "techniques": {
+        "polite_sarcasm": {
+          "pattern": "Polite/grateful expression in obviously frustrating situation",
+          "jp_markers": "ありがたい (arigatai), 素晴らしい (subarashii), お陰様で (okage-sama de)",
+          "en_strategies": [
+            "*oh-so-helpful* / *oh-so-wonderful* (italicized for sarcasm)",
+            "just peachy / just great / just fantastic (American sarcasm)",
+            "how very thoughtful / how terribly considerate (British irony)",
+            "bless their heart (Southern US backhanded compliment)"
+          ],
+          "examples": [
+            {
+              "jp": "というありがたい作戦をいただいたので",
+              "en_literal": "the grateful strategy we received",
+              "en_sarcastic": "the *oh-so-helpful* plan of",
+              "context": "Leader gives useless battle strategy ('Go WHOOSH and BAM!')",
+              "why_sarcastic": "The strategy is gibberish nonsense—'grateful' is clearly ironic"
+            },
+            {
+              "jp": "お陰様でこんな目に遭いました",
+              "en_literal": "thanks to you, this happened to me",
+              "en_sarcastic": "*Oh, I'm just thrilled* to be in this situation / Thanks a bunch for *this* mess",
+              "context": "Blaming someone for a problem while using polite gratitude language",
+              "why_sarcastic": "お陰様で (okage-sama de) is a grateful idiom, but context shows blame"
+            }
+          ]
+        },
+        "deadpan_narrator_sarcasm": {
+          "pattern": "Narrator describes absurd situation with straight-faced understatement",
+          "en_strategies": [
+            "Dry observation after absurdity: '…naturally.'",
+            "Understatement: 'slightly concerning' for disaster",
+            "Rhetorical question: 'As one does, apparently.'",
+            "Follow-up with contrasting reality"
+          ],
+          "examples": [
+            {
+              "jp": "ファンの方々からのありがたいお布施である。",
+              "en_literal": "the grateful offerings from fans",
+              "en_improved": "Generous donations from our fans. / The fans' hard-earned money, graciously given.",
+              "context": "Kaguya counting virtual currency donations, getting greedy",
+              "why_awkward": "'Grateful offerings' sounds religious/archaic. 'Generous donations' or 'hard-earned money' adds subtle irony before Kaguya's greed"
+            },
+            {
+              "jp": "これは普通の高校生活である。",
+              "en_literal": "This is a normal high school life.",
+              "en_sarcastic": "Just your average, everyday high school experience. / Totally normal. Nothing to see here.",
+              "context": "After describing completely absurd supernatural event",
+              "why_sarcastic": "Narrator claiming normalcy after obvious chaos = deadpan irony"
+            }
+          ]
+        },
+        "internal_monologue_eyeroll": {
+          "pattern": "Character's internal thought contradicts polite external behavior",
+          "en_strategies": [
+            "Italicized internal reaction: *Right. Sure. Definitely.*",
+            "Sarcastic paraphrase: '…or so they claimed.'",
+            "Thought bubble contrast: Said 'thank you,' thought 'yeah right'"
+          ],
+          "examples": [
+            {
+              "jp": "「ありがとう」と言いながら内心では（うるさい）と思った。",
+              "en_literal": "While saying 'thank you,' internally thought (shut up)",
+              "en_improved": "\"Thank you,\" I said sweetly. *How delightful.* / \"Thanks,\" I lied. *Just what I needed.*",
+              "context": "Character forced to accept unwanted help/advice",
+              "technique": "Italicized internal sarcasm immediately after polite dialogue creates contrast"
+            }
+          ]
+        },
+        "situational_irony": {
+          "pattern": "Outcome opposite of expectation, often with 'as expected' structure",
+          "jp_markers": "案の定 (an no jou = as expected), やっぱり (yappari = just as I thought)",
+          "en_strategies": [
+            "Naturally... (when outcome is unnatural)",
+            "Of course... (when it's absurd)",
+            "As one would expect... (when it's completely unexpected)"
+          ],
+          "examples": [
+            {
+              "jp": "案の定、彼女は約束を忘れていた。",
+              "en_literal": "As expected, she forgot the promise",
+              "en_context_dependent": "Naturally, she'd forgotten. / Of *course* she forgot. (italics if narrator is exasperated)",
+              "context": "If it's the 5th time she forgot, use 'Naturally' or 'Of course' sarcastically",
+              "technique": "Adverb at sentence start + italics on key word = sarcastic emphasis"
+            }
+          ]
+        }
+      },
+      "sarcasm_detection_rules": {
+        "context_clues": "If 'ありがたい' appears with: useless action, gibberish speech, obvious inconvenience, exasperated narrator → SARCASM. If genuine gratitude context (donations received, help appreciated) → LITERAL.",
+        "tone_markers": "Internal monologue (心の中 kokoro no naka), exasperated narration, follow-up complaint → signals sarcasm",
+        "contrast_check": "Does the 'grateful' thing cause problems? Is the speaker annoyed? Is the narrator eye-rolling? → Use sarcastic translation",
+        "politeness_level": "Overly polite language in casual/frustrated context = likely sarcasm. Match formality level to detect."
+      },
+      "translation_workflow": {
+        "step_1": "Identify ありがたい / 素晴らしい / お陰様で",
+        "step_2": "Check context: Is situation genuinely positive or negative?",
+        "step_3": "Check tone: Internal monologue? Narrator commentary? Dialogue with follow-up complaint?",
+        "step_4_genuine": "If genuine: 'grateful', 'thankful', 'I appreciate', 'generous'",
+        "step_4_sarcastic": "If sarcastic: *oh-so-[adjective]*, 'just [peachy/great]', 'How [thoughtful/kind]' (with capital H for irony), italics for emphasis"
+      }
+    },
+    "professional_prose_icl_examples": {
+      "version": "3.0-compressed",
+      "description": "Premium prose ICL examples sourced exclusively from licensed publisher translations. v3.0 adds 26 new examples across 12 new mood categories drawn from 7th Time Loop [Seven Seas], Classroom of the Elite [Seven Seas], There's No Freaking Way I'll Be Your Lover! Unless [Seven Seas], and The Girl I Saved on the Train [Yen Press]. Total: 76 examples, 24 mood categories. Zero fan-TL contamination. [COMPRESSED: 1 best example per mood for large-chapter routing]",
+      "source_corpus": {
+        "hibike_euphonium": {
+          "publisher": "Yen Press",
+          "avg_sentence_length": "13.5 words",
+          "genre": "School drama, music competition, coming-of-age",
+          "prose_style": "Kinetic imagery, restrained emotion, sharp sensory detail, invisible membrane metaphors"
+        },
+        "adachi_and_shimamura": {
+          "publisher": "Seven Seas Entertainment",
+          "avg_sentence_length": "13.8 words",
+          "genre": "Yuri romance, slice-of-life, internal monologue-heavy",
+          "prose_style": "Introspective, tension-building, playful yet anxious"
+        },
+        "love_unseen_beneath_the_clear_night_sky": {
+          "publisher": "Yen Press",
+          "avg_sentence_length": "14.1 words",
+          "genre": "One-shot drama romance, college setting, disability narrative",
+          "prose_style": "Deep introspection, reluctant-protagonist voice, show-dont-tell through avoidance and shame, devastatingly understated"
+        },
+        "7th_time_loop": {
+          "publisher": "Seven Seas Entertainment",
+          "translator": "Nicolette Shilling",
+          "avg_sentence_length": "14.2 words",
+          "genre": "Isekai romance, political intrigue, female protagonist with past-life memory",
+          "prose_style": "Elevated YA — formal court dialogue layered with casual in-motion FID. Competence shown through mid-action calculation. Multi-life retrospective knowledge woven into present stress without exposition dumps."
+        },
+        "classroom_of_the_elite": {
+          "publisher": "Seven Seas Entertainment",
+          "translator": "Timothy MacKenzie",
+          "avg_sentence_length": "12.1 words",
+          "genre": "Psychological school thriller, unreliable narrator, social system satire",
+          "prose_style": "Flat affect, analytical third-person-like self-narration, strategic non-action as characterization. Absence of guilt IS the voice. Sardonic FID via pet nicknames. Rare mask-slip beats for comedy payoff."
+        },
+        "theres_no_freaking_way": {
+          "publisher": "Seven Seas Entertainment",
+          "translator": "Rina Tsukimori",
+          "avg_sentence_length": "11.3 words",
+          "genre": "GL romcom, denial humor, social anxiety comedy, otaku culture",
+          "prose_style": "High-energy racing inner monologue. Slapstick described mechanically — the process of falling, not the shock. Physical comedy + intimate crescendo in alternation. FID-slip into other character's POV at peak denial moments. Register collapse (formal phrasing in panic) = laugh trigger."
+        },
+        "the_girl_i_saved_on_the_train": {
+          "publisher": "Yen Press",
+          "translator": "Rena Nakamura",
+          "avg_sentence_length": "13.0 words",
+          "genre": "Slice-of-life romcom, childhood friend romance, quiet male POV",
+          "prose_style": "Understated, careful. Physical description as emotional displacement — inventory of appearance IS the confession. Spatial constraint (notebook dialogue) as intimacy meter. Genre-aware prolepsis frame at chapter close. Restraint as primary tool."
+        },
+        "eighty_six": {
+          "publisher": "Yen Press",
+          "translator": "Roman Lempert",
+          "avg_sentence_length": "14.8 words",
+          "genre": "Military sci-fi, mecha warfare, grief and survival",
+          "prose_style": "Kinetic sensor-substitution action, body-as-weapon physics, absence-as-presence tension. Short declarative sentences under fire. Sensory overload rendered through technical precision rather than emotion labels."
+        },
+        "the_detective_is_already_dead": {
+          "publisher": "Yen Press",
+          "translator": "Taylor Engel",
+          "avg_sentence_length": "13.3 words",
+          "genre": "Mystery romance, grief, supernatural detective fiction",
+          "prose_style": "Deduction-as-compassion, ellipsis-as-confession, strategic concession in villain confrontations. Grief and romance coexist through proxy-body doubling and comedy-as-grief-valve. Narrator's dry wit masks his devastation."
+        }
+      },
+      "examples_by_mood": {
+        "literary_poetic": {
+          "description": "Visual imagery, kinetic physical detail, emotional weight conveyed through sensory observation rather than abstract statement. Short punchy sentences for tension; long sentences for atmosphere. Ideal for dramatic scenes, character introductions, atmospheric transitions.",
+          "vn_instruction": "Áp dụng kỹ thuật hình ảnh trực quan và chi tiết vật lý động. Sử dụng câu ngắn tạo nhịp căng thẳng, câu dài tạo không khí. Tránh tuyên bố trừu tượng về cảm xúc — để cảnh quan nói thay. Trong tiếng Việt: ưu tiên hình ảnh giác quan cụ thể (mùi, xúc giác, âm thanh), tránh 'cô ấy buồn' → dùng 'ánh mắt cô ấy như chìm xuống'.",
+          "examples": [
+            {
+              "id": "hibike_002",
+              "source": "Hibike! Euphonium Volume 01 [Yen Press]",
+              "context": "Spring courtyard — transitional season, students indifferent to beauty",
+              "text": "The courtyard was enclosed by a border of sakura cherry trees, which were already shedding their pink petals, and pale green buds were hesitantly beginning to peek out from the slender branches. The students passing beneath seemed uninterested in the scattering blossoms; not a single one paid them any mind.",
+              "word_count": 52,
+              "techniques": [
+                "seasonal_symbolism",
+                "human_indifference_contrast",
+                "semicolon_pivot"
+              ],
+              "why_premium": "\"Hesitantly beginning to peek out\" gives agency to buds. The semicolon pivots from beauty to indifference — the contrast IS the emotional statement. No one says it was lonely. The scene says it."
+            }
+          ]
+        },
+        "tension_suspense": {
+          "description": "Internal anxiety, physiological responses to stress, time dilation effects, anticipatory dread. Ideal for romantic tension, pre-confession scenes, social anxiety, waiting moments.",
+          "vn_instruction": "Chuyển lo âu nội tâm thành phản ứng sinh lý: tim đập nhanh, tay run, thời gian kéo dài. Kỹ thuật: 'cố gắng KHÔNG làm X' mạnh hơn 'cố không làm'. Trong tiếng Việt: dùng hình ảnh cơ thể ('chân như đóng đinh', 'tim như muốn nhảy ra') thay vì nói 'tôi lo lắng'.",
+          "examples": [
+            {
+              "id": "adachi_002",
+              "source": "Adachi & Shimamura Volume 03",
+              "context": "Protagonist checking phone obsessively",
+              "text": "It gnawed and gnawed at me until I gave in and checked my phone.",
+              "word_count": 15,
+              "techniques": [
+                "verb_repetition",
+                "gradual_surrender",
+                "active_verbs"
+              ],
+              "why_premium": "'Gnawed and gnawed' conveys obsessive checking through action repetition. 'Gave in' shows internal conflict resolution. Tight rhythm."
+            }
+          ]
+        },
+        "playful_banter": {
+          "description": "Teasing dialogue, light sarcasm, comfortable intimacy through joking. Ideal for established relationships, comedic relief, flirtation without confession.",
+          "vn_instruction": "Đối thoại trêu đùa nhẹ, thân mật thoải mái qua đùa cợt. Kỹ thuật: kết hợp hành động vật lý + so sánh + quan sát của người kể. Trong tiếng Việt: giữ giọng tự nhiên, tránh ngôn ngữ quá trang trọng trong đối thoại thân mật.",
+          "examples": [
+            {
+              "id": "adachi_006",
+              "source": "Adachi & Shimamura Volume 01",
+              "context": "Misunderstanding during intimate moment",
+              "text": "\"Wait, what? Do I stink or something?\" That was news to me. I felt my self-esteem getting ready to plummet.",
+              "word_count": 21,
+              "techniques": [
+                "dialogue_intrusion",
+                "exaggeration",
+                "self_deprecating_humor"
+              ],
+              "why_premium": "'Self-esteem getting ready to plummet' is comedic overstatement. Uses active verb structure (self-esteem as agent) for humor."
+            }
+          ]
+        },
+        "wistful_bittersweet": {
+          "description": "Nostalgia, gentle melancholy, awareness of transience, soft emotional resignation. Ideal for farewells, seasonal transitions, unrequited feelings, reflective moments.",
+          "vn_instruction": "Nostalgia, buồn man mác dịu dàng, nhận thức về sự phù du. Kỹ thuật: lặp lại hành động (xem đồng hồ), kết thúc mở ('rồi sao nữa?'). Trong tiếng Việt: dùng ẩn dụ xúc giác (thời gian trượt qua tay như nước) để diễn đạt sự trôi qua.",
+          "examples": [
+            {
+              "id": "adachi_009",
+              "source": "Adachi & Shimamura Volume 01",
+              "context": "Protagonist reflecting on relationship changes",
+              "text": "I grabbed a lock of hair and ran it through my fingers; it slipped away so fast, it practically evaporated.",
+              "word_count": 21,
+              "techniques": [
+                "tactile_metaphor",
+                "ephemeral_imagery",
+                "sensory_to_emotional"
+              ],
+              "why_premium": "Physical sensation (hair slipping) becomes metaphor for transience. 'Evaporated' elevates simple action to wistful imagery."
+            }
+          ]
+        },
+        "intimate_quiet_moments": {
+          "description": "Physical closeness, sensory hyper-awareness, silence as communication, touch-based intimacy. Ideal for romantic peaks, comfort scenes, vulnerability.",
+          "vn_instruction": "Gần gũi thể xác, nhạy cảm giác quan cao độ, im lặng như giao tiếp. Kỹ thuật: mô tả xúc giác tuần tự, chi tiết vi mô. Trong tiếng Việt: tập trung vào cảm giác cụ thể (ngón tay chạm vào tóc, hơi thở ấm) để xây dựng sự thân mật.",
+          "examples": [
+            {
+              "id": "adachi_014",
+              "source": "Adachi & Shimamura Volume 03",
+              "context": "Head-patting scene, physiological response",
+              "text": "First, I felt her fingers against my hair; then her big, warm palm cupped the back of my head. As her fingers combed through my hair, my heart pounded so hard, it made my gums throb.",
+              "word_count": 39,
+              "techniques": [
+                "sequential_sensation",
+                "physiological_overflow",
+                "unexpected_detail"
+              ],
+              "why_premium": "'Gums throb' is unusual specific detail that makes emotion visceral. Sequential touch description builds intimacy slowly."
+            }
+          ]
+        },
+        "deep_introspection": {
+          "description": "Reluctant self-examination, guilt shown through hesitation, shame through inaction. Character realizes something unflattering about themselves and does not flinch from it. Ideal for internal conflict, moments of cowardice, self-disgust, the gap between who we are and who we want to be.",
+          "vn_instruction": "Tự kiểm miễn cưỡng, mặc cảm thể hiện qua sự do dự, xấu hổ qua sự bất động. Không có từ lọc, không 'tôi nghĩ'. Trong tiếng Việt: dùng câu ngắn, không có lối thoát — nhân vật tự kết án chính mình.",
+          "examples": [
+            {
+              "id": "loveunseen_003",
+              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
+              "context": "Protagonist catches himself rationalizing his emotional distance from Fuyutsuki",
+              "text": "Just telling myself that excuse made my heart ache.",
+              "word_count": 10,
+              "techniques": [
+                "meta_self_awareness",
+                "excuse_collapse",
+                "physiological_truth"
+              ],
+              "why_premium": "The word \"excuse\" is doing enormous work — he has already classified his own reasoning as an excuse before finishing the sentence. The physical ache confirms it. 10 words. The character has fully convicted himself before the reader can."
+            }
+          ]
+        },
+        "dramatized_romance": {
+          "description": "Emotion conveyed entirely through behavior, avoidance, or micro-physical action — never declared. Attraction shown through restraint: looking away, controlled breathing, deliberate non-touch. Ideal for slow-burn romance, first awareness of feelings, scenes where characters refuse to admit what they feel.",
+          "vn_instruction": "Cảm xúc được thể hiện hoàn toàn qua hành vi, tránh né, hoặc hành động vi mô — không bao giờ tuyên bố. Trong tiếng Việt: dùng hành động cụ thể (quay đi, nín thở) thay lời thú nhận.",
+          "examples": [
+            {
+              "id": "loveunseen_005",
+              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
+              "context": "Protagonist's heart races at Fuyutsuki's smile; he immediately suppresses the feeling",
+              "text": "Her unexpected smile made my heart race. I didn't want to dwell on that feeling, though, so I turned away.",
+              "word_count": 22,
+              "techniques": [
+                "emotion_then_immediate_suppression",
+                "avoidance_as_confession",
+                "though_as_pivot"
+              ],
+              "why_premium": "The pivot word is \"though\" — it separates the involuntary response from the chosen response. \"Turned away\" is the entire romance condensed into one action. He does not say \"I liked her smile.\" He turns away from it. The reader understands everything the character refuses to."
+            }
+          ]
+        },
+        "endurance_as_devotion": {
+          "description": "Love shown through physical cost, micro-service, or impossible wishes — never declared. The character suffers, sacrifices, or performs a tiny act of care, and the emotional weight is entirely carried by the action's disproportionate intensity. Ideal for climactic crisis scenes, the moment a character realizes how deep their feelings go, or quiet scenes where a small gesture reveals everything.",
+          "vn_instruction": "Tình yêu được thể hiện qua chi phí thể xác, vi tế, hoặc điều ước bất khả thi — không tuyên bố. Trong tiếng Việt: cho nhân vật chịu đựng đau đớn thể xác và ngay lập tức bỏ qua nó ('tôi không quan tâm, chẳng có gì quan trọng').",
+          "examples": [
+            {
+              "id": "loveunseen_014",
+              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
+              "context": "Sparkler scene at night; protagonist holds sparkler next to Fuyutsuki's and makes a silent wish",
+              "text": "I hoped Fuyutsuki's sparkler would last longer than mine. I hoped she'd live longer than I did, even if just by a second. I wished that from the bottom of my heart.",
+              "word_count": 34,
+              "techniques": [
+                "object_as_wish",
+                "sparkler_to_lifetime_compression",
+                "triple_escalation"
+              ],
+              "why_premium": "Three sentences: sparkler duration → lifespan → heart confirmation. The compression is structurally perfect: the concrete object opens the thought, the impossible wish follows, the 'from the bottom of my heart' closes it without irony. He does not say 'I love you, please don't die.' He says it through a sparkler burning in the dark. The wish IS the confession."
+            }
+          ]
+        },
+        "kinetic_action_sequence": {
+          "description": "Detailed mecha/military action sequences — staccato sensor-filtered perception, physics rendered as threat, body cost as survival proof. Source: 86—Eighty-Six Vols 2–4 [Yen Press]. Use for combat translations requiring visceral immediacy without slowing scene momentum.",
+          "genre_fit": [
+            "military_sci_fi",
+            "mecha",
+            "isekai_war",
+            "shonen_action"
+          ],
+          "core_techniques": [
+            "body_as_sensor: Replace visual/radar output with tactile/auditory body-read (protagonist tracks invisible enemy via sound, vibration, intuition)",
+            "kinetic_verb_chain: Three or more action verbs in rapid succession with no connectors, separated only by commas (tumbled, evaded, deflected)",
+            "physics_as_threat: Render weapon physics (shock-wave radius, blade frequency, angle-of-impact) as the emotional payload, not the damage result",
+            "absence_as_presence: Describe what is NOT on radar/screen to amplify the horror of the enemy that is there",
+            "staccato_under_fire: During peak action, cap sentences at 8 words MAX. Save complex syntax for the breath between exchanges",
+            "survival_cost_as_proof: Post-battle body — hoarse voice, dry throat, canopy unopened for hours — is the only permitted self-congratulation"
+          ],
+          "vn_instruction": "Hành động mecha/quân sự chi tiết — nhịp cảm biến ngắn, vật lý như mối đe dọa. Kỹ thuật: thay đổi động từ liên tiếp (ngã, né, đỡ). Trong tiếng Việt: giữ câu ngắn dưới 8 từ khi hành động căng thẳng.",
+          "examples": [
+            {
+              "id": "eighty6_002",
+              "source": "86—Eighty-Six, Vol. 4 [Yen Press]",
+              "context": "Shin's high-frequency blade contacts the enemy's opposing vibration frequency; both machines deflect off each other.",
+              "text": "The blade was capable of cutting through a Dinosauria's composite armor like butter, but in the next moment, its vibrations were interrupted by opposing vibrations, and a vector of the opposite direction forced both blades and the enemy fuselage to deflect off each other. The high-pitched screech of metal rose up, cutting through the blue air.",
+              "word_count": 52,
+              "techniques": [
+                "physics_as_threat",
+                "established_power_subverted",
+                "sound_as_scene_close"
+              ],
+              "why_premium": "The sentence structure mirrors the deflection: a long subordinate clause establishing capability ('capable of cutting like butter') slams into the adversative pivot ('but in the next moment') then collides with the opposing clause. The physics feel lived-in because the terminology is specific (vibrations, vector, fuselage) yet the scene closes on pure sound ('screech of metal… cutting through the blue air'). Teaching moment: match sentence architecture to the physical event."
+            }
+          ]
+        },
+        "mystery_deduction": {
+          "description": "Detective-narrative deductive logic rendered through character voice — inference through silence, compassion through revelation, villain concession as evidence. Source: The Detective Is Already Dead Vols 1-4 [Yen Press]. Use for mystery-romcom hybrids where the protagonist solves through emotional intelligence, not forensics.",
+          "genre_fit": [
+            "mystery_romcom",
+            "supernatural_thriller",
+            "psychological_mystery",
+            "light_novel_mystery"
+          ],
+          "core_techniques": [
+            "deduction_as_therapy: The detective's revelation heals the subject rather than damning them — deduction is an act of care",
+            "strategic_concession: Detective admits partial defeat or ignorance as a trap to make the villain reveal their true motive",
+            "omission_as_proof: What the narrator deliberately does NOT investigate becomes the actual clue for the reader",
+            "retrospective_irony: Narrator narrates a 'normal' event; dramatic irony is that the reader now knows it was the turning point",
+            "lie_in_silence: Character's silence in response to an accusation is treated as confirmation — no dialogue needed"
+          ],
+          "vn_instruction": "Logic suy luận của truyện trinh thám qua giọng nhân vật — suy luận qua im lặng, nhượng bộ chiến lược. Trong tiếng Việt: cho nhân vật đưa ra kết luận dựa trên chi tiết cụ thể, không giải thích rõ ràng.",
+          "examples": [
+            {
+              "id": "tanmoshi_003",
+              "source": "The Detective Is Already Dead, Vol. 2 [Yen Press]",
+              "context": "Siesta forces Kimizuka to face the truth that Alicia is Hel by reconstructing the chain of evidence he'd been refusing to follow.",
+              "text": "'I'd suspected that Hel, or Jack the Devil, was actually Alicia, and yet until the very, very end, I'd behaved as though I still had at least a tiny shred of belief in her.' 'No, I think those were genuine.' That was some small consolation. 'Alicia's encouragement really did help her.' Yeah. She'd said it with tears on her face. She'd hugged Alicia to her, and— '…!' I broke out in goose bumps all over, and a choked noise escaped me. 'Back then, Alicia had…'",
+              "word_count": 88,
+              "techniques": [
+                "omission_as_proof",
+                "goose_bump_as_realization",
+                "trailing_sentence_breaks_on_horror"
+              ],
+              "why_premium": "The realization is not stated — it interrupts. The body reacts ('goose bumps') before the thought completes ('Back then, Alicia had…'). The ellipsis at the end makes the reader finish the sentence themselves, and whatever they imagine is worse than what the narrator could say. Kimizuka's retroactive re-reading of a tender moment as manipulation is the exact technique for mystery reveals that recontextualize earlier 'innocent' scenes as evidence."
+            }
+          ]
+        },
+        "psychological_duel": {
+          "description": "Mind-vs-mind confrontations where persuasion, emotion, and logic are weapons — Oracle fatalism vs action faith, alien-logic vs human-emotion taxonomy, justice vs love binary. Source: The Detective Is Already Dead Vols 1-4 [Yen Press]. Use for scenes where two belief systems collide and neither is simply wrong.",
+          "genre_fit": [
+            "psychological_thriller",
+            "mystery_romcom",
+            "supernatural_action",
+            "philosophical_LN"
+          ],
+          "core_techniques": [
+            "justice_vs_love_binary: Two characters represent different correct values (saving the world vs saving the people I love) with no easy resolution",
+            "alien_epistemology: Villain genuinely cannot understand human emotion and asks about it — their confusion is more unsettling than their menace",
+            "word_soul_power: Character gains ability from grief or love; the emotional origin is the power's activation condition",
+            "prophetic_surrender: A character who can see the future chooses to stop looking and act on faith instead",
+            "two_truths_collision: Both sides state their position clearly; the narrative refuses to judge"
+          ],
+          "vn_instruction": "Đối đầu tâm trí — thuyết phục, cảm xúc, và logic là vũ khí. Trong tiếng Việt: giữ nhịp điệu căng thẳng, dùng câu ngắn cho các đòn đánh, câu dài cho sự do dự.",
+          "examples": [
+            {
+              "id": "tanmoshi_006",
+              "source": "The Detective Is Already Dead, Vol. 4 [Yen Press]",
+              "context": "Kimizuka confronts Mia's fatalism by physically picking her up — the counterargument to prophecy is bodily action, not words.",
+              "text": "'Sorry, though. I may understand it, but I can't sympathize.' I scooped Mia up in what's known as the 'princess carry.' '……Huh?' In my arms, Mia blinked at me rapidly. What's the matter? You sound kinda silly. You realize you're breaking character, right? She can't actually have thought she'd convince me with that. 'I'm going to show you just how uncertain the future really is.' Right then—an alarm began to sound in the room, or maybe all through the building. Then the window Mia had just been leaning against shattered.",
+              "word_count": 82,
+              "techniques": [
+                "prophetic_surrender_inverted",
+                "physical_action_as_argument",
+                "comedy_as_philosophy"
+              ],
+              "why_premium": "The protagonist's rebuttal to a deterministic worldview is a princess carry. This is the core tone of the series: tragedy answered with absurd warmth. The universe punctuates his point immediately (alarm, shattered window) — reality rewards the refusal of fatalism. Use when a character needs to respond to an airtight logical argument through action rather than counter-logic: the body argues back when words cannot."
+            }
+          ]
+        },
+        "grief_romance": {
+          "description": "Romance expressed through loss, sacrifice, and inherited mission — love that can only be spoken through a dead woman's eyes or a future deliberately abandoned. Source: The Detective Is Already Dead Vols 1-4 [Yen Press]. Use for routes where survivors love each other through a dead third party, or where the depth of feeling is measured by what the character gives up.",
+          "genre_fit": [
+            "mystery_romcom",
+            "supernatural_romance",
+            "grief_drama",
+            "light_novel_romance"
+          ],
+          "core_techniques": [
+            "proxy_body_romance: Protagonist interacts with a living character who carries the dead beloved's heart; love is felt across impossible physical boundaries",
+            "future_forfeit_sacrifice: Character surrenders their own future (including survival) to ensure the protagonist gets his",
+            "inherited_mission_as_confession: Character's decision to carry on a dead person's work IS the confession — the mission = the love",
+            "echo_recognition: A repeated phrase or gesture from the past (spoken by the dead) surfaces in the present character, and the protagonist freezes",
+            "name_as_eulogy: Final paragraph names the character formally — first name, full name, title — as a closing prayer"
+          ],
+          "vn_instruction": "Tình yêu được thể hiện qua mất mát, hy sinh, và sứ mệnh kế thừa. Trong tiếng Việt: biểu hiện tang lễ và tình yêu qua hành động cấu trúc, không qua 'Tôi yêu bạn'.",
+          "examples": [
+            {
+              "id": "tanmoshi_013",
+              "source": "The Detective Is Already Dead, Vol. 4 [Yen Press]",
+              "context": "Natsunagi's final lines — she names herself formally, defines her role, and surrenders to the succession chain.",
+              "text": "Feeling just a little satisfied, I fell asleep. My name is Nagisa. Nagisa Natsunagi, proxy detective. My last wish kept the detective's mission from dying out, and it will be inherited by the next person to fight.",
+              "word_count": 37,
+              "techniques": [
+                "name_as_eulogy",
+                "inherited_mission_as_confession",
+                "satisfaction_as_closure"
+              ],
+              "why_premium": "Thirty-seven words. Full stop. The character names herself in three tiers (first name → full name → title), and the title IS her confession: she chose to become the detective to keep Siesta's love alive. 'Feeling just a little satisfied' is the only self-congratulation allowed — small, precise, earned. 'It will be inherited by the next person to fight' is not resignation; it is how she survives by passing forward. Use as the model for final-paragraph character closes: name the character, name their role, name what they leave behind."
+            }
+          ]
+        },
+        "cunning_heroine_agency": {
+          "description": "Female protagonist POV that fuses real-time action with internalized expert knowledge. Competence is demonstrated through mid-motion calculation via FID italics — the body manages the task while the mind evaluates it, so the reader receives both action and strategy simultaneously. Never state the character is skilled; show the calculation she runs while doing the thing.",
+          "vn_instruction": "POV nữ chính kết hợp hành động thời gian thực với kiến thức chuyên môn nội tại. Trong tiếng Việt: cho nhân vật tính toán trong khi hành động — thể hiện kỹ năng qua quá trình suy nghĩ, không qua tuyên bố.",
+          "examples": [
+            {
+              "id": "loop7_001",
+              "source": "7th Time Loop, Vol. 1 [Seven Seas]",
+              "context": "Rishe (on her seventh life cycle) leaps from a palace balcony in a ballgown, applying knight training from a previous life to land safely. The italics are her real-time internal instruction to herself.",
+              "text": "Weight evenly distributed on the soles of my feet, roll to transfer the impact to my shins and thighs, then onto my hips and my back.\nShe landed safely, rolled nimbly in her dress, and popped back up. Her hair was covered in leaves.\nI need to hurry up!\nBracing against a nearby rock, she used her weight to snap the heels off of her shoes. There. That would make running a little easier. Satisfied, she slipped them back on and made haste toward the family estate.",
+              "word_count": 82,
+              "techniques": [
+                "in_motion_fid",
+                "competence_as_show",
+                "staccato_urgency_snap"
+              ],
+              "why_premium": "'Weight evenly distributed on the soles of my feet' is a physical checklist delivered mid-fall — not a flashback, not a narration aside, but live instruction running alongside the action. The reader learns the character is trained while watching her train herself. The heel-snap epilogue ('There. That would make running easier') is the pragmatic coda that seals the competence: she has already adapted and moved on before the reader finishes processing the fall. Use for any scene where a protagonist must execute under pressure with prior expertise — show the internal checklist, not the backstory."
+            }
+          ]
+        },
+        "retrospective_layering": {
+          "description": "Multi-life or multi-timeline knowledge woven into present action as current perception, not as flashback or exposition block. The character's past experience appears as real-time fact — 'he would invade Hermity' not 'in her previous life she had learned that he would invade.' The technique removes the memory-frame wrapper entirely, trusting the reader to track the time-layer shift.",
+          "vn_instruction": "Kiến thức đa thời gian được dệt vào hành động hiện tại như nhận thức hiện tại, không phải hồi tưởng. Trong tiếng Việt: dùng thì tương lai từ hiện tại ('năm năm sau hắn sẽ xâm lược') thay vì 'trong kiếp trước cô ấy đã thấy'.",
+          "examples": [
+            {
+              "id": "loop7_005",
+              "source": "7th Time Loop, Vol. 1 [Seven Seas]",
+              "context": "Rishe meets Tully for the first time in this life — a man who was once her mentor and employer — and must perform the role of a stranger who has merely 'heard of him.'",
+              "text": "\"Mwa ha ha! I knew he wouldn't know a fake sapphire when he saw one. Idiot! We took bets on whether you could dupe that intermediary, and I had my money on you, Rishe. Thanks for helping me fleece my birdbrained staff.\"\n\"Rishe! Here's your final examination. We took a loss of five million in gold due to negligence. Not yours, someone else's, but you are the one who's going to make it back. Oh, and by the way, you've got one week, so get cracking.\"\nShe had a faraway look in her eyes. That was fine. Let Tully think she was dreaming of her bright future.\n\"The white of a wedding dress will complement your features, if I might be so bold.\"",
+              "word_count": 107,
+              "techniques": [
+                "flashback_as_present_knowledge_no_frame",
+                "surface_concealment_of_depth",
+                "dramatic_irony_through_layering"
+              ],
+              "why_premium": "The Tully quotes embedded in the middle of the scene are memory — but they arrive with zero framing: no 'she remembered him saying,' no italics, no paragraph break. They appear as dialogue, making the reader do a slight double-take to realize these aren't current words. 'She had a faraway look in her eyes. That was fine. Let Tully think she was dreaming' then reveals it was deliberate — the reader and Rishe share the secret while Tully does not. Use for scenes where a character's hidden knowledge must be smuggled in without breaking the present-tense action surface."
+            }
+          ]
+        },
+        "earned_softening": {
+          "description": "A character established as cold, threatening, or hostile is revealed to have warmth — but the reveal is earned through restraint: a single verb, a smile, a memory, not an announcement. The technique depends on prior investment in the character's hardness; the crack must feel like a surprise the reader immediately recognizes as inevitable.",
+          "vn_instruction": "Nhân vật lạnh lùng được tiết lộ là ấm áp — nhưng sự tiết lộ được kiếm qua kiềm chế: một động từ, một nụ cười. Trong tiếng Việt: chỉ dùng một chi tiết nhỏ để phá vỡ sự cứng rắn, không tuyên bố.",
+          "examples": [
+            {
+              "id": "loop7_007",
+              "source": "7th Time Loop, Vol. 1 [Seven Seas]",
+              "context": "On a rooftop, Arnold has just stopped Theodore from falling. Theodore asks if Arnold remembers saving him as children. Arnold's answer is the shortest sentence in the chapter.",
+              "text": "\"Don't ever do something stupid like this again.\"\nTheodore grimaced as his brother pushed him away once more. Rishe's heart ached as she realized these two might never understand each other.\nBut what Arnold said next surprised her. \"I'm pretty sure I've told you this once before—don't put your life in danger needlessly.\"\nTheodore's voice trembled as he asked, \"You remember that day?\"\n\"Of course I do.\"\nTheodore choked, tears welling up in those big eyes to trail down his cheeks. His voice quivered. \"I'm sorry.\" He repeated himself over and over through his tears. \"I'm so sorry, Brother.\"\nArnold looked at an utter loss. \"Okay, we get it already. Stop crying.\"",
+              "word_count": 112,
+              "techniques": [
+                "short_sentence_as_emotional_apex",
+                "remembered_detail_as_confession",
+                "flustered_cold_character_comedy"
+              ],
+              "why_premium": "'Of course I do' — four words do the work of a paragraph of backstory. Arnold has never shown warmth openly, so this admission of memory is the equivalent of a declaration. The comedy that follows ('Okay, we get it already. Stop crying.') is essential: it confirms that Arnold's mask is back up but the reader now knows the warmth is permanent underneath. The flustered response to tears maintains his character while signaling his care. Use this pattern — short emotional revelation + immediate comedy retreat — whenever a cold character must acknowledge vulnerability without losing identity."
+            }
+          ]
+        },
+        "sibling_grief_payoff": {
+          "description": "Family emotional stakes delivered through action rather than declaration. Violence, physical restraint, or intervention stands in for love that cannot be spoken aloud. The cold sibling's anger reveals their care; the warm sibling's breakdown receives a flustered rather than tender response. Grief and love are expressed structurally, not through 'I love you.'",
+          "vn_instruction": "Cảm xúc gia đình được thể hiện qua hành động, không tuyên bố. Trong tiếng Việt: để nhân vật POV diễn giải cảm xúc mà nhân vật không thể nói ra.",
+          "examples": [
+            {
+              "id": "loop7_009",
+              "source": "7th Time Loop, Vol. 1 [Seven Seas]",
+              "context": "After the rooftop crisis, Theodore cries in earnest for the first time. Arnold, the stoic crown prince, has no idea what to do with this.",
+              "text": "Theodore now sat on the ground, clenching his fist. \"It's all I've ever wanted.\" Theodore's numb confusion was gone, replaced by determination. \"I want to stand by you. I want you to need me! If there's any way I can help you, I'll do it, no matter what.\" His eyes—the same eyes—pierced Arnold's. \"Because you're my only brother, and I care about you.\"\nArnold didn't reply. Rishe wished she could see his face. She watched them both attentively. Before long, Arnold released Theodore's collar and slowly stood back up.\n\"Don't ever do something stupid like this again.\"\nTheodore grimaced as his brother pushed him away once more.\n(...)  \nTheodore choked, tears welling up in those big eyes to trail down his cheeks. His voice quivered. \"I'm sorry.\" He repeated himself over and over through his tears. \"I'm so sorry, Brother.\"\nArnold looked at an utter loss. \"Okay, we get it already. Stop crying.\"",
+              "word_count": 149,
+              "techniques": [
+                "flustered_cold_character_as_care_signal",
+                "his_eyes_the_same_eyes_doubling",
+                "grief_release_through_comedy"
+              ],
+              "why_premium": "'His eyes—the same eyes' is the translator's choice to highlight that the brothers share a face: Theodore's vulnerability IS Arnold's, reflected. Arnold's total silence after the declaration ('Arnold didn't reply') + Rishe wishing she could see his face = reader suspense about whether he will accept or reject. 'Okay, we get it already. Stop crying' — Arnold cannot handle sustained emotion; the deflection IS his acceptance. Use for any sibling or found-family grief scene: the cold character's flustered comedy after a sincere breakdown is more emotionally resonant than a reciprocal declaration."
+            }
+          ]
+        },
+        "cold_intellectual_narrator": {
+          "description": "A protagonist who narrates themselves with clinical detachment — reporting internal states as external data, expressing no shame for strategic non-action, analyzing others' goodness from a position of deliberate non-participation. The absence of emotional response IS the characterization. Do not add warmth; preserve the flat register exactly. Stray moments of involuntary reaction (the one outburst, the one honest observation) are the only cracks allowed.",
+          "vn_instruction": "Người kể chuyện mô tả bản thân với sự cô lập lâm sàng — báo cáo trạng thái nội tâm như dữ liệu bên ngoài. Trong tiếng Việt: giữ giọng phẳng, không thêm ấm áp. Chỉ cho phép những khoảnh khắc phá vỡ rất hiếm.",
+          "examples": [
+            {
+              "id": "cote_001",
+              "source": "Classroom of the Elite, Vol. 1 [Seven Seas]",
+              "context": "On a crowded bus, Ayanokouji watches a girl defend an elderly woman against a rude boy. He philosophically agrees with the boy and does not offer his seat.",
+              "text": "At any rate, I had to at least partly agree with the boy.\nIf you ignored the question of a moral imperative, it was true that he wasn't legally obligated to give up his seat.\nHow could someone pour so much courage, determination, and compassion into so few words? That was no simple feat. The girl might have seemed like a nuisance to those around her, but she appealed to the other passengers earnestly and without fear.\nThough not in a priority seat, I was near the elderly woman. I imagined if I raised my hand and offered my spot, then the matter would be settled.\nHowever, like everyone else, I didn't move. None of us had thought it necessary to move.",
+              "word_count": 104,
+              "techniques": [
+                "absence_of_guilt_as_voice",
+                "moral_analysis_without_moral_action",
+                "flat_observation_of_courage"
+              ],
+              "why_premium": "Ayanokouji recognizes and names the girl's courage ('no simple feat') and still doesn't move. There is no internal struggle, no 'I wanted to but couldn't.' The recognition of goodness and the decision not to participate coexist with no tension between them — that is the character. 'Like everyone else, I didn't move' absorbs him into the crowd: he is not special in his non-action, just honest about it. Use for unreliable cold narrator POV: preserve the flat affect even when the narrator demonstrates insight — insight without action is the signature."
+            }
+          ]
+        },
+        "sardonic_analysis_loop": {
+          "description": "A cold or analytical narrator applies their observational mode to an absurd or petty situation, creating comedy through the mismatch between the weight of the analysis and the triviality of the subject. The loop escalates by answering its own questions with increasingly inadequate conclusions, until an external event cuts it off. Used for analytical characters' comic moments.",
+          "vn_instruction": "Người kể chuyện lạnh lùng áp dụng cách quan sát vào tình huống absurd hoặc tầm thường. Trong tiếng Việt: mô tả lâm sàng, đặt câu hỏi tu từ, trả lời bằng cách xác nhận sự phi lý.",
+          "examples": [
+            {
+              "id": "cote_005",
+              "source": "Classroom of the Elite, Vol. 1 [Seven Seas]",
+              "context": "Yamauchi desperately tries to sell his game console after spending all his school points, escalating his price and pitch with each failed attempt.",
+              "text": "\"Ayanokouji! Come on, you're my only hope!\"\n\"Why am I the only one? I can't afford it, anyway.\"\nYamauchi looked at me all teary-eyed, which grossed me out. I looked the other way. He must have realized I wasn't biting, so he immediately switched to a new target.\n\"Professor! Your best buddy has a favor to ask! Buy this game system for 22,000 points!\"\nHe was trying to get the Professor to buy it and had shamelessly increased the price.\n\"Things must be really tough for the people who used up their points,\" remarked Kushida as she observed Yamauchi.",
+              "word_count": 98,
+              "techniques": [
+                "flat_observation_of_desperation",
+                "immediate_target_switch_comedy",
+                "price_escalation_as_character_reveal"
+              ],
+              "why_premium": "'He was trying to get the Professor to buy it and had shamelessly increased the price' — the narrator notices the price inflation and reports it neutrally, without comment on the audacity. The shamelessly is doing significant emotional work in a sentence otherwise stripped of judgment. Kushida's closing observation ('Things must be really tough') is the warm foil to Ayanokouji's clinical non-reaction: same scene, two completely different emotional temperatures. Use for scenes of social desperation: observe the escalation without editorializing; let the actions speak, and provide a warm-character contrast line at the close."
+            }
+          ]
+        },
+        "slapstick_interiority": {
+          "description": "Physical comedy described through the protagonist's real-time panicked inner monologue. The comedy comes from the gap between the severity of the situation (genuine danger) and the register of the internal commentary (teen casualness, pop-culture frames, self-aware absurdism). The disaster is described mechanically — what the body is doing, not the emotional shock of it — while the mind spirals in a different direction.",
+          "vn_instruction": "Hài kịch thể xác được mô tả qua nội tâm nhân vật thời gian thực. Trong tiếng Việt: mô tả thảm họa bằng máy móc — những gì cơ thể đang làm, không phải sự sốc cảm xúc.",
+          "examples": [
+            {
+              "id": "nfw_001",
+              "source": "There's No Freaking Way I'll Be Your Lover! Unless, Vol. 1 [Seven Seas]",
+              "context": "Renako is leaning against a rooftop fence zoned out when Mai runs at her in a panic, causing Renako to lose her balance and go over the railing.",
+              "text": "She came at me in slow motion, both arms outstretched, with such a look of urgency that I freaked out. I didn't even think. I just tried to get out of her way by pushing off of the fence, and, with a lurch, I toppled right over it.\nI yelped as I pitched forward and started to slip toward the other side. Oh no! Oh no! The ground of the schoolyard loomed up below. Was I legit falling off the roof? At this height? Was I seriously going to plunge dozens of meters and hit the ground head first? I could see the headlines already: \"Society's Dark Side: The Tragedy of a Young Girl Tired of the Constant Pressures of Human Interaction.\"",
+              "word_count": 104,
+              "techniques": [
+                "real_time_panic_commentary",
+                "fid_newspaper_headline",
+                "slang_register_in_crisis"
+              ],
+              "why_premium": "'Oh no! Oh no!' — the repeated exclamation is the most authentic teen panic rendering in the corpus. No elegant phrasing, just doubled alarm. 'Was I legit falling off the roof?' — 'legit' is slang that collapses the formality and grounds it in the character's actual speech register. The newspaper headline is FID pushed to absurdist extreme: the character frames her potential death as social commentary satire, which is simultaneously self-aware and a perfect portrait of her habitual over-intellectualization as a coping mechanism. Use for any character who processes trauma through a specific lens (satire, gaming, analysis): let the crisis arrive, then have their signature mode kick in immediately, even inappropriately."
+            }
+          ]
+        },
+        "gl_intimate_crescendo": {
+          "description": "GL (girls-love) scenes where the protagonist's denial progressively fails under the pressure of physical proximity, sincere confession, or another character's absolute certainty. The crescendo works in layers: body responds first (tension, warmth, heart rate), then the narrator's internal commentary contradicts itself, then a POV-slip or mask-crack confirms what the denial has been protecting. The technique demands that the denial remain active until the final beat — never resolve it completely.",
+          "vn_instruction": "Cảnh GL nơi sự phủ nhận của nhân vật dần thất bại dưới áp lực thân mật. Trong tiếng Việt: để cơ thể mâu thuẫn với sự phủ nhận, rồi trượt POV ở cao trào.",
+          "examples": [
+            {
+              "id": "nfw_004",
+              "source": "There's No Freaking Way I'll Be Your Lover! Unless, Vol. 1 [Seven Seas]",
+              "context": "After the hug, Renako asks what Mai's 'real' wish would have been if she hadn't held back. Mai's answer causes a register explosion.",
+              "text": "\"Maybe, um. To be the mother of my children.\"\n\"How?! You don't even have a dick!\" I cried.\nI was Amaori Renako, sweet sixteen. A virgin. And never in my wildest dreams did I think I'd someday be yelling that.\n\"Also, wait,\" I said, \"were you seriously trying to use a bet to make a major life decision for me?\"\n\"I wanted you to understand just how deep my affection for you goes.\"\n\"You freaking liar! You were just hoping I'd give you a chance, weren't you?\"\n\"Well, how did hearing that make you feel? Did it make your heart skip a beat?\"\n\"Afraid! The more I learn about what dwells in the depths of your depraved mind, the more frightened I get!\"",
+              "word_count": 108,
+              "techniques": [
+                "comedic_escalation_one_word_explosion",
+                "register_collapse_formal_in_panic",
+                "fear_as_denial_proxy"
+              ],
+              "why_premium": "'How?! You don't even have a dick!' — the exclamation is a comedy explosion that works because it's the most direct possible response; the narrator's brain has bypassed all social filters. 'Depths of your depraved mind' is formal English used in comedic panic — register collapse is the laugh. 'Afraid!' as the answer to 'Did it make your heart skip a beat?' is Renako's most honest answer: she admits the skip (fear = physiological response = confirmation) while naming it differently. Use when a character must answer a sincere emotional question in denial: let them choose a word that technically means something else but structurally admits the truth."
+            }
+          ]
+        },
+        "comedic_escalation_chain": {
+          "description": "A rapid sequence where each beat escalates the absurdity of the previous — confession → rage → self-aware aside → accusation → deflection → honest answer disguised as denial. Works through momentum: short sentences, minimal pause, no room for the reader to breathe until the final punchline. The register often collapses mid-chain (formal diction in a panicked context) as the laugh trigger.",
+          "vn_instruction": "Chuỗi nhanh mỗi nhịp tăng absurd hơn — thú nhận → tức giận → tự nhận xét → cáo buộc → né tránh → thành thật ngụy trang thành phủ nhận. Trong tiếng Việt: câu ngắn, ít dừng, không cho độc giả thở.",
+          "examples": [
+            {
+              "id": "nfw_006",
+              "source": "There's No Freaking Way I'll Be Your Lover! Unless, Vol. 1 [Seven Seas]",
+              "context": "Mai reveals she practiced the game for two days straight specifically to beat Renako and claim the wish. Renako's pride as a gamer collapses.",
+              "text": "\"It's because I bought a game console of my own after I left your house the other day. Then I trained for days so I could surprise you. Did it work?\"\n\"Too well!\" I howled. \"But what surprises me is that you're so freaking talented and persistent that you got this good in a single weekend!\"\nDuring the match itself, I'd entertained the sneaking suspicion that this was the case, but come on! Really? Losing to someone who'd practiced for only two days?\n\"I didn't have enough time to polish my blocking skills,\" she explained. \"All I practiced were combos and making a strong offense. I figured that would be all I needed to beat you on my own. You play a bit too defensively, Renako.\"\n\"Damn you, Little Miss Perfect!\" I roared. \"You—you're so above the rest of us at school that you're bumping heads with the freaking Tokyo Skytree! Curse you!\"",
+              "word_count": 131,
+              "techniques": [
+                "escalating_exasperation_chain",
+                "compliment_as_insult",
+                "hyperbole_as_comedy_climax"
+              ],
+              "why_premium": "'Too well!' — the contradiction (winning too convincingly is the problem) sets the comic logic. Mai's tactical debrief ('I didn't have enough time to polish my blocking skills') is delivered as genuine analysis, which makes it funnier: she is not gloating, just explaining. 'Bumping heads with the freaking Tokyo Skytree!' — the hyperbole is Renako reaching for the largest possible object as a comparison and the absurdity of the geography makes it land. Use for comedic defeat scenes: let the winner explain their strategy sincerely (no gloating), let the loser's escalating rage accidentally become a compliment."
+            }
+          ]
+        },
+        "observation_as_affection": {
+          "description": "A protagonist who cannot or will not name their romantic feelings substitutes physical description for emotional declaration. The inventory of another character's appearance — delivered with precision and time spent — IS the confession. The reader understands; the narrator does not. The technique's effectiveness depends on the description being detailed enough to show attention and the narrative context confirming the narrator was distracted from something else by it.",
+          "vn_instruction": "Nhân vật không thể hoặc không muốn đặt tên tình cảm lãng mạn thay bằng mô tả vật lý. Trong tiếng Việt: cho phép mô tả mất nhiều thời gian hơn cần thiết, chèn ẩn dụ rỉ một chút ấm áp.",
+          "examples": [
+            {
+              "id": "train_002",
+              "source": "The Girl I Saved on the Train Turned Out to Be My Childhood Friend, Vol. 1 [Yen Press]",
+              "context": "During class, Fushimi scoots her desk next to Ryou's and starts passing notes. He can't follow the lesson.",
+              "text": "Very carefully, Fushimi scooted her desk over until it was right beside mine.\n\"Huh? What?\"\nDid she forget her textbook? …No, she's not usually forgetful.\nThe teacher started explaining whatever the day's lesson was while Fushimi spread her notebook between us on our combined desks.\nDo you get what's going on? she wrote.\nOh, is she asking about the lesson?\n\"Yeah,\" I muttered, and she smiled.\nActually, I wasn't getting it at all—heck, I wasn't even listening to the explanation in the first place.",
+              "word_count": 85,
+              "techniques": [
+                "literal_question_misread_as_romantic_signal",
+                "self_contradiction_as_comedy",
+                "understated_admission"
+              ],
+              "why_premium": "'Yeah,' I muttered, and she smiled.' — the transaction appears complete: question asked, answered, smile received. The next line detonates it: 'Actually, I wasn't getting it at all.' The narrator lied, knew he lied, and tells us he lied before we can forget the lie. The reason he lied is not stated — but the reader has just read an entire paragraph of him watching Fushimi do everything 'very carefully.' Use for understated male POV comedy: let the character answer a simple question incorrectly to avoid disrupting the proximity, then admit it to the reader alone."
+            }
+          ]
+        },
+        "silent_channel_intimacy": {
+          "description": "Intimacy conducted through a constrained medium — written notes, text messages, drawings — where the limitations of the channel force brevity and sincerity. What cannot be unsaid (written) is more binding than speech. The comedy version: something written is misread or erased mid-erasure, confirming what was denied. The tender version: the constraint creates accidental honesty the character cannot walk back.",
+          "vn_instruction": "Sự thân mật qua kênh bị giới hạn — ghi chú, tin nhắn, bức vẽ. Trong tiếng Việt: để thông điệp viết ngắn (3-5 từ), để người gửi chuẩn bị, để người nhận diễn giải phụ đề cảm xúc.",
+          "examples": [
+            {
+              "id": "train_004",
+              "source": "The Girl I Saved on the Train Turned Out to Be My Childhood Friend, Vol. 1 [Yen Press]",
+              "context": "Fushimi draws a cat saying 'Love!' in her notebook, apparently as a way to communicate that she loves math. She begins erasing it just as Ryou responds, thinking she meant something else.",
+              "text": "She showed me her notebook again. There was a drawing of some little…cat…thing, alongside a speech bubble that said, Love!\nFrom what I could gather from our previous conversation, I guessed that meant that she loved math, so she would like to teach me.\n\"Yeah, makes sense. I mean, we're in the same class.\"\nShe was trying to erase the cat's speech bubble as I said that, and she stopped right in her tracks.\nThat seemed strange, so I turned and saw that her face was red as a tomato. Our eyes met, and she started stuttering and shuddering, then whacked her pencil case off the desk.\n\"Awwwawww…\"\nThe heck does that mean?",
+              "word_count": 107,
+              "techniques": [
+                "mid_erasure_freeze_as_confession",
+                "misread_intent_as_comedy",
+                "untranslatable_sound_as_character_voice"
+              ],
+              "why_premium": "'She was trying to erase the cat's speech bubble as I said that, and she stopped right in her tracks' — the erasure is the giveaway: something in his response froze her because it hit closer to the real meaning than 'math.' 'Red as a tomato' + pencil case falling + 'Awwwawww…' — three escalating physical responses confirm the misread without the narrator catching it. 'The heck does that mean?' closes on his genuine confusion — the gap between what he understood and what she communicated is the comedy and the pathos. Keep untranslatable sounds ('Awwwawww') in the translation: they carry voice that polished phrasing cannot."
+            }
+          ]
+        },
+        "genre_aware_epilogue": {
+          "description": "A chapter-close where the narrator steps briefly into prolepsis — speaking from a later vantage point about what they did not yet know or understand at the story's present moment. Functions as genre signal (this is a romance; pay attention to this character) and as character irony (the narrator's self-assessment is already visibly wrong to the reader). Used sparingly: one per volume maximum, always at a chapter close.",
+          "vn_instruction": "Kết chương nơi người kể chuyện bước vào prolepsis — nói từ góc nhìn sau về điều họ chưa biết. Trong tiếng Việt: một dòng, thì tương lai, tự giễu, cờ thể loại để xác nhận điều gì đó đang đến.",
+          "examples": [
+            {
+              "id": "train_005",
+              "source": "The Girl I Saved on the Train Turned Out to Be My Childhood Friend, Vol. 1 [Yen Press]",
+              "context": "End of Chapter 1. Ryou has saved Fushimi on the train, been seated next to her in homeroom, and watched her for an entire lesson. He does not yet understand what any of this means.",
+              "text": "I had no way of knowing then that a completely average dude like me would fall in love with Fushimi—an extremely beautiful, popular girl who just happened to be my childhood friend.",
+              "word_count": 35,
+              "techniques": [
+                "prolepsis_chapter_close",
+                "unreliable_self_label",
+                "genre_declaration_as_irony"
+              ],
+              "why_premium": "'Completely average dude like me' is immediately undercut by the chapter that just happened: this 'average dude' intervened in a train groping incident at personal cost, arrived late to his first day of school with dignity, and spent an entire lesson memorizing his neighbor's eyelashes. He is not average. The prolepsis tells the reader: this is a romance, here is the object of romance, the narrator is the last to know. 'Just happened to be my childhood friend' — 'just happened' is doing ironic work: the reader already suspects this is not a coincidence. Use at chapter closes of Volume 1: one line, future tense, self-deprecating label the reader has already seen disproved, genre flag to confirm what's coming."
+            }
+          ]
+        }
+      },
+      "usage_guidelines": {
+        "when_to_reference": [
+          "When translating scenes with similar emotional beats (confession anxiety, battlefield poetry, intimate silence, kinetic combat, deductive revelation, grief-love)",
+          "When source material uses abstract emotion words that need concrete rendering",
+          "When calibrating prose rhythm for contemporary light novel audience",
+          "When Stage 2 output feels too generic or 'AI-translated'"
+        ],
+        "how_to_apply": [
+          "DO NOT copy-paste verbatim - use as stylistic reference for tone and technique",
+          "Extract the technique (e.g., 'use physiological detail for anxiety') not the exact phrasing",
+          "Match emotional intensity: don't use Violet Evergarden's poetic density for casual romcom",
+          "Preserve source material's voice while borrowing professional prose structure"
+        ],
+        "quality_markers_to_emulate": {
+          "sentence_length": "13-15 words average (professional LN standard)",
+          "imagery_density": "1-2 concrete sensory details per emotional beat",
+          "verb_strength": "Prefer active, visual verbs (gnawed, evaporated, pounded) over to-be verbs",
+          "metaphor_restraint": "1 strong metaphor > 3 weak similes",
+          "dialogue_integration": "Dialogue + action + thought in quick succession (no orphaned quotes)",
+          "temporal_specificity": "Ground abstract emotions in time perception (seconds felt like hours)"
+        }
+      }
+    }
+  }
+}

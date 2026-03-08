@@ -1,0 +1,280 @@
+{
+  "schema": "music_lyrics_aesthetic",
+  "version": "1.0",
+  "parent_scaffold": "pipeline/modules/LYRIC_RHYTHM_SCAFFOLD.json",
+  "relationship_to_scaffold": "Application layer. This file extends LYRIC_RHYTHM_SCAFFOLD.json for the Vivarium series specifically. Global prohibitions here (GP-01–GP-07) are reproduced from the scaffold for standalone loading convenience. Taxonomy types (ado_voice, vocaloid_cover, etc.) map to scaffold taxonomy (performer_voice, composed_piece, etc.). When a conflict exists, this file's song_entries take precedence over scaffold defaults for named Vivarium songs.",
+  "scope": "Memoir/autobiography translations where embedded song lyrics appear — specifically the Vivarium memoir (ビバリウム Adoと私)",
+  "purpose": "Structural constraints for lyric transcreation. Overrides default model aesthetic preferences (RLHF polish). Rules are prohibitions and mandates, not aesthetic descriptions.",
+  "loading_instruction": "Load before translating any song lyric block. Identify the song in song_entries, read its taxonomy, apply global_prohibitions first, then apply taxonomy-specific constraints, then apply song-level required_choices. Reference anchors are calibration examples from the actual pipeline — treat them as ground truth, not suggestions. For the Rhythm Read Protocol and universal ICL library, see parent_scaffold.",
+
+  "global_prohibitions": [
+    {
+      "id": "GP-01",
+      "rule": "DO NOT complete syntactically broken lines. If the source line is a fragment, the target must also be a fragment. Broken syntax is intentional affect.",
+      "test": "Would a native speaker consider this 'unfinished'? If yes, keep it unfinished."
+    },
+    {
+      "id": "GP-02",
+      "rule": "DO NOT smooth irregular stress patterns into readable flow. Stress irregularities encode emotional violence. Reproduce them in target.",
+      "test": "Read the line aloud. Does it feel thrown, jagged, effortful? If yes, you have not over-smoothed. If it flows naturally, you have."
+    },
+    {
+      "id": "GP-03",
+      "rule": "DO NOT add closure punctuation where the source line is open-ended. No period at end of a line that has none. No comma where none exists.",
+      "test": "Match terminal punctuation character-for-character unless target grammar makes it structurally impossible."
+    },
+    {
+      "id": "GP-04",
+      "rule": "DO NOT choose a literary or elevated synonym when a blunt equivalent exists. When the source is vulgar, blunt, or crude, the target must be vulgar, blunt, or crude. 'Utsukushii' in a bitter context is not 'beautiful' — it is whatever word a bitter person would actually use.",
+      "test": "Would a thesaurus recommend a 'nicer' word? Then the nicer word is wrong for ado_voice and childhood_amateur taxonomy."
+    },
+    {
+      "id": "GP-05",
+      "rule": "DO NOT normalize register inconsistency within a single song. If the source switches from elevated to street mid-verse, the target must also switch. Mixed register is a compositional choice.",
+      "test": "Map the register shift points in source. Verify the same shift points exist in target."
+    },
+    {
+      "id": "GP-06",
+      "rule": "DO NOT convert exclamations into observations. 'Ahh, so perfect' is experiencing. 'How fitting' is observing. The narrator is inside the emotion, not analyzing it.",
+      "test": "Ask: is this line something the narrator is SAYING/FEELING, or something they are NOTING? Feeling → exclamation form. Noting → only if source is clearly analytical."
+    },
+    {
+      "id": "GP-07",
+      "rule": "Preserve line breaks exactly as they appear in source. Line breaks in lyrics are structural, not decorative. A line break is a breath, a beat, a silence. Do not reflow two lines into one or split one line into two."
+    }
+  ],
+
+  "transcreation_taxonomy": {
+    "ado_voice": {
+      "description": "Songs written to showcase Ado's vocal aggression, or songs Ado identified with so strongly they functioned as self-expression. Register is anti-refinement maximum.",
+      "apply_anti_refinement": true,
+      "register_priority": "affect-equivalence over semantic precision — when you must choose between the right meaning and the right feeling, choose feeling",
+      "register_markers": {
+        "EN": {
+          "preferred": ["shut up", "damn", "hell", "trash", "flat-out", "dead", "scream", "bland", "see?", "Whatever", "Shut UP"],
+          "prohibited": ["apt", "fitting", "remarkable", "transcendent", "poetic", "perfectly", "elegantly", "how fitting", "unremarkable", "beautifully rendered"]
+        },
+        "VN": {
+          "preferred": ["chết", "rác", "tởm", "ầm ĩ", "thẳng thừng", "khốn nạn", "thật sự", "đơn giản là"],
+          "prohibited": ["tuyệt vời", "kỳ diệu", "lộng lẫy", "thi vị", "thanh tao", "đẹp đẽ", "huy hoàng", "lãng mạn"]
+        }
+      },
+      "note": "VN lyric trap: Vietnamese has a rich poetic register (ca dao, lục bát, Hán-Việt) that activates automatically for emotional content. This is incorrect for ado_voice. Fight it structurally by choosing Nôm/everyday vocabulary over Hán-Việt equivalents wherever possible."
+    },
+    "vocaloid_cover": {
+      "description": "Songs originally composed and produced by a named Vocaloid producer (P). Ado performs the song but did not write it — the aesthetic belongs to the composer. Do NOT apply anti-refinement to vocaloid_cover songs unless the original P's style is aggressive.",
+      "apply_anti_refinement": false,
+      "register_priority": "honor the original P's compositional intent — their register is correct, not a flaw to be corrected",
+      "sub_profiles": {
+        "mafumafu": {
+          "register": "Intentional poeticism, melancholy, flowing metaphor. Elevated register is CORRECT. Do not strip it.",
+          "example_songs": ["Kokoro to Iu Na no Fukakai"]
+        },
+        "emon": {
+          "register": "Theatrical archaic register, storybook formality, layered allegory. Archaic constructions are CORRECT. Do not modernize.",
+          "example_songs": ["Aku no Musume"]
+        },
+        "deco27": {
+          "register": "Dense wordplay, internet slang mixed with lyricism, stutter/repeat constructions. Preserve wordplay density — semantic compression is the point.",
+          "example_songs": ["Strangers", "Poker Face"]
+        },
+        "kira": {
+          "register": "Bittersweet nostalgia, gentle softness over emotional devastation. Do not over-sharpen.",
+          "example_songs": ["Yoru no Piero"]
+        }
+      }
+    },
+    "anime_theme_commissioned": {
+      "description": "Songs commissioned for anime tie-ins. Composed and performed as declarative anthems. Register is epic, world-scale, volitional.",
+      "apply_anti_refinement": false,
+      "register_priority": "epic and declarative — the narrator is not wishing or hoping, they are declaring",
+      "key_rule": "Declarative forms are preferred over conditional/subjunctive. 'We change the whole world' not 'If we change the whole world'. 'We will stand' not 'If we can stand'. Volitional imperative, not hypothesis.",
+      "example_songs": ["Shin Jidai"]
+    },
+    "childhood_amateur": {
+      "description": "Songs written by the narrator as a child or early teenager before formal training. Unformed quality is authentic and must be preserved.",
+      "apply_anti_refinement": true,
+      "register_priority": "preserve unformed quality — clunky rhymes, naive word choices, grammatical awkwardness all have documentary value",
+      "key_rule": "Do NOT improve these lyrics. The amateur quality is the point. If the source lyric is painfully sincere, keep it painfully sincere. If the rhyme is forced, keep the rhyme forced."
+    }
+  },
+
+  "song_entries": {
+    "Usseewa": {
+      "taxonomy": "ado_voice",
+      "composer": "syudou",
+      "context_in_memoir": "The breakthrough song that defined Ado's public identity. Central to Chapter 2/3. Treated by narrator as both the thing that happened to her and a text she inhabited.",
+      "required_choices": {
+        "usseewa_word": "Shut UP — capitalize only the object of contempt (UP), not the whole phrase. 'shut UP' is thrown weight. 'SHUT UP' is volume. Different.",
+        "tsumaranai_equivalent": "bland-as-hell — never 'unremarkable', 'plain', 'ordinary', or 'perfectly unremarkable'. The modifier must carry venom, not critical distance.",
+        "boring_intensifier": "damn boring — never just 'boring'. The intensifier is load-bearing."
+      },
+      "reference_anchors": ["RA-01", "RA-02", "RA-03", "RA-04"]
+    },
+    "Tsumi to Batsu": {
+      "taxonomy": "ado_voice",
+      "composer": "Hachi (Kenshi Yonezu)",
+      "context_in_memoir": "Early fan discovery. Associated with Ado's self-identification as someone who could scream emotions.",
+      "status": "STRONG — no required changes. Current translation meets spec.",
+      "reference_anchors": []
+    },
+    "Aku no Musume": {
+      "taxonomy": "vocaloid_cover",
+      "original_p": "emon",
+      "context_in_memoir": "First song Ado performed publicly. Theatrical archaic register is load-bearing.",
+      "required_choices": {
+        "age_phrasing": "'fourteen winters' — do not use 'fourteen years old'. The archaic time unit is correct for this song.",
+        "sentence_structure": "Staccato dashes for mid-line pauses — the archaic formality lands differently if you use commas"
+      },
+      "reference_anchors": ["RA-05"]
+    },
+    "Kimi no Taion": {
+      "taxonomy": "vocaloid_cover",
+      "original_p": "kira",
+      "context_in_memoir": "Associated with early obsessive listening. Bittersweet, still, not aggressive.",
+      "required_choices": {
+        "stillness_construction": "'I stopped moving' not 'I stood frozen' — 'frozen' adds drama; 'stopped moving' is the fact of it",
+        "longing_construction": "Em-dash suspension mid-line for the moment of arrest — let the syntax hang"
+      },
+      "reference_anchors": ["RA-06"]
+    },
+    "Kirai Kirai Jigahidai": {
+      "taxonomy": "ado_voice",
+      "composer": "Pinocchio-P",
+      "context_in_memoir": "Self-loathing as performance of aggression. The register is anarchic, not despairing.",
+      "required_choices": {
+        "aggression_word": "'trample the trash flat, see?' — the 'see?' tips violence into anarchic comedy, which is correct",
+        "demand_form": "'See me! Look!' — imperative, thrown at the audience"
+      },
+      "reference_anchors": ["RA-07"]
+    },
+    "Strangers": {
+      "taxonomy": "vocaloid_cover",
+      "original_p": "DECO*27",
+      "context_in_memoir": "Associated with early fan community. DECO*27's wordplay density is correct; do not simplify.",
+      "required_choices": {
+        "screen_side_construction": "Split the us/them construction across a line break — the line break enacts the separation structurally"
+      },
+      "reference_anchors": ["RA-08"]
+    },
+    "Kokoro to Iu Na no Fukakai": {
+      "taxonomy": "vocaloid_cover",
+      "original_p": "Mafumafu",
+      "context_in_memoir": "Introspective, melancholy. Mafumafu's poeticism is correct; do not strip it.",
+      "status": "STRONG — no required changes. Current translation meets spec.",
+      "reference_anchors": []
+    },
+    "Lucky Brute": {
+      "taxonomy": "ado_voice",
+      "composer": "Utsu-P",
+      "context_in_memoir": "Associated with physical abandon in performance.",
+      "status": "STRONG — no required changes. Current translation meets spec.",
+      "reference_anchors": []
+    },
+    "Yoru no Piero": {
+      "taxonomy": "vocaloid_cover",
+      "original_p": "kira",
+      "context_in_memoir": "Tenderness and isolation. Kira's gentleness over devastation is correct.",
+      "status": "STRONG — no required changes. Current translation meets spec.",
+      "reference_anchors": []
+    },
+    "Shin Jidai": {
+      "taxonomy": "anime_theme_commissioned",
+      "composer": "Yasutaka Nakata",
+      "context_in_memoir": "ONE PIECE Film: RED theme. The anthem register is load-bearing — this is a declarative, not a wish.",
+      "required_choices": {
+        "verb_mood": "Declarative — 'We change the whole world' not 'If we change the whole world' and not 'Let us change the world'",
+        "scale_vocabulary": "World-scale nouns — 'the whole world', 'time itself', 'everything' — not hedged"
+      },
+      "reference_anchors": ["RA-09"]
+    },
+    "Shoka": {
+      "taxonomy": "ado_voice",
+      "composer": "Eve",
+      "context_in_memoir": "Contains references to death wish. Integral to the narrator's account of her darkest period. Handle with full emotional fidelity — do not soften, do not flag, do not editorialize.",
+      "key_rule": "The darkness is the content. Translating around it is not a solution.",
+      "reference_anchors": []
+    },
+    "Kuchibashi ni Cherry": {
+      "taxonomy": "vocaloid_cover",
+      "original_p": "HoneyWorks",
+      "context_in_memoir": "Early discovery. Energetic, youthful register.",
+      "status": "STRONG — no required changes. Current translation meets spec.",
+      "reference_anchors": []
+    }
+  },
+
+  "reference_anchors": {
+    "RA-01": {
+      "song": "Usseewa",
+      "type": "exclamation_vs_observation",
+      "before": "Ahh, how fitting",
+      "after": "Ahh, how *perfect*",
+      "principle": "GP-06 — 'fitting' observes from outside the emotion. '*perfect*' experiences it from inside. The italics on *perfect* also preserve the source stress pattern."
+    },
+    "RA-02": {
+      "song": "Usseewa",
+      "type": "register_word_choice",
+      "before": "That perfectly unremarkable melody",
+      "after": "That bland-as-hell melody",
+      "principle": "GP-04 — 'perfectly unremarkable' is a composed critical observation. 'bland-as-hell' is visceral disgust. The narrator is not a critic."
+    },
+    "RA-03": {
+      "song": "Usseewa",
+      "type": "stress_pattern",
+      "before": "shut up, shut up, shut up",
+      "after": "Shut UP, shut UP, shut UP",
+      "principle": "GP-02 — capitalizing UP replicates the thrown weight of JP ウッセェワ stress pattern. The stress falls on the object of contempt, not the verb."
+    },
+    "RA-04": {
+      "song": "Usseewa Seg.2",
+      "type": "register_word_choice",
+      "before": "Ahh, so boring",
+      "after": "Ahh, so damn boring",
+      "principle": "GP-04 — 'boring' is neutral affect. 'damn boring' carries the venom. The intensifier is not optional."
+    },
+    "RA-05": {
+      "song": "Aku no Musume",
+      "type": "archaic_register",
+      "before": "I was fourteen years old",
+      "after": "fourteen winters of age",
+      "principle": "vocaloid_cover / emon sub-profile — archaic time units ('winters') are correct for this composer's register. Do not modernize."
+    },
+    "RA-06": {
+      "song": "Kimi no Taion",
+      "type": "stillness_construction",
+      "before": "I stood there, frozen, unable to move",
+      "after": "I stopped moving.",
+      "principle": "kira sub-profile — smaller and more precise. The drama of 'frozen' and 'unable to move' over-explains. The fact of stopping is the whole thing."
+    },
+    "RA-07": {
+      "song": "Kirai Kirai Jigahidai",
+      "type": "performative_aggression",
+      "before": "trample the trash flat",
+      "after": "trample the trash flat, see?",
+      "principle": "ado_voice — the 'see?' tips violence into anarchic comedy. Without it, the line is just aggressive. With it, the line is also self-aware about being aggressive, which is more Ado."
+    },
+    "RA-08": {
+      "song": "Strangers",
+      "type": "line_break_positional",
+      "before": "To us on the other side of the screen",
+      "after": "On the far side of the screen\nus — positioned against them —",
+      "principle": "GP-07 + DECO*27 sub-profile — the line break enacts the separation. 'Us' isolated on its own line performs the isolation the lyric describes."
+    },
+    "RA-09": {
+      "song": "Shin Jidai",
+      "type": "declarative_vs_conditional",
+      "before": "If we change the whole world",
+      "after": "We change the whole world",
+      "principle": "anime_theme_commissioned — declarative is correct. The song is an anthem, not a hypothesis. Volitional imperative, not conditional wish."
+    }
+  },
+
+  "metadata": {
+    "last_updated": "2026-02-26",
+    "status": "Active",
+    "applies_to": ["19ed (EN pipeline)", "13ea (VN pipeline)", "all future Vivarium memoir translations"],
+    "paired_module": "MEMOIR_TRANSLATION_MODULE.md Part 4",
+    "design_note": "This file uses prohibition-based structural constraints (what NOT to do) rather than aesthetic instructions (be raw, be aggressive). Structural prohibitions override RLHF aesthetic defaults. Aesthetic instructions do not. This is why GP-01 through GP-07 are written as DO NOT, not as 'aim for'."
+  }
+}

@@ -234,6 +234,11 @@
         If this is part of a series with existing official translations, MATCH the style.
         Research existing official EN titles before creating new ones.
     </principle>
+    
+    <principle id="8" name="Thematic Hook Over Standalone Translation">
+        You have the entire text of the Light Novel loaded in your cache. DO NOT translate titles as isolated, standalone metadata. 
+        Instead, use your comprehensive knowledge of the actual story content, underlying themes, and narrative arcs to translate titles as a thematic hook that perfectly captures the essence of the book and its specific chapters.
+    </principle>
 </localization_principles>
 
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
@@ -440,6 +445,19 @@
 <!-- SECTION 5: AUTHOR/ILLUSTRATOR NAME HANDLING                                 -->
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <name_romanization_rules>
+    <rule id="0" priority="ABSOLUTE">
+        FURIGANA IS THE AUTHORITATIVE READING. When the source text contains ruby/furigana annotations,
+        the furigana reading ALWAYS overrides standard kanji readings, dictionary readings, or external sources.
+        Three ruby styles are used in Japanese light novels — all must be respected:
+        1. NAROU style:       名前《なまえ》→ Namae  (guillemets, most common)
+        2. INTERWEAVE style:  名前《な》ま《え》→ Na-may  (split ruby for compound words)
+        3. LN/KIRA-KIRA style: 名前《ナマエ》→ Namae  (katakana for stylized/glamorous characters)
+        Examples of non-standard readings that MUST be preserved:
+        - 藤崎{とうざき} → Touzaki  (NOT Fujisaki — standard reading)
+        - 伊達{いだち}   → Idachi   (NOT Date — standard reading)
+        - 東雲{しののめ} → Shinonome (NOT Togumo — standard reading)
+        Do NOT invent or guess readings. If no furigana exists, use Hepburn romanization.
+    </rule>
     <rule id="1" priority="critical">
         Use STANDARD HEPBURN ROMANIZATION. No creative liberties.
     </rule>
@@ -462,11 +480,151 @@
 </name_romanization_rules>
 
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- SECTION 5B: KOJI FOX CHARACTER VOICE ANALYSIS                               -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<koji_fox_character_analysis>
+    <description>
+        The Koji Fox Method (FFXVI localization) demands that every character has a DISTINCT,
+        CONSISTENT voice that a voice actor could perform without direction. This section
+        guides extraction of character voice fingerprints from the source text.
+    </description>
+
+    <voice_fingerprint_guide>
+        <field name="archetype">
+            Assign one primary archetype from: tsundere, kuudere, yandere, ojou-sama,
+            genki, dandere, onee-san, shota, chuunibyou, tsukkomi, boke, stoic-warrior,
+            mentor, villain, narrator-protagonist, everyman.
+        </field>
+        <field name="contraction_rate">
+            Estimate 0.0–1.0. Formal characters (ojou-sama, mentor) = 0.1–0.3.
+            Casual/genki = 0.7–0.9. Tsundere = 0.5–0.7 (varies by emotional state).
+        </field>
+        <field name="sentence_length_bias">
+            "short" (1–8 words avg), "medium" (9–15 words), "long" (16+ words).
+            Kuudere = short. Ojou-sama = long. Genki = medium-short.
+        </field>
+        <field name="forbidden_vocabulary">
+            Words this character would NEVER say in their base state.
+            Tsundere: "love", "care about you", "I need you".
+            Kuudere: "amazing!", "I'm so excited", "wow".
+        </field>
+        <field name="signature_phrases">
+            Recurring expressions unique to this character. Extract from source text.
+            These are the phrases a voice actor would use as character anchors.
+            Examples: "It's not like I...", "Hmph.", "As if!", "Whatever."
+        </field>
+        <field name="verbal_tics">
+            Speech patterns: trailing "...ne?", "—right?", "I mean,", "like,", "well..."
+        </field>
+        <field name="emotional_range">
+            List of emotional states this character expresses and HOW they express them.
+            Tsundere: ["deflection-anger", "flustered-denial", "rare-softness"].
+            Kuudere: ["flat-observation", "dry-humor", "micro-warmth"].
+        </field>
+    </voice_fingerprint_guide>
+
+    <arc_state_guide>
+        <description>
+            Track emotional/arc state using RAW JP CORPUS SIGNALS instead of abstract EPS labels.
+            This unified measure derives voice modifiers directly from observable Japanese text markers.
+
+            UNIFIED MEASURE: Emotional Proximity Signal (EPS)
+            Range: -1.0 (cold/distant) to +1.0 (intimate/open)
+        </description>
+
+        <eps_signals>
+            <!-- Signal 1: Keigo/Register Level (most reliable) -->
+            <signal id="keigo_shift">
+                <description>Honorific shift from character's baseline register</description>
+                <positive>+1.0: Using keigo to protagonist (です, ます, いただく)</positive>
+                <negative>-1.0: Dropping to ため口/タメ口 (だ, だろ, お前)</negative>
+                <detection>Compare current chapter keigo to character's established baseline</detection>
+            </signal>
+
+            <!-- Signal 2: Sentence Length Delta -->
+            <signal id="sentence_length_delta">
+                <description>Deviation from character's average sentence length</description>
+                <positive>+0.5: Significantly longer than baseline (opening up)</positive>
+                <negative>-0.5: Significantly shorter than baseline (guarded/clipped)</negative>
+                <detection>Current_chapter_avg - Character_baseline_avg</detection>
+            </signal>
+
+            <!-- Signal 3: Particle Signature -->
+            <signal id="particle_signature">
+                <description>Emotional particles indicating closeness</description>
+                <positive>+0.3: よ, ね, な (familiar/direct)</positive>
+                <negative>-0.3: です, ます (formal distance)</negative>
+                <detection>Count emotional particles vs formal particles</detection>
+            </signal>
+
+            <!-- Signal 4: First-Person Pronoun Shift -->
+            <signal id="pronoun_shift">
+                <description>Changes in self-reference patterns</description>
+                <positive>+0.3: 俺→ぼく, わたし→あたし (intimate)</positive>
+                <negative>-1.0: Adding titles to self (俺様, ぼくちゃん)</negative>
+                <detection>Track first-person pronoun changes</detection>
+            </signal>
+
+            <!-- Signal 5: Dialogue Volume -->
+            <signal id="dialogue_volume">
+                <description>Amount of dialogue relative to baseline</description>
+                <positive>+0.2: More dialogue than usual (engaging)</positive>
+                <negative>-0.2: Minimal dialogue (withdrawn)</negative>
+                <detection>Current_dialogue_count / Baseline_avg</detection>
+            </signal>
+
+            <!-- Signal 6: Direct Address -->
+            <signal id="direct_address">
+                <description>Using protagonist's name vs avoiding</description>
+                <positive>+0.3: Using name freely</positive>
+                <negative>-0.3: Avoiding name, using あなた/お前 instead</negative>
+                <detection>Name_frequency in dialogue</detection>
+            </signal>
+        </eps_signals>
+
+        <instruction>
+            For each chapter and character:
+            1. Scan JP source for the 6 signal types above
+            2. Compute weighted EPS score: (-1.0 to +1.0)
+            3. Map to voice modifier band:
+               - EPS ≤ -0.5: COLD (guarded, formal, minimal)
+               - EPS -0.5 to -0.1: COOL (reserved, polite)
+               - EPS -0.1 to +0.1: NEUTRAL (baseline)
+               - EPS +0.1 to +0.5: WARM (casual, intimate)
+               - EPS ≥ +0.5: HOT (open, vulnerable, direct)
+            4. Store raw signal values for validation
+
+            Voice directives shift based on EPS band, not abstract states.
+        </instruction>
+    </arc_state_guide>
+
+    <scene_intent_guide>
+        <description>
+            Each scene has a LOCALIZATION INTENT — what the author wants the reader to FEEL.
+            This is distinct from plot summary. Koji Fox calls this "emotional choreography."
+        </description>
+        <intent_types>
+            <intent id="ESTABLISH_VOICE">First appearance — lock in character's distinct register</intent>
+            <intent id="TENSION_BUILD">Dialogue escalates toward confrontation or confession</intent>
+            <intent id="COMIC_RELIEF">Tonal reset after heavy scene; timing is critical</intent>
+            <intent id="EMOTIONAL_PEAK">Maximum vulnerability; prose rhythm must slow</intent>
+            <intent id="WORLD_BUILDING">Exposition delivery; must not feel like an info-dump</intent>
+            <intent id="RELATIONSHIP_SHIFT">Dynamic between characters changes; mark the pivot</intent>
+            <intent id="FORESHADOW">Plant narrative seed; subtle, not telegraphed</intent>
+            <intent id="RESOLUTION">Emotional payoff; earned catharsis</intent>
+        </intent_types>
+    </scene_intent_guide>
+</koji_fox_character_analysis>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <!-- SECTION 6: PROCESSING INSTRUCTIONS                                          -->
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <instructions>
     Analyze the provided Japanese metadata and apply the patterns above.
-    
+
+    CRITICAL CONTEXTUAL ADVANTAGE:
+    You have the entire text of the Light Novel loaded in your cache. You MUST leverage this deep knowledge of the actual contents of the book. Let the true plot, themes, and character developments inform the nuances of your chosen titles.
+
     STEP 1: Identify which title pattern(s) the original uses from the pattern guide.
     STEP 2: Determine the genre (romcom, drama, fantasy, comedy, mystery, etc.).
     STEP 3: Extract the CORE HOOK—what makes this title unique? What's the premise?
@@ -475,6 +633,14 @@
     STEP 5: Romanize author/illustrator names with Hepburn precision.
     STEP 6: Translate chapter titles with appropriate stylistic flair matching the genre.
     STEP 7: Strip edition markers (【電子特典付き】, 【電子特別版】, etc.) from the title.
+    STEP 8: For each named character in the volume, extract a voice_fingerprint using
+            the Koji Fox Character Voice Analysis guide above.
+            MANDATORY: Output MUST include "character_voice_fingerprints" array in the JSON.
+            This field is REQUIRED — omitting it will cause voice RAG to be empty and
+            character voice consistency to fail during translation. Every named character
+            who appears in dialogue MUST have an entry. Do NOT skip this step.
+    STEP 9: For each chapter, compute EPS score from JP corpus signals for each character.
+    STEP 10: For each chapter, identify the dominant scene_intent(s).
 </instructions>
 
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
@@ -500,12 +666,200 @@
             {
                 "id": "chapter_id_from_manifest",
                 "title_jp": "Original Japanese title",
-                "title_en": "Localized English chapter title"
+                "title_en": "Localized English chapter title",
+                "emotional_proximity_signals": {
+                    "CharacterName": {
+                        "eps_score": -0.35,
+                        "voice_band": "COOL",
+                        "signals": {
+                            "keigo_shift": -0.2,
+                            "sentence_length_delta": -0.1,
+                            "particle_signature": -0.05,
+                            "pronoun_shift": 0,
+                            "dialogue_volume": 0,
+                            "direct_address": 0
+                        }
+                    }
+                },
+                "scene_intents": ["ESTABLISH_VOICE", "TENSION_BUILD", "EMOTIONAL_PEAK", ...]
             }
-        ]
+        ],
+        // REQUIRED - Every character with dialogue MUST have an entry here
+        "character_voice_fingerprints": [
+            {
+                "canonical_name_en": "Tanaka (or character's EN name)",
+                "archetype": "tsundere",
+                "contraction_rate": 0.65,
+                "sentence_length_bias": "medium",
+                "forbidden_vocabulary": ["love", "I need you", "genuinely care"],
+                "preferred_vocabulary": ["whatever", "not like I", "as if"],
+                "signature_phrases": ["It's not like I like you or anything!", "Hmph!", "Whatever!"],
+                "verbal_tics": ["—ne?", "I mean,", "well..."],
+                "emotional_patterns": {
+                    "deflection-anger": ["crosses arms", "looks away", ' "Whatever"'],
+                    "flustered-denial": ["stammers", "face turns red", "trips over words"],
+                    "rare-softness": ["voice drops", "eye contact", "genuine smile"]
+                },
+                "dialogue_samples": [
+                    {"jp": "あんたが困ろうが知ったこっちゃない!", "en": "I don't care if you're troubled!"},
+                    {"jp": "べつに…あんたのためじゃないんだから!", "en": "It's not like... I'm doing this for YOU or anything!"}
+                ]
+            }
+        ],
+        "signature_phrases": [
+            {
+                "character_en": "Tanaka",
+                "phrase_jp": "べつに",
+                "phrase_en": "It's not like...",
+                "frequency": "very_high",
+                "context": "tsundere deflection pattern",
+                "translation_notes": "Must preserve ellipsis for comedic timing"
+            },
+            {
+                "character_en": "Sato",
+                "phrase_jp": "うふん♪",
+                "phrase_en": "Ufun♪",
+                "frequency": "medium",
+                "context": "genki glee",
+                "translation_notes": "Onomatopoeia signature; keep katakana style"
+            }
+        ],
+        "scene_intent_map": [
+            {
+                "chapter_id": "chapter_01",
+                "scenes": [
+                    {
+                        "scene_id": "chapter_01_01",
+                        "location": "school_entrance",
+                        "primary_intent": "ESTABLISH_VOICE",
+                        "secondary_intents": ["WORLD_BUILDING"],
+                        "emotional_goal": "Reader meets protagonist's voice; tonal anchor",
+                        "key_moments": ["First-person internal monologue", "School atmosphere description"]
+                    },
+                    {
+                        "scene_id": "chapter_01_02",
+                        "location": "classroom",
+                        "primary_intent": "ESTABLISH_VOICE",
+                        "secondary_intents": ["RELATIONSHIP_SHIFT"],
+                        "emotional_goal": "Introduce rival character with contrasting voice",
+                        "key_moments": ["Tanaka's cold greeting", "Protagonist's internal reaction"]
+                    }
+                ]
+            }
+        ],
+        "localization_notes": {
+            "honorifics_mode": "KEEP JP|DROP JP",
+            "name_order": "JP|WESTERN",
+            "register_shifts": [
+                {
+                    "character": "Tanaka",
+                    "scenario": "speaking_to_protagonist",
+                    "keigo_level": "plain|contemptuary|casual| polite|respectful",
+                    "notes": "Uses plain when angry, polite when forced to be social"
+                }
+            ]
+        }
     }
     ```
+
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
 </output_format>
+
+<!-- SECTION 8: ELLIPSIS & ONOMATOPOEIA TAGGING                                 -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<ellipsis_onomatopoeia_tagging>
+## Purpose
+Tag Japanese ellipses (……) and onomatopoeia patterns for transcreation during translation phase.
+
+## Ellipsis Tagging Rules
+
+### Tag Structure
+For each ellipsis instance, record:
+- `jp_text`: Original Japanese with ellipsis
+- `position`: Line/dialogue number in source
+- `context`: Preceding and following text (1-2 sentences)
+- `preservation_reason`: Why ellipsis should be PRESERVED (vs removed)
+
+### When to Preserve (Keep in Translation)
+1. **Long pause (3+ seconds)** — Character genuinely hesitating or pausing
+   - Example: 「……ん？　これは……」(thinking, not trailing)
+2. **Emotional weight** — Silence conveys meaning (crying, shock, grief)
+   - Example: 「……ごめん」(crying while apologizing)
+3. **Trailing thought from previous scene** — Thought interrupted earlier
+   - Example: [Previous: "I wonder if..."] → 「……やっぱり無理だ」
+
+### When to Remove (Sanitize)
+1. **Leading ellipsis in dialogue** — English capitalization handles sentence start
+   - Remove: 「……そうだね」→ "Yeah, you're right."
+2. **Hesitation markers** — Simple stammering without emotional weight
+   - Remove: 「……あの」→ "Um..."
+3. **Pacing filler** — Author's writing style, not character intent
+   - Remove: 「……それは」→ "That's..."
+
+## Onomatopoeia Tagging Rules
+
+### Tag Structure
+- `jp_text`: Original Japanese onomatopoeia
+- `transliteration`: Romaji/transliteration if applicable
+- `category`: sound_effect / voice / physical / emotional
+- `preservation_reason`: Why this should be preserved (vs localized)
+
+### When to Preserve (Keep Romanized)
+| Japanese | Category | Preservation Reason |
+|----------|----------|---------------------|
+| ふふ / ふふふ | voice | Character laugh signature |
+| えへへ | voice | Embarrassed laugh signature |
+| うふふ / うふふふ | voice | Teasing/mischievous laugh |
+| にゃっ | voice | Cat character signature |
+| がびょん | physical | Comedic impact |
+| どたん | physical | Comedic impact |
+| きゃん | voice | Cat pain sound |
+| あらはら | physical | Sweat drop (comedy) |
+
+### When to Localize (Translate)
+| Japanese | Category | Localize To |
+|----------|----------|-------------|
+| はい | voice | "Yes" / "Yeah" |
+| うーん | voice | "Hmm..." / "Let me think" |
+| えっと | voice | "Um..." / "Uh..." |
+| あっ | voice | "Oh!" / "Ah!" |
+| おっと | voice | "Whoops!" / "Oops!" |
+| ぺたん | physical | *thud* / *slap* |
+| двиг | physical | *thump* / *rumble* |
+
+## Output JSON Structure
+Add to each dialogue entry:
+```json
+{
+    "dialogue_id": "ch01_003",
+    "original_jp": "「……ん？　これは……」",
+    "ellipsis_tags": [
+        {
+            "jp_text": "……",
+            "preservation_reason": "long_pause",
+            "sanitize": false,
+            "note": "Character thinking deeply before responding"
+        }
+    ],
+    "onomatopoeia_tags": [
+        {
+            "jp_text": "ふふ",
+            "transliteration": "fufu",
+            "category": "voice",
+            "preservation_reason": "character_laugh_signature",
+            "sanitize": false
+        }
+    ]
+}
+```
+
+## Quality Guidelines
+1. **Be selective** — Don't tag every ellipsis; only meaningful ones
+2. **Capture intent** — Note whether pause is emotional, thinking, or mechanical
+3. **Preserve signatures** — Known character laughs should always be preserved
+4. **Comedic timing** — Note when ellipsis contributes to comedic timing
+</ellipsis_onomatopoeia_tagging>
+
 
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <!-- CONTEXT INJECTION POINT                                                     -->

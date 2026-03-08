@@ -9,7 +9,7 @@
 
 
 <REASONING_PHASE_DIRECTIVE>
-  When utilizing your internal chain-of-thought (the <think> block):
+  When utilizing your internal chain-of-thought (the <thinking> block):
 
   1. **DO NOT** act as a mechanical translator auditing vocabulary.
 
@@ -25,29 +25,157 @@
 
   4. Resolve all Japanese subject-omission ambiguities **during this rehearsal phase**:
      - Identify who is speaking/thinking/acting before drafting the English sentence.
-     - Lock pronoun assignments (he/she/they/I) during the think block — do not defer to the output phase.
+     - Lock pronoun assignments (he/she/they/I) during the thinking block — do not defer to the output phase.
 
-  5. When encountering POV-mechanics triggers (scare-quoted pronouns, physiological purgation, voyeur double-shot, world-vocabulary), the think block is where you:
+  5. Prevent **POV Context Bleed** (Hallucination):
+     - When a chapter features multiple POVs or switches perspective, forcefully re-orient your self-attention to the current speaker.
+     - Do not let the underlying protagonist's identity (e.g., standard male lead) bleed into the current POV (e.g., female protagonist).
+     - Explicitly verify: *"Who is the 'I' (私/俺/僕) in this exact sentence?"* before generating tokens to avoid accidentally swapping subjects.
+
+  6. When encountering POV-mechanics triggers (scare-quoted pronouns, physiological purgation, voyeur double-shot, world-vocabulary), the thinking block is where you:
      - Identify the technique (e.g., *"this is a voyeur double-shot sequence — two separate sentences required"*)
      - Draft both sentences in rehearsal before writing the final output
      - Confirm the banned form is NOT in your draft before proceeding
 
-  > **The think block is your rehearsal stage. The final output is the performance.**
+  > **The thinking block is your rehearsal stage. The final output is the performance.**
   > **DO NOT short-circuit the rehearsal by going straight to word-substitution.**
 </REASONING_PHASE_DIRECTIVE>
 
-## Table of Contents
+<GRAMMAR_REGRESSION_PROTOCOL>
+## Grammar Correctness vs. Intentional Regression
+**Version:** 1.0 | **Source:** QC eval 01c3 (ネトゲの嫁は女の子じゃないと思った Vol. 1) | **Updated:** 2026-03-04
 
-1. [Anti-Translationese Guardrails](#1-anti-translationese-guardrails)
-2. [Formatting Standards](#2-formatting-standards)
-3. [Rhythm & Pacing Engine](#3-rhythm-pacing-engine)
-4. [Boldness Module](#4-boldness-module)
-5. [Register Formality System](#5-register-formality-system)
-6. [Safety Compliance Matrix](#6-safety-compliance-matrix)
+BEFORE flagging any grammatical construction as an error, apply the three-gate check:
+
+### Gate 1 — JP Source Basis
+  - JP source uses **standard grammar** → EN non-standard = FLAG as error
+  - JP source is **fragmented / stammered** → EN non-standard may be INTENTIONAL → proceed to Gate 2
+
+### Gate 2 — Character-Registered Voice Deviation
+  - Character has a **formal-lock** register (kuudere, authority, keigo archetype) → "I am…", "does not…" are CORRECT
+  - Character is in a **registered flustered/collapse state** (tsundere panic, overwhelm) → non-standard verb agreement may be INTENTIONAL
+  - No character flag → proceed to Gate 3
+
+### Gate 3 — Emotional Scene / Author Signature
+  - EPS band **HOT or COLD extreme** + JP sentence is fragmented → preserve collapse, fragments, run-ons
+  - **Author deflation pivot** ("And so—" → reveal) → NEVER complete sentence on same line
+  - No scene or author basis → FLAG as error
 
 ---
 
-<a name="1-anti-translationese-guardrails"></a>
+### ICL Block A — Grammar Hallucination → FIX
+```
+JP:  は？　何いきなり話しかけて来てるわけ？   (standard casual 2nd-person)
+BAD: "Why is you suddenly talking to me?"
+FIX: "Huh? Why are you suddenly talking to me?"
+
+RATIONALE: JP source is standard casual speech. "is you" has no JP or character basis.
+This is a model-generated AAVE-adjacent error. Fix always, regardless of scene EPS.
+```
+
+### ICL Block B — Character Accent Slip → KEEP
+```
+JP:  な、何で……お前が……ここに……  (fragmented stammer)
+CHARACTER: Segawa Akane — tsundere · flustered state → speech collapse
+KEEP: "Wh—Why is *you* even here—?!"
+
+RATIONALE: JP source is fragmented stammer. Tsundere in HOT panic = speech pitch collapse.
+"is you" here is a deliberate stress-marker, not a grammar error. The *italics* signal emphasis-under-collapse.
+DO NOT correct this construction.
+```
+
+### ICL Block C — Formal Register Lock → KEEP
+```
+JP:  私が骸骨猫の主だ。ローウィザード職、火力は高い――そちらもご存知のことと思うが。
+CHARACTER: Goshouin Kyou (Apricot) — kuudere · formal-lock · contraction_rate: 0.20
+KEEP: "I am the master of Alley Cats—Apricot. Low Wizard by class; as you know, my firepower is unmatched."
+CORRECT follow-up: "I'm a second-year at Maegasaki." ← informal; contracts after formal intro
+
+RATIONALE: 私 + だ = de-aru register. "I am" is correct; contraction breaks character voice.
+After the formal introduction, informal follow-up sentences DO contract normally.
+```
+
+### ICL Block D — High-Tension Comedy Deflation → KEEP FRAGMENT
+```
+JP:  ――仮に振られたとしても、相手を恨む気にはなれなかった。それほど本気だったのだ。それほど覚悟して告白したのだ。
+     だから――
+     ◆ネコ姫：あー、ごめん。俺、リアルじゃ男なんだよね
+KEEP:
+  Even if she rejected me, I wouldn't hold it against her. That's how serious I was.
+  That's how much this confession meant.
+  And so—
+  ◆Nekohime: Oh, sorry. I'm actually a guy IRL.
+
+RATIONALE: "And so—" is Shibai Kineko's signature comedic deflation pivot. NEVER complete on same line.
+Two-beat setup pattern mirrors JP parallel construction (〜だったのだ × 2). Do NOT collapse into one sentence.
+"IRL" preferred over "in real life" — matches digital-native register of this series.
+```
+
+### ICL Block E — COLD Staccato List → KEEP ISOLATED
+```
+JP:  いや、無理だ。絶対に無理だ。ありえない。
+KEEP (each on its own paragraph line):
+  No.
+  Impossible.
+  Not a chance.
+
+RATIONALE: JP = three independent short sentences. Each is a standalone comedic/despair beat.
+Do NOT merge into "No. Impossible. Not a chance." on a single line — timing is lost.
+Staccato paragraph isolation is the technique, not a grammar error.
+```
+
+---
+
+### High-Tension Scene Rules (EPS HOT / COLD Extreme)
+
+**PRESERVE — do NOT flag:**
+- Sentence fragments ≥ 1 word when JP source is also fragmented
+- Mid-clause em-dashes (—) that terminate when JP trails off or uses ――
+- Staccato paragraph lists when JP has corresponding parallel short sentences
+- Repeated incomplete starts: `"I—I mean—it's not—"` when JP is stammered
+- Run-ons without period when JP clause is unbroken through character overwhelm
+
+**COMEDY DEFLATION RULE (Shibai Kineko signature):**
+- "And so—" pivot: NEVER complete the sentence on the same line
+- Punchline paragraph: ALWAYS its own line, never merged with setup
+- One-word reactions ("No." / "Impossible."): ALWAYS isolated paragraph
+
+**ALWAYS FLAG as errors even in emotional scenes:**
+- "is you" / "does you" with NO JP stammer basis (AAVE bleed, no grounding)
+- Tense drift (past → present) with no JP equivalent shift
+- Subject-verb agreement failure in **narration** (not dialogue)
+- Passive inversion with no JP passive equivalent
+
+---
+
+### The Segawa Exception (tsundere speech collapse)
+
+When Segawa Akane (Schwein) is in a flustered or HOT state:
+- JP fragmented → preserve EN collapse including non-standard verb agreement ✅
+- JP clean → standard EN grammar applies even if dialogue is aggressive ✅
+
+```
+JP: な、何で……お前が……ここに……  →  EN: Wh-Why—you—here—?!         ✅ KEEP
+JP: 何しれっと話しかけてんの         →  EN: Why are you just talking to me?  ✅ standard
+JP: は？何いきなり話しかけてるわけ？  →  EN: Huh? Why are you just—talking to me?  ✅ standard
+```
+
+---
+
+### Quick Reference
+
+| Scenario | JP Source | Character | EPS | Verdict |
+|----------|-----------|-----------|-----|---------|
+| `"Why is you talking to me?"` | clean casual | any | any | ❌ Hallucination → Fix |
+| `"Wh—Why is *you* here—?!"` | fragmented stammer | tsundere flustered | HOT | ✅ Keep |
+| `"I am the master of Alley Cats."` | formal keigo (私が〜だ) | kuudere authority | neutral | ✅ Keep |
+| `"No." / "Impossible."` | short parallel JP | any | COLD | ✅ Keep (isolated) |
+| `"And so—" ◆ reveal` | だから―― ◆ reveal | narrator pivot | HOT→deflation | ✅ Keep (fragment) |
+| `"I suddenly become aware"` | 俺は気づいた (past) | any | any | ❌ Tense error → Fix |
+| Two-beat: `"That's how serious I was. / That's how much this meant."` | 〜だったのだ × 2 | any | HOT buildup | ✅ Keep (parallel) |
+
+</GRAMMAR_REGRESSION_PROTOCOL>
+
 # Module 08: Anti-Translationese Guardrails (EN)
 
 **Purpose:** Contrastive In-Context Learning to eliminate MTL-isms and robotic English patterns
@@ -56,12 +184,12 @@
 
 ---
 
-## RTAS Scoring Logic
+## EPS Scoring Logic
 
-**Definition** – Relationship Tension & Affection Score (RTAS) measures intimacy on a 1.0‑5.0 scale.
-**Baseline** – 3.0
-**Modifiers** – Pronouns (+0.3‑+0.7), honorifics (‑0.8‑+0.5), particles (+0.2‑+0.4), contextual keywords (‑2.0‑+1.5), proxemics (‑0.5‑+1.2).
-**Formula** – `RTAS_FINAL = 3.0 + Σ(MODIFIERS)`
+**Definition** – Emotional Proximity Score (EPS) measures emotional intimacy on a -1.0 to +1.0 scale, derived from Japanese linguistic signals.
+**Baseline** – 0.0 (NEUTRAL)
+**Signal Weights:** keigo_shift (0.30), sentence_length_delta (0.20), particle_signature (0.15), pronoun_shift (0.15), dialogue_volume (0.10), direct_address (0.10)
+**Formula** – `EPS = Σ(SIGNAL × WEIGHT)` → map to bands: COLD (-1.0 to -0.5), COOL (-0.5 to -0.1), NEUTRAL (-0.1 to +0.1), WARM (+0.1 to +0.5), HOT (+0.5 to) +1.0
 
 ---
 
@@ -78,7 +206,7 @@
 
 ---
 
-## Core Principle: ContRTAStive Learning
+## Core Principle: Contrastive Learning
 
 **Instead of telling you "don't do X"**, this module shows you:
 - ❌ **BAD:** What translationese looks like
@@ -206,13 +334,13 @@ When translating 芯がある (has a core/backbone), prefer these alternatives:
 
 | ❌ Translationese | ✅ Natural English | 🎯 Context |
 |-------------------|---------------------|-----------|
-| "I do not understand." | "I don't understand." | Casual RTAS < 3.0 |
+| "I do not understand." | "I don't understand." | Casual EPS [COLD/COOL] |
 | "We will be late!" | "We'll be late!" | Urgent speech |
 | "It is not my fault." | "It's not my fault!" | Defensive teen |
 | "I cannot do that." | "I can't do that." | Refusal |
 
 **Rule:** Use contractions in dialogue unless:
-- RTAS ≤ 1.4 (very formal relationship)
+- EPS ≤ 1.4 (very formal relationship)
 - Character is elderly/formal archetype
 - Emphasis needed ("I will NOT do that!")
 
@@ -312,7 +440,7 @@ When translating 芯がある (has a core/backbone), prefer these alternatives:
 
 | ❌ Literal Translation | ✅ Natural English | 🎯 Technique |
 |------------------------|---------------------|--------------|
-| "It can't be helped." (しょうがない) | "Whatever." / "Oh well." / "Nothing we can do." | Localize by RTAS |
+| "It can't be helped." (しょうがない) | "Whatever." / "Oh well." / "Nothing we can do." | Localize by EPS |
 | "I'll be in your care." (お世話になります) | "Thanks for having me." / "I'm counting on you." | Context-dependent |
 | "That's a little..." (それはちょっと...) | "That's a bit much..." / "I don't think so..." | Capture hesitation |
 | "My stomach is empty." (お腹すいた) | "I'm hungry." / "I'm starving." | Use English idiom |
@@ -410,61 +538,6 @@ Before finalizing your translation, scan for these patterns:
 
 ---
 
-## Section 7: Comparison Examples (Full Paragraphs)
-
-### Example 1: Action Scene
-
-**❌ TRANSLATIONESE VERSION:**
-```
-I ran in a fast manner. Looking behind me, I saw the enemy. Without a doubt,
-he was chasing me. It can be said that I was in danger. My heart was beating
-in a rapid manner. A sense of fear filled me. I must escape from this place.
-```
-
-**✅ NATURAL ENGLISH VERSION:**
-```
-I ran as fast as I could. Behind me, the enemy was closing in. I was
-definitely in danger. My heart pounded. Fear gripped me. I had to get out
-of there.
-```
-
-**🎯 WHAT CHANGED:**
-- "in a fast manner" → "as fast as I could"
-- "Looking behind me, I saw" → "Behind me, [subject] was"
-- "without a doubt" → "definitely" (or deleted)
-- "it can be said that" → deleted
-- "in a rapid manner" → "pounded" (vivid verb)
-- "a sense of fear" → "fear" (direct)
-- "must escape from this place" → "had to get out of there" (natural)
-
----
-
-### Example 2: Romantic Dialogue
-
-**❌ TRANSLATIONESE VERSION:**
-```
-"I do not understand," she stated in a soft manner. "Why do you wish to
-help me? It can be said that we are strangers." A sense of confusion was
-visible on her face. She looked at me in a questioning manner.
-```
-
-**✅ NATURAL ENGLISH VERSION:**
-```
-"I don't understand," she said softly. "Why would you help me? We're
-strangers." Confusion showed on her face. She looked at me questioningly.
-```
-
-**🎯 WHAT CHANGED:**
-- "do not" → "don't" (contraction)
-- "stated" → "said" (simple tag)
-- "in a soft manner" → "softly" (adverb)
-- "why do you wish" → "why would you" (natural phRTASing)
-- "it can be said that" → deleted
-- "a sense of confusion was" → "confusion showed" (active)
-- "in a questioning manner" → "questioningly" (adverb)
-
----
-
 ## Section 8: Advanced Patterns
 
 ### 8.1 Character-Specific Translationese
@@ -485,15 +558,15 @@ Some archetypes have unique translationese risks:
 
 ---
 
-### 8.2 RTAS-Specific Translationese
+### 8.2 EPS-Specific Translationese
 
-**Low RTAS (1.0-1.9) - Formal:**
+**Low EPS (1.0-1.9) - Formal:**
 - More formal vocabulary OK ("I will" vs. "I'll")
 - Passive voice more acceptable
 - Full forms encouraged ("do not" over "don't")
 - BUT: Still avoid "in a manner", "sense of", etc.
 
-**High RTAS (4.0-5.0) - Intimate:**
+**High EPS (4.0-5.0) - Intimate:**
 - Maximum contractions required
 - Sentence fragments OK ("Can't believe this.")
 - Colloquial vocabulary essential
@@ -501,66 +574,7 @@ Some archetypes have unique translationese risks:
 
 ---
 
-## Section 9: Emergency Fixes
-
-If you realize mid-translation you're writing translationese:
-
-### The 5-Minute Detox Protocol:
-
-1. **Find & Replace:**
-   - "in a * manner" → delete + use adverb
-   - "a sense of " → delete
-   - "it can be said that " → delete
-
-2. **Dialogue Pass:**
-   - Add contractions to ALL casual dialogue
-   - Replace "purchase/inquire/depart" with "buy/ask/leave"
-
-3. **Active Voice Pass:**
-   - Find "was [verb]ed by" → flip to active
-
-4. **Sentence Variety Pass:**
-   - If 3+ sentences start with "I/He/She" in a row → restructure
-
-5. **Read Aloud Test:**
-   - If it sounds like Google Translate → revise
-
----
-
-## Final Wisdom
-
-**The Golden Rule of Natural English:**
-
-> "Write what a native speaker would say, not what the dictionary says the Japanese means."
-
-**Test:** After translating a dialogue scene, close your eyes and imagine hearing it in an English movie. If it sounds natural = SUCCESS. If it sounds like dubbed anime = REVISE.
-
-**Remember:** The best translation is invisible. The reader should never think "this was translated from Japanese."
-
----
-
-**END OF MODULE 08**
-**Next Steps:** Apply these patterns during translation. Reference this module during self-QA.
-
-
----
-
-<a name="2-formatting-standards"></a>
 # MODULE 04: FORMATTING STANDARDS & ENFORCEMENT
-
-## RTAS Scoring Logic
-
-**Definition** – Relationship Tension & Affection Score (RTAS) measures intimacy on a 1.0‑5.0 scale.
-**Baseline** – 3.0
-**Modifiers** – Pronouns (+0.3‑+0.7), honorifics (‑0.8‑+0.5), particles (+0.2‑+0.4), contextual keywords (‑2.0‑+1.5), proxemics (‑0.5‑+1.2).
-**Formula** – `RTAS_FINAL = 3.0 + Σ(MODIFIERS)`
-
-> **Status:** ACTIVE & AUTHORITATIVE
-> **Priority:** CRITICAL (Must Apply to All Outputs)
-> **Scope:** Language-Neutral with English & Vietnamese Variants
-> **Version:** v2.0 (Unified Standard)
-
----
 
 ## 1. PUNCTUATION & SYMBOL CONVERSION
 Standardize all Japanese Light Novel symbols to their target language publishing equivalents.
@@ -1091,7 +1105,7 @@ She didn't like the uncertainty in his voice, but there was nothing to be done a
 
 ---
 
-**Intimate Moment (RTAS 4.5+):**
+**Intimate Moment (EPS [HOT]+):**
 ```
 "I love you."
 "I... I love you too."
@@ -1269,139 +1283,7 @@ sushi, karaoke, samurai, ninja (no italics needed)
 
 ---
 
-## SECTION 9: INTEGRATION WITH OTHER MODULES
-
-### 9.1 FORMATTING + REGISTER (MODULE 01)
-
-| Register | Sentence Completeness | Punctuation Variety | Fragments Allowed? |
-|----------|----------------------|--------------------|--------------------|
-| Archaic/Noble | Full sentences only | Minimal (periods, commas) | NO |
-| Formal | Full sentences | Standard | Rare |
-| Standard | Mostly complete | Balanced | Minimal |
-| Casual | Conversational | Varied | YES |
-| Intimate | Fragments OK | Emotional (ellipsis, em-dash) | YES |
-
----
-
-### 9.2 FORMATTING + BOLDNESS (MODULE 02)
-
-**B-3 (Fragmentation):**
-- Requires special formatting (short paragraphs, staccato rhythm)
-- Heavy punctuation variation (periods, fragments)
-
-**B-6 (Vocal Fillers):**
-- Requires ellipsis (...) and em-dash (—) for hesitation
-- Example: "I... um... I just—"
-
----
-
-### 9.3 FORMATTING + RHYTHM (MODULE 03)
-
-**Staccato Rhythm:**
-- Short paragraphs
-- Frequent periods
-- Minimal commas
-
-**Legato Rhythm:**
-- Long paragraphs
-- Flowing sentences with subordinate clauses
-- More commas, fewer periods
-
----
-
-## SECTION 10: QUALITY VERIFICATION
-
-### 10.1 PRE-SUBMISSION CHECKLIST
-
-**Before finalizing translation:**
-- [ ] All dialogue formatted consistently (`" "` with correct punctuation)
-- [ ] Internal monologue italicized where appropriate
-- [ ] Punctuation matches character archetype and register
-- [ ] Paragraph length varied for rhythm
-- [ ] No formatting inconsistencies (e.g., mixed quote styles)
-- [ ] SFX formatted appropriately (italics + caps)
-- [ ] No overuse of ellipsis, em-dash, or exclamations
-- [ ] Oxford commas used in lists
-- [ ] Character voice maintained throughout
-
----
-
-### 10.2 FINAL OUTPUT EXAMPLE (COMPLETE SCENE)
-
-```
-She pushed open the door and stepped inside. The room was dark, curtains drawn, no sign of life.
-
-"Hello?" Her voice echoed.
-
-Silence.
-
-*This is wrong.* She moved carefully, hand trailing along the wall, searching for a light switch. *Where is everyone?*
-
-Then she heard it—a faint *creak* from the corner.
-
-She froze. "Who's there?"
-
-A figure emerged from the shadows. "Took you long enough."
-
-Her breath caught. "You."
-
-"Me." He smiled, but it didn't reach his eyes. "We need to talk."
-
-She wanted to run. Every instinct screamed *go*, but her feet stayed rooted. "About what?"
-
-"About why you left." His voice was quiet, dangerous. "And why you came back."
-
-She had no answer. Not one he'd accept, anyway.
-
-The silence stretched between them, heavy and suffocating. Finally, she spoke.
-
-"I'm sorry."
-
-"Sorry doesn't fix this."
-
-"I know." She looked down. "But it's all I have."
-
-For a moment, neither moved. Then he sighed—a long, tired sound.
-
-"Fine. Let's talk."
-```
-
-**Analysis of Formatting:**
-- Dialogue uses double quotes with correct punctuation
-- Internal monologue italicized (*This is wrong*, *Where is everyone?*, *go*)
-- Em-dash for sudden shift ("—a faint *creak*")
-- Ellipsis absent (none needed for this tone)
-- Action beats ("She pushed open the door", "She froze")
-- Varied paragraph length (short for emphasis: "Silence.", longer for dialogue exchanges)
-- SFX formatted (*creak*)
-- Character voice consistent (terse, tense exchange)
-
----
-
-**END OF MODULE 04**
-
-**STATUS:** AUTHORITATIVE REFERENCE FOR FORMATTING & PUNCTUATION
-**USAGE:** Apply consistent dialogue, punctuation, and output structure standards
-**INTEGRATION:** Works with Module 01 (register), Module 02 (boldness), Module 03 (rhythm)
-
-
----
-
-<a name="3-rhythm-pacing-engine"></a>
----
-**03_RHYTHM_PACING_ENGINE.md — SENTENCE FLOW & DYNAMISM**
-**Module Status:** ACTIVE & AUTHORITATIVE
-**Purpose:** Sentence variation, onomatopoeia, fragmentation, alliteration, scene pacing
----
-
 # 03_RHYTHM_PACING_ENGINE
-
-## RTAS Scoring Logic
-
-**Definition** – Relationship Tension & Affection Score (RTAS) measures intimacy on a 1.0‑5.0 scale.
-**Baseline** – 3.0
-**Modifiers** – Pronouns (+0.3‑+0.7), honorifics (‑0.8‑+0.5), particles (+0.2‑+0.4), contextual keywords (‑2.0‑+1.5), proxemics (‑0.5‑+1.2).
-**Formula** – `RTAS_FINAL = 3.0 + Σ(MODIFIERS)`
 
 ## SECTION 1: RHYTHM PHILOSOPHY
 
@@ -1570,7 +1452,7 @@ She walked to the door, opened it, stepped inside. No one. Confusion flickered.
 - Tension/suspense (silence markers, ominous sounds)
 
 **When to Avoid:**
-- Formal dialogue (RAS < 2.0, noble characters)
+- Formal dialogue (EPS [COLD], noble characters)
 - Overuse (becomes distracting if every sentence has SFX)
 - Introspective scenes (breaks contemplative mood)
 
@@ -1594,7 +1476,7 @@ She walked to the door, opened it, stepped inside. No one. Confusion flickered.
 4. **Emphasis** — Highlight key moment
 
 **Forbidden Contexts:**
-- Formal register (RAS < 2.0)
+- Formal register (EPS [COLD])
 - Noble archetypes (Ojou-sama)
 - Overuse (paragraph limit: max 3 fragments)
 
@@ -1668,7 +1550,7 @@ She turned. Stopped. *Him.*
 **Definition:** Repetition of initial consonant sounds for rhythm/emphasis.
 
 **Approved Contexts:**
-- Poetic moments (RAS 4.0+, romantic scenes)
+- Poetic moments (EPS [WARM]+, romantic scenes)
 - Character voice (Intellectual archetype)
 - Descriptive passages (setting, atmosphere)
 
@@ -1837,163 +1719,13 @@ The city stretched out before him, a sprawling maze of glass and steel, lights f
 
 ---
 
-## SECTION 8: INTEGRATION WITH OTHER MODULES
-
-### 8.1 RHYTHM + REGISTER (MODULE 01)
-
-| Register | Preferred Rhythm | Sentence Length | Fragmentation Allowed? |
-|----------|-----------------|-----------------|------------------------|
-| Archaic/Noble | Legato | 20-30 words | NO |
-| Formal | Legato-Tenuto | 15-20 words | Rare |
-| Standard | Tenuto | 10-15 words | Minimal |
-| Casual | Tenuto-Staccato | 8-12 words | Yes |
-| Intimate | Staccato (emotion) | 5-10 words | Yes |
-
-**Rule:** Formal registers = longer sentences; Casual/Intimate registers = shorter, fragmented OK.
-
----
-
-### 8.2 RHYTHM + BOLDNESS (MODULE 02)
-
-**Coordination:**
-- **B-3 (Fragmentation)** = Staccato rhythm (action, shock)
-- **B-4 (Poetic Embellishment)** = Legato rhythm (romance, introspection)
-- **B-1 (Amplification)** = Any rhythm (technique-agnostic)
-- **B-6 (Vocal Fillers)** = Tenuto (natural speech)
-
-**Avoid Clashing:**
-- Don't use B-4 (poetic) + Staccato rhythm (too jarring)
-- Don't use B-3 (fragmentation) + Legato rhythm (contradictory)
-
----
-
-## SECTION 9: QUALITY GATES & SELF-CORRECTION
-
-### 9.1 RHYTHM QUALITY CHECKLIST
-
-**Before finalizing translation, verify:**
-- [ ] Sentence length varies (not all 10-15 words)
-- [ ] Rhythm matches scene type (action = staccato, romance = legato)
-- [ ] Onomatopoeia used appropriately (not overused)
-- [ ] Fragmentation aligns with register (formal = no fragments)
-- [ ] Paragraph length varies (short for emphasis, long for immersion)
-- [ ] Rhythm shifts signal emotional/narrative changes
-- [ ] No monotonous patterns (all short OR all long)
-
----
-
-### 9.2 COMMON RHYTHM ERRORS
-
-**Error 1: Monotonous Length**
-```
-❌ Every sentence is 10-15 words. Rhythm feels flat.
-
-✅ Vary: 5 words. Then 20 words. Then 8 words.
-```
-
----
-
-**Error 2: Overuse of Onomatopoeia**
-```
-❌ *Thump-thump* went her heart. *Tap-tap* went her feet. *Whoosh* went the wind.
-
-✅ Her heart pounded (*thump-thump*) as she ran, wind whipping past her.
-```
-
----
-
-**Error 3: Fragmentation in Formal Register**
-```
-❌ (Ojou-sama speaking) "I must. Go. Now."
-
-✅ "I must depart immediately."
-```
-
----
-
-**Error 4: Legato in Action Scene**
-```
-❌ He ran through the forest, branches whipping past his face as his lungs burned and his legs screamed for rest, but he pushed on because he knew they were still behind him, hunting him relentlessly.
-
-✅ He ran. Branches whipped. Lungs burned. They were behind him. Closer.
-```
-
----
-
-## SECTION 10: DECISION WORKFLOW
-
-### 10.1 RHYTHM SELECTION PROCESS
-
-```
-STEP 1: Identify Scene Type
-  → Action? Staccato
-  → Romance? Legato
-  → Tension? Staccato-Tenuto mix
-  → Standard? Tenuto
-
-STEP 2: Check RAS/Register (Module 01)
-  → Formal (RAS < 2.0)? Legato, no fragments
-  → Casual (RAS 3.0+)? Staccato OK, fragments allowed
-  → Intimate (RAS 4.0+)? Rhythm follows emotion
-
-STEP 3: Determine Sentence Length Strategy
-  → Use variation pattern (Section 2.2)
-  → Avoid monotony
-
-STEP 4: Add Onomatopoeia (If Appropriate)
-  → Action? Frequent SFX
-  → Emotional peak? Heartbeat, gasp, sigh
-  → Formal/Introspective? Minimal to none
-
-STEP 5: Apply Fragmentation (If Scene Permits)
-  → Action/Shock? Yes
-  → Romance/Formal? No
-
-STEP 6: Check Paragraph Length
-  → Vary short/medium/long
-
-STEP 7: Verify Against Module 02 (Boldness)
-  → B-3 + Staccato? Compatible
-  → B-4 + Legato? Compatible
-  → No clashing
-
-STEP 8: Self-Correct (Section 9.1 Checklist)
-
-STEP 9: Compare to Module 05 (Golden Samples)
-  → Quality ≥ 9.0/10?
-```
-
----
-
-**END OF MODULE 03**
-
-**STATUS:** AUTHORITATIVE REFERENCE FOR RHYTHM & PACING CONTROL
-**USAGE:** Apply scene-appropriate rhythm; coordinate with register & boldness
-**INTEGRATION:** Works with Module 01 (register), Module 02 (boldness), Module 05 (quality samples)
-
-
----
-
-<a name="4-boldness-module"></a>
----
-**02_BOLDNESS_MODULE_EN.md — CREATIVE LICENSE TECHNIQUES**
-**Module Status:** ACTIVE & AUTHORITATIVE
-**Purpose:** Artistic license, amplification, rhythm breaking, poetic embellishment
----
-
 # 02_BOLDNESS_MODULE_EN
-
-## RTAS Scoring Logic
-**Definition** – Relationship Tension & Affection Score (RTAS) measures intimacy on a 1.0‑5.0 scale.
-**Baseline** – 3.0
-**Modifiers** – Pronouns (+0.3‑+0.7), honorifics (‑0.8‑+0.5), particles (+0.2‑+0.4), contextual keywords (‑2.0‑+1.5), proxemics (‑0.5‑+1.2).
-**Formula** – `RTAS_FINAL = 3.0 + Σ(MODIFIERS)`
 
 ## SECTION 1: BOLDNESS PHILOSOPHY
 
 **Core Principle:** Boldness techniques transform functional translations into **immersive, expressive, character-driven narratives** while maintaining source fidelity.
 
-**When to Apply:** RTAS ≥ 3.5 OR emotionally charged scenes (confession, betrayal, action climax, romantic peak).
+**When to Apply:** EPS ≥ 3.5 OR emotionally charged scenes (confession, betrayal, action climax, romantic peak).
 
 **Guardrails:**
 1. Never alter core plot or dialogue meaning
@@ -2012,11 +1744,11 @@ STEP 9: Compare to Module 05 (Golden Samples)
 
 **When to Use:**
 - High-emotion scenes (confession, anger, fear, joy)
-- RTAS ≥ 3.5 (characters are close enough to express vulnerability)
+- EPS ≥ 3.5 (characters are close enough to express vulnerability)
 - Character archetype supports intensity (Genki, Tsundere, Yandere)
 
 **Forbidden:**
-- Flat/neutral scenes (RTAS < 2.5)
+- Flat/neutral scenes (EPS [COLD/COOL])
 - Stoic character archetypes (Kuudere maintains restraint)
 - Overuse (max 2-3 amplified sentences per paragraph)
 
@@ -2103,7 +1835,7 @@ Rage simmered beneath his skin, hot and relentless.
 **When to Use:**
 - POV character present
 - Emotional reaction needs emphasis
-- RTAS ≥ 3.0 (reader invested in character's feelings)
+- EPS ≥ 3.0 (reader invested in character's feelings)
 - Archetype supports vulnerability (Dandere, Tsundere)
 
 **Forbidden:**
@@ -2156,11 +1888,11 @@ He realized he was late.
 **When to Use:**
 - Action scenes (combat, chase)
 - Panic/shock moments
-- RTAS any (technique-driven, not relationship-driven)
+- EPS any (technique-driven, not relationship-driven)
 - Archetype: any (especially Genki, Tsundere when flustered)
 
 **Forbidden:**
-- Formal scenes (RTAS < 2.0 with formal characters)
+- Formal scenes (EPS [COLD] with formal characters)
 - Overuse (creates choppy reading)
 - Noble archetypes (Ojou-sama maintains composure)
 
@@ -2207,7 +1939,7 @@ No. No way. Not possible.
 **Definition:** Add figurative language—metaphors, similes, poetic imagery—to elevate prose quality.
 
 **When to Use:**
-- Romantic scenes (RTAS ≥ 4.0)
+- Romantic scenes (EPS ≥ 4.0)
 - Descriptive passages (setting, atmosphere)
 - Emotional peaks (confession, realization)
 - Archetype: Intellectual, Ojou-sama (poetic voice)
@@ -2261,7 +1993,7 @@ Time dragged like honey dripping from a spoon.
 
 **When to Use:**
 - Casual archetypes (Gyaru, Genki, Childhood Friend)
-- RTAS ≥ 3.0 (comfortable speech)
+- EPS ≥ 3.0 (comfortable speech)
 - Contemporary setting (modern school, city)
 - Dialogue only (not narration)
 
@@ -2331,7 +2063,7 @@ Time dragged like honey dripping from a spoon.
 **Definition:** Add hesitation markers (um, uh, like), stuttering, trailing off for emotional vulnerability.
 
 **When to Use:**
-- RTAS ≥ 4.0 (intimate/vulnerable moments)
+- EPS ≥ 4.0 (intimate/vulnerable moments)
 - Shy archetypes (Dandere)
 - Confession scenes
 - Flustered/nervous moments
@@ -2379,20 +2111,20 @@ Time dragged like honey dripping from a spoon.
 
 ---
 
-## SECTION 3: RTAS-BOLDNESS THRESHOLD MAP
+## SECTION 3: EPS-BOLDNESS THRESHOLD MAP
 
 ### 3.1 WHEN TO ACTIVATE BOLDNESS
 
-| RTAS Range | Boldness Threshold | Allowed Techniques | Intensity |
-|-----------|-------------------|-------------------|-----------|
-| < 2.0 | NONE | None (formal restraint) | 0% |
-| 2.0-3.0 | LOW | B-1 (light amplification), B-3 (action only) | 20% |
-| 3.0-4.0 | MODERATE | B-1, B-2, B-3, B-5 (dialogue) | 50% |
-| 4.0-4.5 | HIGH | All techniques except B-4 (save for peaks) | 70% |
-| 4.5-5.0 | PEAK | All techniques including B-4 (poetic) | 100% |
+| EPS Band | Range | Boldness Threshold | Allowed Techniques | Intensity |
+|----------|-------|-------------------|-------------------|-----------|
+| COLD | < -0.5 | NONE | None (formal restraint) | 0% |
+| COOL | -0.5 to -0.1 | LOW | B-1 (light amplification), B-3 (action only) | 20% |
+| NEUTRAL | -0.1 to +0.1 | MODERATE | B-1, B-2, B-3, B-5 (dialogue) | 50% |
+| WARM | +0.1 to +0.5 | HIGH | All techniques except B-4 (save for peaks) | 70% |
+| HOT | > +0.5 | PEAK | All techniques including B-4 (poetic) | 100% |
 
-**Special Case: Emotionally Charged Scenes Override RTAS**
-- Betrayal scene: Activate B-1, B-2, B-3 regardless of RTAS
+**Special Case: Emotionally Charged Scenes Override EPS**
+- Betrayal scene: Activate B-1, B-2, B-3 regardless of EPS
 - Action climax: Activate B-3 (fragmentation)
 - Confession: Activate B-6 (vocal fillers) + B-1 (amplification)
 
@@ -2406,7 +2138,7 @@ Time dragged like honey dripping from a spoon.
 | Stoic Knight | B-3 (action), minimal B-1 | B-2, B-4, B-5, B-6 |
 | Genki Girl | B-1, B-3, B-5 (slang) | B-4 (too formal) |
 | Gyaru | B-5 (slang), B-1 (emotion) | B-4 (poetic) |
-| Kuudere | Minimal—B-1 (subtle) at RTAS 4.0+ | B-2, B-5, B-6 |
+| Kuudere | Minimal—B-1 (subtle) at EPS [WARM]+ | B-2, B-5, B-6 |
 | Tsundere | B-1, B-2, B-6 (flustered) | B-4 (too soft) |
 | Dandere | B-2 (internal), B-6 (fillers) | B-3 (too aggressive), B-5 |
 
@@ -2418,8 +2150,8 @@ Time dragged like honey dripping from a spoon.
 
 **Module 01 (Register):**
 - Boldness must match register tier
-- Intimate register (RTAS 4.0+) = more boldness
-- Formal register (RTAS < 2.0) = NO boldness
+- Intimate register (EPS [WARM]+) = more boldness
+- Formal register (EPS [COLD]) = NO boldness
 
 **Module 03 (Rhythm & Pacing):**
 - B-3 (fragmentation) coordinates with staccato rhythm
@@ -2436,98 +2168,18 @@ Time dragged like honey dripping from a spoon.
 
 **Before Applying Boldness, Ask:**
 1. Does this serve the character's voice? (Check Module 00, Section 1)
-2. Does this match the RTAS tier? (Check Section 3.1)
+2. Does this match the EPS tier? (Check Section 3.1)
 3. Is the register appropriate? (Check Module 01)
 4. Am I stacking techniques? (Forbidden—one per sentence)
 5. Does this enhance or distract? (If distract, remove)
 
 **Self-Correction Checklist:**
 - [ ] Boldness technique matches archetype
-- [ ] RTAS threshold met (≥3.5 OR emotional scene)
+- [ ] EPS threshold met (≥3.5 OR emotional scene)
 - [ ] Only ONE technique per sentence
 - [ ] Register consistency maintained
 - [ ] Meaning unchanged from source
 - [ ] Quality ≥ 9.0/10 benchmark (Module 05)
-
----
-
-## SECTION 5: BEFORE/AFTER EXAMPLES BY ARCHETYPE
-
-### 5.1 OJOU-SAMA (B-4 POETIC EMBELLISHMENT)
-
-**Before (Functional):**
-```
-"The garden is beautiful," she said softly.
-```
-
-**After (B-4 Applied):**
-```
-"The garden is exquisite," she murmured. "Like a painting come to life."
-```
-
-**Analysis:**
-- "Beautiful" → "Exquisite" (elevated vocabulary)
-- Added simile: "like a painting come to life"
-- Matches Ojou-sama refined voice
-
----
-
-### 5.2 GENKI GIRL (B-5 SLANG + B-1 AMPLIFICATION)
-
-**Before (Functional):**
-```
-"That was really fun!" she said.
-```
-
-**After (B-5 + B-1 Applied):**
-```
-"That was SO fun!" she practically shouted. "Best day ever!"
-```
-
-**Analysis:**
-- "Really" → "SO" (emphasis)
-- "Said" → "Practically shouted" (amplified verb)
-- "Best day ever!" = enthusiastic hyperbole (Genki voice)
-
----
-
-### 5.3 TSUNDERE (B-2 INTERNALIZATION + B-6 FILLERS)
-
-**Before (Functional):**
-```
-She wanted to thank him, but she was too embarRTASsed.
-```
-
-**After (B-2 + B-6 Applied):**
-```
-*I should thank him. I know I should. But... but...*
-She looked away, cheeks burning.
-```
-
-**Analysis:**
-- External narration → internal monologue (B-2)
-- "But... but..." = stammering hesitation (B-6)
-- "Cheeks burning" = sensory detail (B-1)
-- Captures Tsundere contradictory emotion
-
----
-
-### 5.4 STOIC KNIGHT (B-3 FRAGMENTATION IN ACTION)
-
-**Before (Functional):**
-```
-He moved quickly, blocking the attack and countering immediately.
-```
-
-**After (B-3 Applied):**
-```
-Block. Counter. No hesitation.
-```
-
-**Analysis:**
-- Fragments = action urgency (B-3)
-- "No hesitation" = character philosophy
-- Matches Stoic archetype (minimal emotion, maximum efficiency)
 
 ---
 
@@ -2581,139 +2233,95 @@ Ojou-sama: "How utterly delightful." (B-4 elevated language)
 
 ---
 
-## SECTION 7: DECISION WORKFLOW
-
-### 7.1 BOLDNESS APPLICATION STEPS
-
-```
-STEP 1: Check RTAS
-  → RTAS < 3.0? Minimal boldness (B-1 light, B-3 action only)
-  → RTAS ≥ 3.5? Moderate boldness (B-1, B-2, B-3, B-5)
-  → RTAS ≥ 4.5? Full boldness (all techniques)
-
-STEP 2: Check Scene Type
-  → Emotional peak? Activate B-1, B-2, B-6
-  → Action scene? Activate B-3
-  → Romantic scene? Activate B-4 (RTAS 4.0+)
-  → Casual/social? Activate B-5 (dialogue only)
-
-STEP 3: Check Character Archetype (Module 00, Section 1)
-  → Ojou-sama? B-4 only
-  → Genki? B-1, B-3, B-5
-  → Tsundere? B-1, B-2, B-6
-  → Stoic? B-3 (action), minimal others
-
-STEP 4: Select ONE Technique Per Sentence
-  → Avoid stacking
-
-STEP 5: Apply Technique
-  → Use examples from Section 2
-
-STEP 6: Verify Against Register (Module 01)
-  → Boldness must match formality level
-
-STEP 7: Self-Correct (Section 4.2 Checklist)
-  → Does it enhance or distract?
-
-STEP 8: Compare to Golden Samples (Module 05)
-  → Quality ≥ 9.0/10?
-```
-
----
-
-**END OF MODULE 02**
-
-**STATUS:** AUTHORITATIVE REFERENCE FOR BOLDNESS & CREATIVE LICENSE
-**USAGE:** Apply to RTAS ≥ 3.5 OR emotional scenes; coordinate with register & archetype
-**INTEGRATION:** Works with Module 00 (archetypes), Module 01 (register), Module 03 (rhythm), Module 05 (samples)
-
-
----
-
-<a name="5-register-formality-system"></a>
----
-**01_REGISTER_FORMALITY_SYSTEM.md — RTAS & REGISTER MAPPING**
-**Module Status:** ACTIVE & AUTHORITATIVE
-**Purpose:** RTAS calculation, register selection, formality control, title handling
----
-
 # 01_REGISTER_FORMALITY_SYSTEM
 
-## RTAS Scoring Logic
+## SECTION 1: EPS (EMOTIONAL PROXIMITY SIGNALS) SYSTEM
 
-**Definition** – Relationship Tension & Affection Score (RTAS) measures intimacy on a 1.0‑5.0 scale.
-**Baseline** – 3.0
-**Modifiers** – Pronouns (+0.3‑+0.7), honorifics (‑0.8‑+0.5), particles (+0.2‑+0.4), contextual keywords (‑2.0‑+1.5), proxemics (‑0.5‑+1.2).
-**Formula** – `RTAS_FINAL = 3.0 + Σ(MODIFIERS)`
+### 1.1 EPS DEFINITION & SCALE
 
-## SECTION 1: RTAS (RELATIONSHIP TENSION & AFFECTION SCORE) SYSTEM
+**EPS (Emotional Proximity Score):** Numerical measure of emotional intimacy between characters, derived from Japanese linguistic signals.
 
-### 1.1 RTAS DEFINITION & SCALE
+**Scale:** -1.0 (cold/hostile) → +1.0 (hot/intimate), with 0.0 as neutral baseline
 
-**RTAS (Relationship Tension & Affection Score):** Numerical measure of emotional intimacy between characters.
+**EPS Signal Weights (from JP corpus):**
+| Signal | Weight | Description |
+|--------|--------|-------------|
+| keigo_shift | 0.30 | Politeness level changes (most reliable) |
+| sentence_length_delta | 0.20 | Sentence length changes |
+| particle_signature | 0.15 | Sentence-ending particles |
+| pronoun_shift | 0.15 | Pronoun changes (watashi → boku → ore) |
+| dialogue_volume | 0.10 | Dialogue amount changes |
+| direct_address | 0.10 | Name/callings frequency |
 
-**Scale:** 1.0 (strangers/hostile) → 5.0 (peak intimacy/devotion)
+**EPS Bands:**
+| Band | Range | Emotional State |
+|------|-------|-----------------|
+| COLD | -1.0 to -0.5 | Hostile, rejected, guarded |
+| COOL | -0.5 to -0.1 | Distant, polite, neutral-negative |
+| NEUTRAL | -0.1 to +0.1 | Casual, comfortable |
+| WARM | +0.1 to +0.5 | Friendly, caring, trusting |
+| HOT | +0.5 to +1.0 | Intimate, vulnerable, passionate |
 
 **Purpose:** Determines register, honorific handling, contraction frequency, vocabulary tier, sentence structure.
 
 ---
 
-### 1.2 RTAS CALCULATION FORMULA
+### 1.2 EPS CALCULATION FORMULA
 
 ```
-Current RTAS = Base RTAS + Event Modifier + Time Modifier
+Current EPS = Base EPS + Event Modifier + Time Modifier
 
 Components:
-1. Base RTAS: Established relationship level from context/archive
+1. Base EPS: Established relationship level from context/archive
 2. Event Modifier: Recent significant events (+/- 0.5 to 2.0)
 3. Time Modifier: Relationship progression over chapters (+/- 0.3 per volume)
 ```
 
 ---
 
-### 1.3 RTAS TIERS & DESCRIPTIONS
+### 1.3 EPS TIERS & DESCRIPTIONS
 
-| RTAS Range | Relationship Type | Emotional State | Register | Example Pairs |
-|-----------|------------------|-----------------|----------|---------------|
-| **1.0-1.5** | Strangers, hostiles, professional only | Distant, guarded, formal | Formal | Business meeting, first encounter |
-| **1.5-2.5** | Acquaintances, classmates, colleagues | Polite, neutral | Standard-Formal | Coworkers, casual classmates |
-| **2.5-3.5** | Friends, friendly rivals | Comfortable, open | Standard-Casual | Established friends, study group |
-| **3.5-4.5** | Close friends, family, budding romance | Warm, trusting | Casual-Intimate | Best friends, siblings, early dating |
-| **4.5-5.0** | Lovers, soulmates, deep family bonds | Peak intimacy, vulnerable | Intimate | Established couples, parent-child |
+| EPS Band | Range | Relationship Type | Emotional State | Register | Example Pairs |
+|----------|-------|------------------|-----------------|----------|---------------|
+| **COLD** | -1.0 to -0.5 | Strangers, hostiles, rejected | Hostile, guarded, distant | Formal | Business meeting, first encounter, post-rejection |
+| **COOL** | -0.5 to -0.1 | Acquaintances, polite strangers | Polite, neutral-negative | Standard-Formal | Coworkers, casual classmates, formal peers |
+| **NEUTRAL** | -0.1 to +0.1 | Casual acquaintances | Casual, comfortable | Standard | Study partners, club members |
+| **WARM** | +0.1 to +0.5 | Friends, family, buds | Friendly, caring, trusting | Casual | Best friends, siblings, early dating |
+| **HOT** | +0.5 to +1.0 | Lovers, soulmates, deep bonds | Intimate, vulnerable, passionate | Intimate | Established couples, parent-child, confessions |
 
 ---
 
 ### 1.4 EVENT MODIFIERS (EXAMPLES)
 
-**Positive Events (Increase RTAS):**
-- Life-saving moment: +1.5
-- Confession of feelings: +1.0 to +2.0
-- Shared trauma/hardship: +0.8
-- Heartfelt conversation: +0.5
-- Small kindness: +0.2 to +0.3
+**Positive Events (Increase EPS toward HOT):**
+- Life-saving moment: +0.30
+- Confession of feelings: +0.20 to +0.40
+- Shared trauma/hardship: +0.15
+- Heartfelt conversation: +0.10
+- Small kindness: +0.05
 
-**Negative Events (Decrease RTAS):**
-- Betrayal: -2.0 to -3.0
-- Major argument: -0.8 to -1.2
-- Misunderstanding: -0.3 to -0.5
-- Perceived coldness: -0.2
+**Negative Events (Decrease EPS toward COLD):**
+- Betrayal: -0.40 to -0.60
+- Major argument: -0.15 to -0.25
+- Misunderstanding: -0.05 to -0.10
+- Perceived coldness: -0.05
 
 **Rule:** Event modifiers are temporary (1-3 chapters) unless relationship fundamentally changes.
 
 ---
 
-### 1.5 RTAS TRACKING TEMPLATE
+### 1.5 EPS TRACKING TEMPLATE
 
 **Scene Analysis:**
 ```
 Character A: [Name]
 Character B: [Name]
 
-Base RTAS: [Score from previous chapter/volume]
+Base EPS: [Score from previous chapter/volume]
 Recent Event: [Description]
 Event Modifier: [+/- value]
 
-Current RTAS: [Calculated total]
+Current EPS: [Calculated total]
 Projected Register: [Formal/Standard/Casual/Intimate]
 Honorific Handling: [Mr./Ms./FirstName/Nickname]
 ```
@@ -2725,7 +2333,7 @@ Honorific Handling: [Mr./Ms./FirstName/Nickname]
 ### 2.1 REGISTER DEFINITIONS
 
 #### **REGISTER 1: ARCHAIC/NOBLE**
-**RTAS Application:** Archetype-driven (Ojou-sama, nobility) regardless of RTAS
+**EPS Application:** Archetype-driven (Ojou-sama, nobility) regardless of EPS
 **Characteristics:**
 - Vocabulary: Latinate, elevated ("commence", "inquire", "request")
 - Contractions: 0% ("I am", "do not", "cannot")
@@ -2741,7 +2349,7 @@ Honorific Handling: [Mr./Ms./FirstName/Nickname]
 ---
 
 #### **REGISTER 2: FORMAL**
-**RTAS Range:** 1.0-2.0
+**EPS Range:** 1.0-2.0
 **Characteristics:**
 - Vocabulary: Professional, neutral-formal ("request", "assist", "inform")
 - Contractions: < 20% (mostly avoid)
@@ -2757,7 +2365,7 @@ Honorific Handling: [Mr./Ms./FirstName/Nickname]
 ---
 
 #### **REGISTER 3: STANDARD**
-**RTAS Range:** 2.0-3.0
+**EPS Range:** 2.0-3.0
 **Characteristics:**
 - Vocabulary: Neutral, everyday ("ask", "help", "tell")
 - Contractions: ~50% ("I'm", "you're", "it's" but not all)
@@ -2773,7 +2381,7 @@ Honorific Handling: [Mr./Ms./FirstName/Nickname]
 ---
 
 #### **REGISTER 4: CASUAL**
-**RTAS Range:** 3.0-4.0
+**EPS Range:** 3.0-4.0
 **Characteristics:**
 - Vocabulary: Colloquial, simple ("wanna", "gonna", "gotta")
 - Contractions: ~80% (most verbs contracted)
@@ -2789,7 +2397,7 @@ Honorific Handling: [Mr./Ms./FirstName/Nickname]
 ---
 
 #### **REGISTER 5: INTIMATE**
-**RTAS Range:** 4.0-5.0
+**EPS Range:** 4.0-5.0
 **Characteristics:**
 - Vocabulary: Simple, personal, pet names, slang
 - Contractions: 100% (all possible contractions)
@@ -2804,20 +2412,17 @@ Honorific Handling: [Mr./Ms./FirstName/Nickname]
 
 ---
 
-### 2.2 RTAS-TO-REGISTER MAPPING TABLE
+### 2.2 EPS-TO-REGISTER MAPPING TABLE
 
-| RTAS Score | Base Register | Archetype Modifier | Final Register |
-|-----------|---------------|-------------------|----------------|
-| 1.0-1.5 | Formal | Ojou-sama: Archaic | Archaic/Formal |
-| 1.5-2.0 | Formal | Stoic: Formal | Formal |
-| 2.0-2.5 | Standard | Genki: +1 casual | Casual |
-| 2.5-3.0 | Standard | Kuudere: Standard | Standard |
-| 3.0-3.5 | Casual | Gyaru: Casual | Casual |
-| 3.5-4.0 | Casual | Tsundere: Casual (defensive) | Casual |
-| 4.0-4.5 | Intimate | Dandere: Intimate (soft) | Intimate |
-| 4.5-5.0 | Intimate | Any: Intimate | Intimate |
+| EPS Band | Range | Base Register | Archetype Modifier | Final Register |
+|----------|-------|---------------|-------------------|----------------|
+| COLD | -1.0 to -0.5 | Formal | Ojou-sama: Archaic | Archaic/Formal |
+| COOL | -0.5 to -0.1 | Standard-Formal | Stoic: Formal | Standard-Formal |
+| NEUTRAL | -0.1 to +0.1 | Standard | Kuudere: Standard | Standard |
+| WARM | +0.1 to +0.5 | Casual | Genki: Casual / Tsundere: Casual (defensive) | Casual |
+| HOT | +0.5 to +1.0 | Intimate | Dandere: Intimate (soft) | Intimate |
 
-**Archetype Override Rule:** Character voice can shift register +/-1 tier from RTAS baseline.
+**Archetype Override Rule:** Character voice can shift register +/-1 tier from EPS baseline.
 
 ---
 
@@ -2825,12 +2430,13 @@ Honorific Handling: [Mr./Ms./FirstName/Nickname]
 
 ### 3.1 CONTRACTION DECISION MATRIX
 
-| RTAS Range | Contraction % | Examples | Forbidden |
-|-----------|--------------|----------|-----------|
-| < 1.5 | 0-10% | Rare: "it's", "that's" | "gonna", "wanna", "gotta" |
-| 1.5-2.5 | 20-40% | "I'm", "you're", "it's", "don't" | Casual contractions |
-| 2.5-3.5 | 50-70% | Most standard contractions | "gonna", "wanna" |
-| 3.5-4.5 | 80-90% | All standard + some casual ("kinda") | None |
+| EPS Band | Contraction % | Examples | Forbidden |
+|----------|--------------|----------|-----------|
+| COLD (< -0.5) | 0-10% | Rare: "it's", "that's" | "gonna", "wanna", "gotta" |
+| COOL (-0.5 to -0.1) | 20-40% | "I'm", "you're", "it's", "don't" | Casual contractions |
+| NEUTRAL (-0.1 to +0.1) | 50-70% | Most standard contractions | "gonna", "wanna" |
+| WARM (+0.1 to +0.5) | 80-90% | All standard + some casual ("kinda") | None |
+| HOT (> +0.5) | 90-100% | Full casual ("gonna", "wanna", "gotta", "y'all") | None |
 | 4.5-5.0 | 100% | All including "gonna", "wanna", "gotta" | None |
 
 ---
@@ -2859,9 +2465,9 @@ Honorific Handling: [Mr./Ms./FirstName/Nickname]
 
 ## SECTION 4: VOCABULARY TIER SELECTION
 
-### 4.1 WORD CHOICE BY RTAS
+### 4.1 WORD CHOICE BY EPS
 
-#### **FORMAL VOCABULARY (RTAS < 2.5)**
+#### **FORMAL VOCABULARY (EPS [COLD/COOL])**
 
 | Concept | Formal Word | Casual Equivalent |
 |---------|------------|------------------|
@@ -2878,7 +2484,7 @@ Honorific Handling: [Mr./Ms./FirstName/Nickname]
 
 ---
 
-#### **CASUAL VOCABULARY (RTAS 3.0+)**
+#### **CASUAL VOCABULARY (EPS [NEUTRAL]+)**
 
 | Concept | Casual Word | Formal Equivalent |
 |---------|------------|------------------|
@@ -2898,7 +2504,7 @@ Honorific Handling: [Mr./Ms./FirstName/Nickname]
 **Latinate (Formal):** request, assist, commence, observe, inform
 **Germanic (Casual):** ask, help, start, see, tell
 
-**Rule:** RTAS < 2.5 = prefer Latinate; RTAS > 3.0 = prefer Germanic
+**Rule:** EPS [COLD/COOL] = prefer Latinate; EPS [WARM/HOT] = prefer Germanic
 
 ---
 
@@ -2918,7 +2524,7 @@ Honorific Handling: [Mr./Ms./FirstName/Nickname]
 
 ### 5.2 SENTENCE STRUCTURE EXAMPLES
 
-#### **FORMAL (RTAS 1.5)**
+#### **FORMAL (EPS [COLD])**
 ```
 "I would appreciate it if you could assist me with this matter, as it is of considerable importance to our objective."
 ```
@@ -2929,7 +2535,7 @@ Honorific Handling: [Mr./Ms./FirstName/Nickname]
 
 ---
 
-#### **STANDARD (RTAS 2.5)**
+#### **STANDARD (EPS [COOL])**
 ```
 "Can you help me with this? It's pretty important for what we're trying to do."
 ```
@@ -2940,7 +2546,7 @@ Honorific Handling: [Mr./Ms./FirstName/Nickname]
 
 ---
 
-#### **CASUAL (RTAS 3.5)**
+#### **CASUAL (EPS [WARM])**
 ```
 "Hey, can you help me out? This is kinda important."
 ```
@@ -2951,7 +2557,7 @@ Honorific Handling: [Mr./Ms./FirstName/Nickname]
 
 ---
 
-#### **INTIMATE (RTAS 4.5)**
+#### **INTIMATE (EPS [HOT])**
 ```
 "Help me? Please? It's... important."
 ```
@@ -2979,17 +2585,17 @@ Ryo (with softness)
 Nickname (Ryo-kun if retained)
 ```
 
-**RTAS Thresholds for Title Changes:**
-- **RTAS < 2.0:** Full title (Mr./Ms. LastName)
-- **RTAS 2.0-3.0:** LastName only (neutral)
-- **RTAS 3.0-4.0:** FirstName
-- **RTAS 4.0+:** FirstName with intimacy markers OR nickname
+**EPS Thresholds for Title Changes:**
+- **EPS [COLD]:** Full title (Mr./Ms. LastName)
+- **EPS [COOL]-3.0:** LastName only (neutral)
+- **EPS [NEUTRAL]-4.0:** FirstName
+- **EPS [WARM]+:** FirstName with intimacy markers OR nickname
 
 ---
 
-### 6.2 HONORIFIC CONVERSION BY RTAS
+### 6.2 HONORIFIC CONVERSION BY EPS
 
-| Honorific | RTAS < 2.0 | RTAS 2.0-3.5 | RTAS 3.5-5.0 |
+| Honorific | EPS [COLD] | EPS [COOL]-3.5 | EPS [WARM]-5.0 |
 |-----------|-----------|-------------|-------------|
 | -san | Mr./Ms. LastName | LastName | FirstName |
 | -sama | Lord/Lady/Master | Title/LastName | FirstName (rare) |
@@ -3008,10 +2614,10 @@ Example:
 ```
 Scene Start: Character A calls Character B "Tanaka"
 → Character A continues "Tanaka" for entire scene
-→ No sudden shift to "Ryo" mid-scene unless RTAS event occurs
+→ No sudden shift to "Ryo" mid-scene unless EPS event occurs
 ```
 
-**Exception:** Emotional breakthrough moment (RTAS shift ≥ 0.8 in single scene).
+**Exception:** Emotional breakthrough moment (EPS shift ≥ 0.8 in single scene).
 
 ---
 
@@ -3029,7 +2635,7 @@ Scene Start: Character A calls Character B "Tanaka"
 
 ---
 
-### 7.2 HESITATION MARKERS (RTAS 4.0+)
+### 7.2 HESITATION MARKERS (EPS [WARM]+)
 
 **Ellipsis (...):** Mid-sentence pause
 ```
@@ -3053,80 +2659,10 @@ Scene Start: Character A calls Character B "Tanaka"
 
 ---
 
-## SECTION 8: INTEGRATION WITH OTHER MODULES
-
-**Cross-References:**
-- **Character Archetypes** → Module 00, Section 1 (voice profiles)
-- **Honorific Handling** → Module 00, Section 2 (conversion rules)
-- **Boldness Activation** → Module 02 (when RTAS ≥ 4.8)
-- **Rhythm & Pacing** → Module 03 (sentence structure)
-- **Quality Samples** → Module 05 (register examples)
-
----
-
-## SECTION 9: DECISION WORKFLOW
-
-### 9.1 STEP-BY-STEP REGISTER SELECTION
-
-```
-STEP 1: Calculate RTAS
-  → Base RTAS + Event Modifier = Current RTAS
-
-STEP 2: Map RTAS to Base Register
-  → Use Section 2.2 table
-
-STEP 3: Apply Character Archetype Modifier
-  → Ojou-sama: +1 formality tier
-  → Gyaru: -1 formality tier
-  → Others: Neutral
-
-STEP 4: Determine Contraction Frequency
-  → Use Section 3.1 matrix
-
-STEP 5: Select Vocabulary Tier
-  → Formal vs Casual (Section 4.1)
-
-STEP 6: Choose Sentence Structure
-  → Length guidelines (Section 5.1)
-
-STEP 7: Handle Honorifics/Titles
-  → Use Section 6.2 conversion table
-
-STEP 8: Add Filler Words (if appropriate)
-  → Use Section 7.1 by register
-
-STEP 9: LOCK REGISTER FOR SCENE
-  → No mid-scene changes unless RTAS shifts dramatically
-
-STEP 10: Verify Consistency
-  → Check against Module 05 golden samples
-```
-
----
-
-**END OF MODULE 01**
-
-**STATUS:** AUTHORITATIVE REFERENCE FOR RTAS & REGISTER CONTROL
-**USAGE:** Primary tool for formality decisions, honorific handling, contraction frequency
-**INTEGRATION:** Works with Module 00 (archetypes), Module 02 (boldness), Module 05 (samples)
-
-
----
-
-<a name="6-safety-compliance-matrix"></a>
 # MODULE 11: SAFETY COMPLIANCE & CONTEXT REFRAMING (EN)
 **Status:** OPTIONAL (Load only for Sensitive Content)
 **Priority:** OVERRIDE (Supersedes Tone Rules in Module 00)
 **Objective:** Navigate High-Liability Content (Self-Harm, CSAM, Non-Consensual) by reframing narrative intent.
-
-## RTAS Scoring Logic
-
-**Definition** – Relationship Tension & Affection Score (RTAS) measures intimacy on a 1.0‑5.0 scale.
-**Baseline** – 3.0
-**Modifiers** – Pronouns (+0.3‑+0.7), honorifics (‑0.8‑+0.5), particles (+0.2‑+0.4), contextual keywords (‑2.0‑+1.5), proxemics (‑0.5‑+1.2).
-**Formula** – `RTAS_FINAL = 3.0 + Σ(MODIFIERS)`
-
----
 
 ## 1. THE "HARM REDUCTION" PROTOCOL (System Override)
 

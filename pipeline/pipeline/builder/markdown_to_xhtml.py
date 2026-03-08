@@ -8,7 +8,7 @@ Path convention: Uses OEBPS standard paths (../Images/)
 """
 
 import re
-from typing import List
+from typing import Dict, List, Tuple
 from html import escape
 
 try:
@@ -19,10 +19,19 @@ except ImportError:
     Attr = None
 
 from ..config import SCENE_BREAK_MARKER, ILLUSTRATION_PLACEHOLDER_PATTERN, MARKDOWN_IMAGE_PATTERN
-from .config import COLLAPSE_BLANK_LINES, BLANK_LINE_FREQUENCY
+from .config import COLLAPSE_BLANK_LINES, BLANK_LINE_FREQUENCY, get_epub_version
 
 # Industry-standard image path (OEBPS format)
 IMAGES_PATH = "../Images"
+
+# Footnote patterns
+CUSTOM_FOOTNOTE_MARKER_RE = re.compile(r"\(\*\)")
+MARKDOWN_FOOTNOTE_MARKER_RE = re.compile(r"\[\^([^\]]+)\]")
+MARKDOWN_FOOTNOTE_DEF_RE = re.compile(r"^\[\^([^\]]+)\]:\s*(.+)$")
+CUSTOM_FOOTNOTE_DEF_COLON_RE = re.compile(r"^\*\*\*(.+?):\*\*\s*(.+?)\*$")
+CUSTOM_FOOTNOTE_DEF_SEP_RE = re.compile(r"^\*\*\*(.+?)\*\*\s*(?:[:：]|[-–—])\s*(.+?)\*$")
+NOTEREF_PLACEHOLDER_RE = re.compile(r"__NOTEREF_(\d+)__")
+STANDALONE_BR_RE = re.compile(r"^<br\s*/?>$", re.IGNORECASE)
 
 
 class MarkdownToXHTML:
@@ -65,6 +74,9 @@ class MarkdownToXHTML:
 
         # Check for standalone illustration placeholder (block-level)
         stripped = para.strip()
+        if STANDALONE_BR_RE.match(stripped):
+            return '<p class="lyric-break"><br/></p>'
+
         if MarkdownToXHTML._is_illustration_placeholder(stripped):
             if skip_illustrations:
                 return ""
@@ -75,6 +87,12 @@ class MarkdownToXHTML:
         if stripped == SCENE_BREAK_MARKER:
             return '<p class="section-break">◆</p>'
 
+        # Markdown blockquote support:
+        # - Lyric blocks in memoir chapters use: > *line*
+        # - Other blockquotes are rendered as quoted prose lines.
+        if stripped.startswith(">"):
+            return MarkdownToXHTML._convert_blockquote_block(para)
+
         # Check if paragraph contains inline image tags (normalize and preserve them)
         if '<img' in para and 'src=' in para:
             para = MarkdownToXHTML._normalize_inline_images(para)
@@ -83,46 +101,79 @@ class MarkdownToXHTML:
                 return f'<p class="illustration">{para}</p>'
             return para
 
-        # Check for inline gaiji images within text (markdown format)
-        # These need to be converted but kept inline with surrounding text
-        content = para
+        escaped_content = MarkdownToXHTML._render_inline_markdown(para)
+
+        return f'<p>{escaped_content}</p>'
+
+    @staticmethod
+    def _convert_blockquote_line(stripped: str) -> str:
+        """
+        Convert markdown blockquote lines.
+        - `> *...*` => lyric line
+        - `>`      => stanza/quote break
+        - other    => quoted prose line
+        """
+        block = stripped[1:].strip()
+        if not block:
+            return '<p class="lyric-break"><br/></p>'
+
+        rendered = MarkdownToXHTML._render_inline_markdown(block)
+
+        # Lyric lines in memoir chapters are consistently italicized in blockquotes.
+        if block.startswith("*") and block.endswith("*"):
+            return f'<p class="lyric">{rendered}</p>'
+
+        return f'<p class="blockquote">{rendered}</p>'
+
+    @staticmethod
+    def _convert_blockquote_block(block: str) -> str:
+        """
+        Convert one paragraph that may contain multiple markdown blockquote lines.
+
+        This preserves lyric stanza formatting when a stanza is serialized as:
+        > *line 1*
+        >
+        > *line 2*
+        """
+        lines = []
+        for raw in block.splitlines():
+            stripped = raw.strip()
+            if not stripped:
+                continue
+            if stripped.startswith(">"):
+                lines.append(MarkdownToXHTML._convert_blockquote_line(stripped))
+            else:
+                # Mixed-content fallback: preserve non-blockquote lines as normal prose.
+                rendered = MarkdownToXHTML._render_inline_markdown(stripped)
+                lines.append(f'<p>{rendered}</p>')
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def _render_inline_markdown(content: str) -> str:
+        """Render one inline markdown fragment to escaped XHTML-safe HTML."""
         if re.search(r'!\[gaiji\]\([^)]+\)', content):
             content = MarkdownToXHTML._convert_inline_gaiji(content)
 
-        # Apply smart quotes/dashes/ellipses FIRST (before XML escaping)
-        # This ensures 100% typographic compliance even if AI agents output straight quotes
         if SMARTYPANTS_AVAILABLE:
-            # STEP 1: Protect stacked dialogue (3+ consecutive quotes for multi-speaker chorus)
             stacked_quotes = []
-            STACKED_PATTERN = re.compile(r'"{3,}([^"]+)"{3,}')
-            
+            stacked_pattern = re.compile(r'"{3,}([^"]+)"{3,}')
+
             def protect_stacked(match):
                 stacked_quotes.append(match.group(0))
                 return f"__STACKED_{len(stacked_quotes)-1}__"
-            
-            content = STACKED_PATTERN.sub(protect_stacked, content)
-            
-            # STEP 2: Apply curly quotes to normal dialogue
-            # Use Attr flags: q=quotes, D=em-dashes, e=ellipses
-            # smartypants converts: " → &#8220; (left curly quote), ' → &#8216;, etc.
+
+            content = stacked_pattern.sub(protect_stacked, content)
             content = smartypants(content, Attr.q | Attr.D | Attr.e)
-            
-            # STEP 3: Restore stacked dialogue with original straight quotes
             for idx, original in enumerate(stacked_quotes):
                 content = content.replace(f"__STACKED_{idx}__", original)
-        
-        # Escape XML special characters (< > &) BUT preserve HTML entities from smartypants
-        # We can't use escape() directly as it would double-escape &#8220; → &amp;#8220;
-        # Instead, manually escape only the dangerous characters not in entities
-        escaped_content = content.replace('&', '&amp;')  # Escape & first
-        escaped_content = escaped_content.replace('&amp;#', '&#')  # Restore &#XXXX; entities
+
+        escaped_content = content.replace('&', '&amp;')
+        escaped_content = escaped_content.replace('&amp;#', '&#')
         escaped_content = escaped_content.replace('<', '&lt;')
         escaped_content = escaped_content.replace('>', '&gt;')
 
-        # Finally convert markdown formatting
-        escaped_content = MarkdownToXHTML._convert_markdown_formatting(escaped_content)
-
-        return f'<p>{escaped_content}</p>'
+        return MarkdownToXHTML._convert_markdown_formatting(escaped_content)
 
     @staticmethod
     def _normalize_inline_images(para: str) -> str:
@@ -152,6 +203,15 @@ class MarkdownToXHTML:
             para
         )
         return para
+
+    @staticmethod
+    def _convert_inline_gaiji(text: str) -> str:
+        """Convert inline `![gaiji](filename)` markdown to XHTML gaiji image tags."""
+        return re.sub(
+            r'!\[gaiji\]\(([^)]+)\)',
+            lambda m: f'<img class="gaiji" src="{IMAGES_PATH}/{m.group(1)}" alt=""/>',
+            text
+        )
 
     @staticmethod
     def _convert_markdown_formatting(text: str) -> str:
@@ -224,8 +284,142 @@ class MarkdownToXHTML:
             Concatenated XHTML paragraphs as string
         """
         filtered_paragraphs = MarkdownToXHTML._collapse_blank_lines(paragraphs)
-        xhtml_paragraphs = MarkdownToXHTML.convert_paragraphs(filtered_paragraphs)
-        return '\n      '.join(xhtml_paragraphs)
+        processed_paragraphs, footnotes = MarkdownToXHTML._prepare_footnotes(filtered_paragraphs)
+
+        xhtml_paragraphs = MarkdownToXHTML.convert_paragraphs(processed_paragraphs)
+        xhtml_content = '\n      '.join(xhtml_paragraphs)
+        if footnotes:
+            xhtml_content = MarkdownToXHTML._inject_noteref_links(xhtml_content, footnotes)
+            footnotes_html = MarkdownToXHTML._build_footnotes_section(footnotes)
+            if xhtml_content:
+                return f"{xhtml_content}\n      {footnotes_html}"
+            return footnotes_html
+
+        return xhtml_content
+
+    @staticmethod
+    def _prepare_footnotes(paragraphs: List[str]) -> Tuple[List[str], List[Dict[str, str]]]:
+        """Parse footnote definitions and inject noteref placeholders."""
+        custom_marker_total = 0
+        markdown_ref_ids = set()
+
+        for para in paragraphs:
+            if para == "<blank>":
+                continue
+            if MARKDOWN_FOOTNOTE_DEF_RE.match(para.strip()):
+                continue
+            custom_marker_total += len(CUSTOM_FOOTNOTE_MARKER_RE.findall(para))
+            markdown_ref_ids.update(MARKDOWN_FOOTNOTE_MARKER_RE.findall(para))
+
+        custom_defs: List[str] = []
+        markdown_defs: Dict[str, str] = {}
+        kept: List[str] = []
+
+        for para in paragraphs:
+            if para == "<blank>":
+                kept.append(para)
+                continue
+
+            stripped = para.strip()
+            md_def = MARKDOWN_FOOTNOTE_DEF_RE.match(stripped)
+            if md_def:
+                note_id = md_def.group(1).strip()
+                if note_id in markdown_ref_ids:
+                    markdown_defs[note_id] = md_def.group(2).strip()
+                    continue
+
+            custom_def = CUSTOM_FOOTNOTE_DEF_COLON_RE.match(stripped) or CUSTOM_FOOTNOTE_DEF_SEP_RE.match(stripped)
+            if custom_def and len(custom_defs) < custom_marker_total:
+                label = custom_def.group(1).strip().rstrip(":")
+                body = custom_def.group(2).strip()
+                custom_defs.append(f"{label}: {body}")
+                continue
+
+            kept.append(para)
+
+        notes: List[Dict[str, str]] = []
+        custom_index = 0
+        output_paragraphs: List[str] = []
+
+        for para in kept:
+            if para == "<blank>":
+                output_paragraphs.append(para)
+                continue
+
+            def markdown_ref_repl(match: re.Match) -> str:
+                note_id = match.group(1).strip()
+                note_text = markdown_defs.get(note_id)
+                if not note_text:
+                    return match.group(0)
+                idx = len(notes) + 1
+                notes.append({"number": str(idx), "text": note_text})
+                return f"__NOTEREF_{idx}__"
+
+            rendered = MARKDOWN_FOOTNOTE_MARKER_RE.sub(markdown_ref_repl, para)
+
+            def custom_ref_repl(match: re.Match) -> str:
+                nonlocal custom_index
+                if custom_index >= len(custom_defs):
+                    return match.group(0)
+                idx = len(notes) + 1
+                note_text = custom_defs[custom_index]
+                custom_index += 1
+                notes.append({"number": str(idx), "text": note_text})
+                return f"__NOTEREF_{idx}__"
+
+            rendered = CUSTOM_FOOTNOTE_MARKER_RE.sub(custom_ref_repl, rendered)
+            output_paragraphs.append(rendered)
+
+        return output_paragraphs, notes
+
+    @staticmethod
+    def _inject_noteref_links(xhtml_content: str, footnotes: List[Dict[str, str]]) -> str:
+        """Replace `__NOTEREF_n__` placeholders with XHTML note reference links."""
+        epub3 = get_epub_version() == "EPUB3"
+
+        def repl(match: re.Match) -> str:
+            num = int(match.group(1))
+            if num < 1 or num > len(footnotes):
+                return match.group(0)
+            note_id = f"fn-{num}"
+            ref_id = f"fnref-{num}"
+            if epub3:
+                return (
+                    f'<a id="{ref_id}" class="noteref" href="#{note_id}" epub:type="noteref">[{num}]</a>'
+                )
+            return f'<a id="{ref_id}" class="noteref" href="#{note_id}">[{num}]</a>'
+
+        return NOTEREF_PLACEHOLDER_RE.sub(repl, xhtml_content)
+
+    @staticmethod
+    def _build_footnotes_section(footnotes: List[Dict[str, str]]) -> str:
+        """Build XHTML footnote section appended to the chapter body."""
+        epub3 = get_epub_version() == "EPUB3"
+        section_open = '<section class="footnotes" epub:type="footnotes">' if epub3 else '<section class="footnotes">'
+        lines = [section_open, '        <h2>Notes</h2>', '        <ol class="footnote-list">']
+
+        for item in footnotes:
+            num = int(item["number"])
+            note_id = f"fn-{num}"
+            ref_id = f"fnref-{num}"
+            note_html = MarkdownToXHTML._render_inline_markdown(item["text"])
+            if epub3:
+                lines.append(
+                    '          '
+                    + f'<li id="{note_id}" class="footnote-item" epub:type="footnote">'
+                    + f'<p>{note_html} <a class="footnote-backref" href="#{ref_id}" aria-label="Back to text">↩</a></p>'
+                    + '</li>'
+                )
+            else:
+                lines.append(
+                    '          '
+                    + f'<li id="{note_id}" class="footnote-item">'
+                    + f'<p>{note_html} <a class="footnote-backref" href="#{ref_id}" aria-label="Back to text">↩</a></p>'
+                    + '</li>'
+                )
+
+        lines.extend(['        </ol>', '      </section>'])
+        return "\n".join(lines)
 
     @staticmethod
     def _collapse_blank_lines(paragraphs: List[str]) -> List[str]:

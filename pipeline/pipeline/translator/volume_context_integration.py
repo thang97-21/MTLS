@@ -34,6 +34,7 @@ from typing import Optional, Tuple, Dict, Any
 import logging
 import re
 
+from pipeline.translator.config import is_volume_context_legacy_mode
 from pipeline.translator.volume_context_aggregator import (
     VolumeContextAggregator,
     VolumeContext
@@ -64,6 +65,18 @@ class VolumeContextIntegration:
         """
         self.work_dir = work_dir
         self.gemini_client = gemini_client
+        self.enabled = is_volume_context_legacy_mode()
+
+        if not self.enabled:
+            logger.warning(
+                "[VOLUME-CTX][LEGACY] volume_context_integration is deprecated and disabled "
+                "(translation.context.volume_context_legacy_mode=false)."
+            )
+            self.aggregator = None
+            self.cache_manager = None
+            self.current_volume_context = None
+            self.current_cache_name = None
+            return
 
         # Initialize aggregator and cache manager
         self.aggregator = VolumeContextAggregator(work_dir)
@@ -100,6 +113,10 @@ class VolumeContextIntegration:
         3. Create or reuse cache
         4. Return formatted context + cache name
         """
+        # Extract chapter number
+        if not self.enabled:
+            return (None, None)
+
         # Extract chapter number
         chapter_num = self._extract_chapter_number(chapter_id)
 
@@ -154,10 +171,21 @@ class VolumeContextIntegration:
 
     def get_cost_savings_report(self) -> Dict[str, Any]:
         """Generate cost savings report for volume."""
+        if not self.enabled or self.cache_manager is None:
+            return {
+                "cache_name": None,
+                "cache_hit_count": 0,
+                "chapters_using_cache": [],
+                "total_cost_saved_usd": 0.0,
+                "cache_hit_rate": 0.0,
+                "is_cache_active": False,
+            }
         return self.cache_manager.get_cost_savings_report()
 
     def invalidate_cache(self):
         """Manually invalidate cache (useful for debugging/retranslation)."""
+        if not self.enabled or self.cache_manager is None:
+            return
         self.cache_manager.invalidate_cache()
         logger.info("[VOLUME-CTX] Cache manually invalidated")
 
@@ -171,6 +199,8 @@ class VolumeContextIntegration:
         Returns:
             True if successful
         """
+        if not self.enabled or self.cache_manager is None:
+            return False
         return self.cache_manager.extend_cache_ttl(hours)
 
     def _extract_chapter_number(self, chapter_id: str) -> Optional[int]:

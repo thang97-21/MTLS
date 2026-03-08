@@ -1,40 +1,50 @@
-# MT Publishing Pipeline - Dependencies
-# =====================================
+# MTL Studio — Pipeline Dependencies
+# ====================================
+# Python 3.11+
 
-# Core utilities
-PyYAML>=6.0                    # Configuration file parsing
-python-dateutil>=2.8.0         # Date handling
-python-dotenv>=1.0.0           # Load environment variables from .env file
+# ── Core Utilities ──────────────────────────────────────────────────────────
+PyYAML>=6.0                      # Configuration file parsing
+python-dotenv>=1.0.0             # .env file loading
+python-dateutil>=2.8.0           # Date handling utilities
+requests>=2.32.0                 # HTTP client (post-processor, misc)
+httpx>=0.28.0                    # Async HTTP client (proxy / OpenRouter clients)
+pydantic>=2.0.0                  # Data validation and schema models
 
-# EPUB Processing (Phase 1 & 4)
-lxml>=4.9.0                    # XML/HTML parsing
-beautifulsoup4>=4.12.0         # HTML parsing
-Pillow>=10.0.0                 # Image processing
-ebooklib>=0.18                 # EPUB manipulation
-smartypants>=2.0.0             # Typographic quotes/dashes/ellipses (Phase 4 fail-safe)
+# ── Anthropic SDK (Phase 2 — Translator) ────────────────────────────────────
+anthropic>=0.84.0                # Claude Opus 4.6 translation engine + Batch API
 
-# PDF Generation
-reportlab>=4.0.0               # PDF creation
+# ── Google GenAI SDK (Phases 1.5–1.7 — Preparation) ────────────────────────
+google-genai>=1.0.0              # Unified Google GenAI SDK (Gemini 3 preparation phases)
+google-generativeai>=0.8.0       # Legacy Google GenAI SDK (backward compatibility)
+google-cloud-aiplatform>=1.38.0  # Vertex AI embeddings (text-embedding-004)
 
-# Gemini API (Phase 2 - Translator & Phase 3 - Critics & Phase 5 - Narrator TTS)
-google-genai>=0.5.0            # Google Gemini API SDK
-google-generativeai>=0.8.0     # Google Generative AI SDK (for TTS)
+# ── Retry & Resilience ──────────────────────────────────────────────────────
+backoff>=2.2.0                   # Exponential backoff decorators
+tenacity>=9.0.0                  # Retry with configurable wait/stop policies
 
-# Retry logic and utilities
-tenacity>=8.2.0                # Retry with exponential backoff
-backoff>=2.2.0                 # Exponential backoff decorators
+# ── EPUB Processing (Phase 1 & 4) ───────────────────────────────────────────
+lxml>=5.0.0                      # XML/HTML parsing (OPF, NCX, XHTML)
+beautifulsoup4>=4.12.0           # HTML parsing (chapter extraction, ruby text)
+EbookLib>=0.18                   # EPUB read/write
+Pillow>=12.0.0                   # Image processing (illustration extraction)
+smartypants>=2.0.0               # Typographic quotes/dashes/ellipses (Phase 4)
 
-# Optional: Token counting
-tiktoken>=0.5.0                # Token counting for cost estimation
+# ── PDF Generation (Phase 4 — pdf_builder) ──────────────────────────────────
+reportlab>=4.0.0                 # PDF creation
 
-# Vector Search (RAG Pattern Matching)
-chromadb>=0.4.0                # Vector database for semantic search
-google-cloud-aiplatform>=1.38.0  # Google AI embeddings (text-embedding-004)
+# ── Vector Search / RAG (Phases 1.51, 2) ────────────────────────────────────
+chromadb>=1.0.0                  # Vector database for Voice RAG and pattern matching
+numpy>=2.0.0                     # Numerical computing (embedding operations)
+tiktoken>=0.12.0                 # Token counting for cost estimation
 
-# CLI Interface (TUI)
-questionary>=2.0.0             # Interactive prompts with arrow-key navigation
-rich>=13.0.0                   # Beautiful terminal output, progress bars, tables
+# ── CLI Interface ────────────────────────────────────────────────────────────
+questionary>=2.0.0               # Interactive prompts with arrow-key navigation
+rich>=14.0.0                     # Terminal output, progress bars, tables
 
-# Development & Testing
-pytest>=7.0.0                  # Testing framework
-pytest-asyncio>=0.21.0         # Async test support
+# ── MCP Server (optional — pipeline/pipeline/mcp/) ──────────────────────────
+mcp>=1.0.0                       # Model Context Protocol server
+aiofiles>=23.0.0                 # Async file I/O for MCP handlers
+
+# ── Development & Testing ────────────────────────────────────────────────────
+pytest>=7.0.0                    # Testing framework
+pytest-asyncio>=0.21.0           # Async test support

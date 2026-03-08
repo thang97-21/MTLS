@@ -8,12 +8,21 @@ import logging
 import re
 import hashlib
 import backoff
-from typing import Optional, List, Dict, Any
-from dataclasses import dataclass
+from typing import Optional, List, Dict, Any, TYPE_CHECKING
+from dataclasses import dataclass, field
 from google.genai import types
 from pipeline.common.genai_factory import create_genai_client, resolve_api_key, resolve_genai_backend
 
 logger = logging.getLogger(__name__)
+
+if TYPE_CHECKING:
+    from pipeline.translator.tools.qc_reporter import TranslationQcSelfReport
+    from pipeline.translator.tools.structural_constraint_flagger import (
+        StructuralConstraintFlag,
+    )
+    from pipeline.translator.tools.translation_parameter_handler import (
+        DeclaredTranslationParameters,
+    )
 
 @dataclass
 class GeminiResponse:
@@ -32,6 +41,12 @@ class GeminiResponse:
     total_cost_usd: float = 0.0
     batch_pricing: bool = False
     fast_mode_pricing: bool = False
+    declared_params: Optional["DeclaredTranslationParameters"] = None
+    tool_calls_made: List[str] = field(default_factory=list)
+    tool_call_count: int = 0
+    qc_self_report: Optional["TranslationQcSelfReport"] = None
+    structural_constraints: List["StructuralConstraintFlag"] = field(default_factory=list)
+    cost_audit: Dict[str, Any] = field(default_factory=dict)
 
 class GeminiClient:
     _CACHE_DISPLAY_NAME_MAX_LEN = 128
@@ -57,19 +72,44 @@ class GeminiClient:
             project=project,
             location=location,
         )
+        self.enable_caching = enable_caching
         self._last_request_time = 0
         self._rate_limit_delay = 6.0  # ~10 requests/min default
 
         # Context caching support
-        self.enable_caching = enable_caching
         self._cached_content_name = None  # Cached content resource name
         
-        # Thinking mode configuration
+        # Load custom configurations
+        self._safety_settings = self._load_safety_settings()
         self.thinking_mode_config = self._load_thinking_config()
         self._http_timeout_ms = self._load_http_timeout_ms()
         self._cache_created_at = None
         self._cache_ttl_minutes = 120  # Default 2 hour TTL
         self._cached_model = None  # Track which model the cache was created for
+        
+    def _load_safety_settings(self) -> List[types.SafetySetting]:
+        """Load Gemini safety settings dynamically from config.yaml."""
+        try:
+            from pipeline.config import get_config_section
+            gemini_config = get_config_section('gemini')
+            if isinstance(gemini_config, dict):
+                safety_cfg = gemini_config.get('safety', {})
+            else:
+                safety_cfg = {}
+        except Exception:
+            safety_cfg = {}
+
+        def get_threshold(key: str) -> str:
+            val = safety_cfg.get(key, "BLOCK_NONE")
+            return str(val).upper() if val else "BLOCK_NONE"
+
+        return [
+            types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold=get_threshold("harassment")),
+            types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold=get_threshold("hate_speech")),
+            types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold=get_threshold("sexually_explicit")),
+            types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold=get_threshold("dangerous_content")),
+            types.SafetySetting(category="HARM_CATEGORY_CIVIC_INTEGRITY", threshold="BLOCK_NONE")
+        ]
     
     def _load_thinking_config(self) -> Dict[str, Any]:
         """Load thinking mode configuration from config.yaml."""
@@ -106,7 +146,6 @@ class GeminiClient:
 
         # Only apply thinking config for models that actually support it.
         if not any(tag in model_name for tag in self._THINKING_SUPPORTED_MODELS):
-            logger.debug(f"Thinking mode skipped: model '{model_name}' does not support ThinkingConfig")
             return None
 
         try:
@@ -443,6 +482,8 @@ class GeminiClient:
         force_new_session: bool = False,
         generation_config: Dict[str, Any] = None,
         tools: Optional[List[Any]] = None,
+        use_tool_mode: bool = False,
+        tool_handlers: Optional[Dict[str, Any]] = None,
     ) -> GeminiResponse:
         """
         Generate content with retry logic, rate limiting, and optional context caching.
@@ -458,6 +499,8 @@ class GeminiClient:
             force_new_session: If True, ignores internal cache and starts fresh (for Amnesia Protocol)
             generation_config: Dict with temperature, top_p, top_k overrides
             tools: Optional Gemini tools (e.g., Google Search grounding)
+            use_tool_mode: Translator-only Anthropic feature flag. Ignored here.
+            tool_handlers: Anthropic-only tool callback map. Ignored here.
         """
         target_model = model or self.model
         
@@ -470,6 +513,10 @@ class GeminiClient:
         else:
             top_p = 0.95
             top_k = 40
+            
+        # Enforce temperature=0.5 for gemini-2.5-flash across all agents
+        if "gemini-2.5-flash" in target_model.lower():
+            temperature = 0.5
 
         # Enforce rate limit
         elapsed = time.time() - self._last_request_time
@@ -477,13 +524,7 @@ class GeminiClient:
             time.sleep(self._rate_limit_delay - elapsed)
 
         if safety_settings is None:
-            safety_settings = [
-                types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
-                types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
-                types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
-                types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE"),
-                types.SafetySetting(category="HARM_CATEGORY_CIVIC_INTEGRITY", threshold="BLOCK_NONE")
-            ]
+            safety_settings = self._safety_settings
         http_options = self._build_http_options()
 
         try:
@@ -681,7 +722,23 @@ class GeminiClient:
                     finish_reason=finish_reason,
                     model=target_model,
                     cached_tokens=cached_tokens,
-                    thinking_content=None
+                    thinking_content=None,
+                    cost_audit={
+                        "schema_version": "1.0",
+                        "provider": "gemini",
+                        "request_type": "generate",
+                        "totals": {
+                            "input_tokens": int(input_tokens or 0),
+                            "output_tokens": int(output_tokens or 0),
+                            "cached_tokens": int(cached_tokens or 0),
+                            "cache_creation_tokens": 0,
+                            "input_cost_usd": 0.0,
+                            "output_cost_usd": 0.0,
+                            "cache_read_cost_usd": 0.0,
+                            "cache_creation_cost_usd": 0.0,
+                            "total_cost_usd": 0.0,
+                        },
+                    },
                 )
 
             return GeminiResponse(
@@ -691,7 +748,23 @@ class GeminiClient:
                 finish_reason="STOP",  # Assumed success
                 model=target_model,
                 cached_tokens=cached_tokens,
-                thinking_content=thinking_content
+                thinking_content=thinking_content,
+                cost_audit={
+                    "schema_version": "1.0",
+                    "provider": "gemini",
+                    "request_type": "generate",
+                    "totals": {
+                        "input_tokens": int(input_tokens or 0),
+                        "output_tokens": int(output_tokens or 0),
+                        "cached_tokens": int(cached_tokens or 0),
+                        "cache_creation_tokens": 0,
+                        "input_cost_usd": 0.0,
+                        "output_cost_usd": 0.0,
+                        "cache_read_cost_usd": 0.0,
+                        "cache_creation_cost_usd": 0.0,
+                        "total_cost_usd": 0.0,
+                    },
+                },
             )
 
         except Exception as e:

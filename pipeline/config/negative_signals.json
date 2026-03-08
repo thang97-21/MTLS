@@ -1,0 +1,521 @@
+{
+  "_meta": {
+    "version": "1.1",
+    "description": "Negative signal database for JP→EN translation quality enforcement. v1.1 adds ICL samples (production-verified pairs from 男女比1:5, 22-chapter audit) to every CRITICAL and MAJOR pattern, and promotes injection_template to a full instruction_block with prompt-ready text.",
+    "source": "QC audits: メインヒロインより可愛いモブの田中さん 1 (18 ch) + 男女比1:5 Vols 1–3 (22 ch) — 40 chapters total",
+    "last_updated": "2026-02-25",
+    "replaces": "kanji_difficult.json",
+    "scope": "EN language only",
+    "total_categories": 7,
+    "total_patterns": 26,
+    "severity_counts": {
+      "CRITICAL": 7,
+      "MAJOR": 19
+    },
+    "icl_coverage": {
+      "intensifier_elevation": "1 ICL sample (zettai_formal — 1:5 Vol 2 Ch 5)",
+      "show_dont_tell_violations": "3 ICL samples (chest_sting, triple_label, FID crisis — 1:5 Vol 2 Ch 4, Vol 2, Vol 3 Ch 2)",
+      "bridging_sentence_insertion": "1 ICL sample (premise distribution — 1:5 Vol 1)",
+      "contrastive_flattening": "2 ICL samples (siege transcreation, Shiori mask — 1:5 Vol 2 Ch 3, Ch 5)",
+      "filter_word_overuse": "1 ICL sample (Seira FID register — 1:5 Vol 3 Ch 2)",
+      "register_mismatch": "1 ICL sample (koumi_siege — 1:5 Vol 2 Ch 3)"
+    },
+    "injection_note": "instruction_block.prompt_text is the verbatim injection string. Load at TOP of system instruction before all RAG modules."
+  },
+
+  "CRITICAL": {
+    "description": "Hard prohibitions. Zero tolerance.",
+    "categories": {
+
+      "intensifier_elevation": {
+        "description": "Japanese casual intensifiers (めちゃくちゃ, まったく, 絶対, すごく, マジで, 物凄い) elevated into formal or literary English. These are teen-register colloquial amplifiers — they must land colloquially.",
+        "rule": "NEVER translate casual JP intensifiers into formal, elevated, or literary English. Match register: casual JP → casual EN.",
+        "jp_triggers": ["めちゃくちゃ", "めちゃ", "まったく", "絶対", "すごく", "すごい", "マジで", "マジ", "物凄い", "物凄く", "超", "ガチで", "本当に（感嘆）"],
+        "patterns": [
+          {
+            "id": "meccha_elevated",
+            "jp_trigger": "めちゃくちゃ (+ positive quality)",
+            "severity": "CRITICAL",
+            "bad": "thrilling / all-around incredible human being",
+            "bad_context": "めちゃくちゃ良い人 → 'all-around incredible human being'",
+            "good": "ridiculously good person / insanely nice / crazy good",
+            "rule": "めちゃくちゃ = colloquial amplifier. Use: crazy, ridiculously, insanely, wild, so [adj]"
+          },
+          {
+            "id": "mattaku_literal",
+            "jp_trigger": "まったく (exasperation/frustrated sigh)",
+            "severity": "CRITICAL",
+            "bad": "absolutely, completely, utterly, entirely, certifiably",
+            "bad_context": "まったく本当におかしい世界だ → 'absolutely, certifiably insane'",
+            "good": "good grief / honestly / jeez / I swear / what even is this",
+            "rule": "まったく as exasperation = emotional sigh. Use: good grief, honestly, I swear, jeez — NOT degree adverbs"
+          },
+          {
+            "id": "zettai_formal",
+            "jp_trigger": "絶対 (casual certainty / high-intensity emotion)",
+            "severity": "CRITICAL",
+            "bad": "absolutely, without a doubt, certainly / 'I will absolutely go'",
+            "good": "for sure / no way I'm not going / I'm so going",
+            "icl_sample": {
+              "jp": "いつか絶対押し倒してやるからなあああ",
+              "bad": "Someday I will absolutely pin you down",
+              "good": "SOMEDAY I'M GONNA PIN YOU DOWN",
+              "note": "絶対 + high-intensity internal explosion = CAPS + informal grammar. Caps replace the elongated なあああ. 'Absolutely' flattens the helpless rage entirely.",
+              "source": "男女比1:5 Vol 2 (221f), Ch 5 — Shiori internal explosion"
+            },
+            "rule": "絶対 in casual teen dialogue = emphatic certainty or intensity. Use: for sure, no way, I swear, you bet — or render as CAPS for high-intensity expressions"
+          },
+          {
+            "id": "monosugoi_literary",
+            "jp_trigger": "物凄い / 物凄く",
+            "severity": "CRITICAL",
+            "bad": "terrifying intensity / fearsome / formidable / overwhelming",
+            "bad_context": "物凄い勢いで → 'terrifying intensity'",
+            "good": "overwhelming enthusiasm / fierce energy / crazy fast / out of nowhere",
+            "rule": "物凄い = strong amplifier, not literally scary. Context determines register: speed → 'like lightning', energy → 'ridiculously intense'"
+          }
+        ]
+      },
+
+      "show_dont_tell_violations": {
+        "description": "JP physiological, behavioral, or fragmented emotional language rendered as English emotional-label sentences. JP uses the body and environment to enact emotion — EN must do the same.",
+        "rule": "NEVER translate JP anatomical or behavioral emotional cues as English emotion-label sentences. Render the physical or behavioral detail directly.",
+        "jp_triggers": ["腸が煮えくり返る", "胸が痛む", "胸がきゅっとする", "胸に痛みが走る", "息が詰まる", "顔が熱くなる", "視界がぐらつく", "手が震える", "心臓が跳ねる", "涙が出そう", "奥歯を噛む"],
+        "patterns": [
+          {
+            "id": "blood_boiling_abstraction",
+            "jp_trigger": "腸が煮えくり返っている / はらわたが煮えくり返る",
+            "severity": "CRITICAL",
+            "bad": "my blood was boiling",
+            "bad_reason": "idiom abstraction — removes the anatomical viscerality of the JP source",
+            "good": "my guts churned, seething — I could feel it clawing up my throat",
+            "rule": "JP gut-emotion idioms (腸, はらわた) require visceral anatomical rendering in EN, not common idiom substitution"
+          },
+          {
+            "id": "emotion_label_sentence",
+            "jp_trigger": "感情ラベル / 胸に痛みが走る / 感情の爆発",
+            "severity": "CRITICAL",
+            "bad": "dread crashed over me / relief washed through me / I felt frustrated. I was angry. I was jealous.",
+            "bad_reason": "wave-of-emotion templates and stacked emotion labels — named emotion + passive flooding = telling not showing",
+            "good": "my throat tightened / the tension leaked out of my shoulders / I exhaled without meaning to",
+            "icl_samples": [
+              {
+                "id": "yuka_chest_sting",
+                "jp": "胸に痛みが走った (hearing 'like a little sister')",
+                "bad": "A pang of jealousy hit me.",
+                "good": "A sharp sting lanced through my chest.",
+                "note": "Series gold standard. Anatomical, immediate, unmediated. The word 'jealousy' never appears. Reader infers from physical fact.",
+                "source": "男女比1:5 Vol 2 (221f), Ch 4 — Yuka POV"
+              },
+              {
+                "id": "triple_label_climax",
+                "jp": "感情の爆発 — 複数感情同時",
+                "bad": "I felt frustrated. I was angry. I was jealous.",
+                "good": "My hands had balled into fists at some point. My jaw ached. The mineral water sat there, untouched, perfectly placed.",
+                "note": "Three stacked emotion labels → three environmental/physical details. The mineral water carries all the restrained emotion. No emotion word used.",
+                "source": "男女比1:5 Vol 2 (221f) — climactic emotional beat"
+              },
+              {
+                "id": "seira_fid_crisis",
+                "jp": "嘔吐 scene — physical/emotional breakdown",
+                "bad": "She felt humiliated. The shame was overwhelming.",
+                "good": "[Physical crisis rendered entirely without emotion labels. Body-first narration: involuntary reactions, environmental detail, fragmented syntax.]",
+                "note": "Model for all high-intensity POV crisis moments. Zero emotion labels. The body is the narrator.",
+                "source": "男女比1:5 Vol 3 (06a9), Ch 2 — Seira breakdown"
+              }
+            ],
+            "rule": "Replace all [emotion] + [flood/crash/wash/hit] templates and stacked emotion labels with physiological or behavioral equivalents"
+          },
+          {
+            "id": "personality_tell_before_show",
+            "jp_trigger": "性格説明 followed immediately by behavioral examples",
+            "severity": "CRITICAL",
+            "bad": "She had a great personality. Easygoing and diligent. She'd quietly power through any task...",
+            "bad_reason": "Labels the trait before demonstrating it, making the examples feel redundant",
+            "good": "She'd quietly power through any task she was given, never complained when someone asked her to swap cleaning duty...",
+            "rule": "When JP gives a trait label followed by behavioral examples, DELETE the label. Let the behavior speak alone."
+          }
+        ]
+      }
+    }
+  },
+
+  "MAJOR": {
+    "description": "Strong avoidance. Flagged in 8–13 chapters across 40-chapter corpus.",
+    "categories": {
+
+      "bridging_sentence_insertion": {
+        "description": "Connective or explanatory sentences added that do not exist in the JP source. JP trusts white space and reader inference; EN must respect it.",
+        "rule": "DO NOT insert sentences whose only function is to connect two ideas the JP leaves implicitly connected.",
+        "detection_signals": [
+          "I was so wrong",
+          "I should have known",
+          "Something told me",
+          "It made sense, but",
+          "Looking back,",
+          "In hindsight,",
+          "Of course I was wrong",
+          "Naturally,",
+          "That was naive of me"
+        ],
+        "patterns": [
+          {
+            "id": "retrospective_bridge",
+            "severity": "MAJOR",
+            "bad": "I'd fully expected this to be fine. I was so wrong.",
+            "bad_reason": "'I was so wrong' is inserted meta-commentary. JP cuts directly to the collapse.",
+            "good": "I thought I could handle this. [Cut immediately to the sensation that proved me wrong.]",
+            "icl_sample": {
+              "jp": "世界観説明ブロック — ratio / polygamy / social change",
+              "bad": "The gender ratio in this world was skewed. For every one guy, there were five girls. There'd even been growing support for legalizing polygamy, and apparently the whole landscape of romance between men and women had shifted dramatically.",
+              "good": "'Three girlfriends,' he said, like he was ordering a coffee. [That was just Tuesday in this world.]",
+              "note": "World premise woven into a single dialogue reaction instead of a 3-sentence exposition block. The character's normalcy carries the worldbuilding.",
+              "source": "男女比1:5 Vol 1 (0824) — FAN_TL comparative lesson, applied to MTL standard"
+            },
+            "rule": "Delete retrospective correctional bridges. Let the next sentence prove the first wrong without announcing it."
+          },
+          {
+            "id": "motivation_pre_explanation",
+            "severity": "MAJOR",
+            "bad": "I hadn't planned any of this. I'd just... said it.",
+            "bad_reason": "Post-hoc explanation of impulse that JP renders as bare action + uncertainty.",
+            "good": "The words were out before I'd thought them through.",
+            "rule": "Impulsive action = bare action sentence + uncertainty fragment. Do not explain the impulse before or after."
+          },
+          {
+            "id": "continuity_connector",
+            "severity": "MAJOR",
+            "bad": "Because I'd known she was popular. I'd known it going in.",
+            "bad_reason": "Repetitive bridging that over-explains what the previous scene already established.",
+            "good": "[Trust prior scene. Single line max if necessary.]",
+            "rule": "If information was established in a prior scene, do not re-state it as a bridging connector."
+          },
+          {
+            "id": "nagging_curiosity_insert",
+            "severity": "MAJOR",
+            "bad": "Something nagged at me.",
+            "bad_reason": "Names a vague mental state that JP renders as the next thing the protagonist does.",
+            "good": "[Move directly to the action or observation that expresses the curiosity.]",
+            "rule": "Do not name vague mental states (nagged, lingered, persisted) — show the action that expresses them."
+          }
+        ]
+      },
+
+      "contrastive_flattening": {
+        "description": "JP adversative structures (けど, が, でも, も, ところが) carry equal weight on BOTH sides. EN translation softens this into sequential narration, losing the adversative punch.",
+        "rule": "When JP uses an adversative connector (けど, が, でも), BOTH sides must carry equal narrative weight. The second half must feel SURPRISING or contradictory.",
+        "jp_triggers": ["けど", "が (contrastive)", "でも", "ところが", "だが", "しかし", "にもかかわらず"],
+        "patterns": [
+          {
+            "id": "contrast_sequential_loss",
+            "severity": "MAJOR",
+            "bad": "Even when there's a girl cuter than the main heroines right in front of them, these guys just breeze past her. Or chat with her like she's some random buddy.",
+            "bad_reason": "Second sentence is additive, not contrastive. The normalcy should feel ABSURD by contrast with her beauty.",
+            "good": "Even with a girl cuter than the main heroines standing right in front of them, these guys blew past her like she was just another classmate. They'd chat with her like one of the guys — no hesitation, no second glance.",
+            "rule": "The contrastive clause needs to feel SURPRISING. Beauty established; normalcy should feel absurd."
+          },
+          {
+            "id": "adversative_softened",
+            "severity": "MAJOR",
+            "bad": "At first glance, she came across as cold, but looks couldn't be more deceiving.",
+            "bad_reason": "'But' announces the contradiction instead of embodying it.",
+            "good": "She had a cold face that would freeze you in place — and then she'd smile like sunlight breaking through clouds. Both were completely real.",
+            "icl_sample": {
+              "id": "shiori_mask_dual_layer",
+              "jp": "栞 — composed external voice hiding internal chaos",
+              "bad": "She panicked. 'W-what are you doing?!'",
+              "good": "'My, how bold.' Her voice came out perfectly steady. [Her heart was doing something catastrophically undignified.]",
+              "note": "The external/internal contrast is the adversative. The composed speech tag IS the first clause; the bracketed interior IS the けど second clause. Both feel equally real and paradoxical.",
+              "source": "男女比1:5 Vol 2 (221f) — Shiori external/internal dual-layer"
+            },
+            "rule": "Adversative 'but' must embody the contradiction, not just announce it. Both halves must feel equally true and paradoxical."
+          },
+          {
+            "id": "ignored_expectation_flat",
+            "severity": "MAJOR",
+            "bad": "I'd fully expected to be ignored. [flat transition] She actually returned it.",
+            "bad_reason": "Expectation and surprise narrated in flat sequence without structural emphasis on contrast.",
+            "good": "I'd braced for being ignored — and she actually looked back.",
+            "rule": "Use em-dash (—) or structural break to make the pivot felt, not just narrated."
+          },
+          {
+            "id": "kedo_additive_error",
+            "severity": "MAJOR",
+            "bad": "She was quiet. But she always helped when you needed it.",
+            "bad_reason": "'But' reads as simple additive information. Loses the けど warmth-under-reserve.",
+            "good": "She barely said a word — but if you were struggling, she'd be right there without you ever having to ask.",
+            "rule": "けど revealing unexpected depth must structurally emphasize the hidden quality as the revelation."
+          }
+        ]
+      },
+
+      "filter_word_overuse": {
+        "description": "Filter words create narrator distance in close first-person or third-person limited POV. JP writes with direct access to sensation; EN must do the same.",
+        "rule": "Avoid filter words in close POV: 'I saw', 'I noticed', 'I felt', 'I realized', 'I watched', 'I heard', 'something told me', 'I thought to myself', 'internally', 'genuinely'.",
+        "patterns": [
+          {
+            "id": "eyes_drawn_filter",
+            "severity": "MAJOR",
+            "bad": "My eyes were drawn, almost involuntarily, to her bouncing golden twin-tails.",
+            "bad_reason": "Double filter: 'eyes were drawn' + 'almost involuntarily'.",
+            "good": "Her bouncing golden twin-tails caught my eye — I couldn't look away.",
+            "rule": "Remove 'my eyes were drawn' filter. State the observation directly."
+          },
+          {
+            "id": "i_realized_filter",
+            "severity": "MAJOR",
+            "bad": "I realized she'd been staring at me the whole time.",
+            "bad_reason": "Filter adds a step between observation and reader.",
+            "good": "She'd been staring at me the whole time.",
+            "rule": "Cut 'I realized [that]' — start directly from the observation."
+          },
+          {
+            "id": "i_felt_filter",
+            "severity": "MAJOR",
+            "bad": "I felt a sudden surge of something I couldn't name.",
+            "bad_reason": "Filter + abstract emotion = double distance.",
+            "good": "My chest lurched. I didn't know what that was.",
+            "icl_sample": {
+              "jp": "セイラ 一人称 — 感情処理 (Seira self-analysis)",
+              "bad": "Ugh, I was so into him it was embarrassing.",
+              "good": "It was embarrassing, how far gone I was. I noted it. Filed it. Did nothing useful with the information.",
+              "note": "Filter word ('I felt') removed. Emotion rendered as clinical self-observation — Seira's OL register. 'I noted it. Filed it.' replaces the feeling with the action of processing it.",
+              "source": "男女比1:5 Vol 3 (06a9) — Seira POV internal monologue"
+            },
+            "rule": "Replace 'I felt [vague emotion]' with the physical sensation that expresses it."
+          },
+          {
+            "id": "internally_adverb",
+            "severity": "MAJOR",
+            "bad": "I internally noted that she was watching me.",
+            "bad_reason": "'Internally' is redundant in first-person. All narration is already internal.",
+            "good": "She was watching me.",
+            "rule": "Delete 'internally' in first-person narration. Always redundant."
+          },
+          {
+            "id": "genuinely_adverb_filter",
+            "severity": "MAJOR",
+            "bad": "I was genuinely surprised.",
+            "bad_reason": "'Genuinely' hedges instead of committing. JP renders surprise as action or physical reaction.",
+            "good": "The shock knocked the air out of me. / I actually stepped back.",
+            "rule": "Delete 'genuinely' in emotional description. Replace with committed physical or behavioral rendering."
+          }
+        ]
+      },
+
+      "register_mismatch": {
+        "description": "Formal, literary, or elevated vocabulary for characters who speak in casual teen register.",
+        "rule": "Match register strictly. Teen casual narrator does not use 'formidable', 'certifiably', 'extraordinary', 'remarkable', 'instantaneously', 'subsequently', or 'commendable'.",
+        "patterns": [
+          {
+            "id": "formal_adjective_teen",
+            "severity": "MAJOR",
+            "bad": "formidable, certifiably, extraordinary, remarkable",
+            "bad_context": "めちゃくちゃ and similar casual JP → elevated EN adjective",
+            "good": "insane, wild, crazy, ridiculous, unreal",
+            "rule": "Teen male register in romcom = colloquial amplifiers, not literary adjectives."
+          },
+          {
+            "id": "head_over_heels_romance",
+            "severity": "MAJOR",
+            "bad": "I was head over heels for Tanaka-san.",
+            "bad_reason": "Overly romanticized idiom. JP narration is direct, even clinical.",
+            "good": "I'd fallen for Tanaka-san. Hard.",
+            "rule": "Romantic feelings = stated directly, not through flowery idiom. Simple and punchy."
+          },
+          {
+            "id": "transcreation_register_match",
+            "severity": "MAJOR",
+            "bad": "Passive or hesitant voice: 'I wondered if maybe there was something I could do...'",
+            "bad_reason": "Flattens character's source register (strategic, military-vocabulary) into generic hesitation.",
+            "good": "Front gate's locked. Fine. I'd go around. Outer walls first, then work inward.",
+            "icl_sample": {
+              "id": "koumi_siege_transcreation",
+              "jp": "外堀りから埋める",
+              "bad": "I'd try to get closer to him through indirect means",
+              "good": "lay siege from outside in",
+              "note": "Perfect register transcreation: 外堀りから埋める is a military/strategic idiom. EN equivalent must carry the same register — assertive, tactical, not passive. 'lay siege from outside in' matches the source register exactly.",
+              "source": "男女比1:5 Vol 2 (221f), Ch 3 — Koumi internal strategy"
+            },
+            "rule": "Transcreate the SOURCE register, not just the meaning. Tactical JP = tactical EN. Poetic JP = poetic EN. Never normalize to generic neutral."
+          },
+          {
+            "id": "when_pigs_fly_americanism",
+            "severity": "MAJOR",
+            "bad": "When pigs fly.",
+            "bad_reason": "American idiom with no JP cultural equivalent. Imports foreign culture.",
+            "good": "When you're six feet under. / After you kick the bucket. / Not in a million years.",
+            "rule": "EN idioms with no cultural basis in JP must be replaced with neutral equivalents."
+          }
+        ]
+      },
+
+      "title_line_integrity": {
+        "description": "Volume title callbacks must be rendered with full force. Any softening or generalization undercuts the volume's central thesis.",
+        "rule": "Title callback = singular, definitive, unambiguous. Never generalize 'the main heroine' to 'any main heroine'.",
+        "patterns": [
+          {
+            "id": "title_singular_softened",
+            "severity": "MAJOR",
+            "bad": "mob girl who's cuter than any main heroine",
+            "bad_reason": "Softened to plural/general. Original: cuter than THE main heroine (singular, title-exact).",
+            "good": "mob girl cuter than the main heroine",
+            "rule": "'The main heroine' not 'any main heroine' or 'all heroines'."
+          },
+          {
+            "id": "title_payoff_flat",
+            "severity": "MAJOR",
+            "bad": "She shone so bright, every single main heroine paled in comparison.",
+            "bad_reason": "Literary/diffuse. The payoff needs punch matching the title's direct claim.",
+            "good": "She glowed so bright, the main heroines didn't even register. Not even in the same universe.",
+            "rule": "Volume-ending title callbacks require maximum force. Avoid literary simile; use absolute declarative."
+          }
+        ]
+      }
+    }
+  },
+
+  "negative_anchor_vectors": {
+    "description": "Semantic suppression vectors for vector-search false positive prevention.",
+    "global_suppressors": [
+      {
+        "id": "formal_dialogue_speaker",
+        "description": "Character explicitly established as formal/elder/authority figure speaking formally",
+        "text": "formal speech, elder character, teacher speaking to students, official announcement, written document, business context"
+      },
+      {
+        "id": "intentional_heightened_register",
+        "description": "Intentional narrative elevation for dramatic or ironic effect clearly signaled by context",
+        "text": "dramatic irony, intentional elevated register, formal announcement with comedic intent, parody of formal speech"
+      },
+      {
+        "id": "physical_description_not_emotion",
+        "description": "Literal physical description that uses the same words as filter patterns but is not a filter",
+        "text": "literal vision description, medical examination, physical sensation from external cause, description of another character's behavior"
+      }
+    ]
+  },
+
+  "instruction_block": {
+    "description": "Verbatim prompt injection text. This is what Opus reads. Load at TOP of system instruction, before all RAG modules. ICL samples are real production output across 40 chapters.",
+    "version": "1.1",
+    "prompt_text": [
+      "## NEGATIVE SIGNALS — PROHIBITED TRANSLATION PATTERNS (QC-DERIVED v1.1)",
+      "",
+      "The following patterns were confirmed as systemic failure modes across 40 chapters of production QC (2 series). **CRITICAL = zero tolerance. MAJOR = strong avoidance.** ICL samples are verified production output — match this standard.",
+      "",
+      "---",
+      "",
+      "### ❌ CRITICAL — DO NOT elevate Japanese casual intensifiers to formal English",
+      "",
+      "**RULE:** めちゃくちゃ / まったく / 絶対 / 物凄い / すごく are COLLOQUIAL amplifiers. Render them colloquially. NEVER use formal, literary, or degree-adverb equivalents.",
+      "",
+      "| JP Trigger | ❌ Do NOT produce | ✅ Produce instead |",
+      "|---|---|---|",
+      "| めちゃくちゃ良い人 | all-around incredible human being | ridiculously good person / crazy nice |",
+      "| まったく本当に | absolutely, certifiably | good grief, honestly, jeez |",
+      "| 絶対行く | I will absolutely go | I'm going for sure / no way I'm not going |",
+      "| 物凄い勢いで | terrifying intensity | overwhelming enthusiasm / like lightning |",
+      "",
+      "**ICL — 絶対 (high-intensity emotional explosion):**",
+      "JP: いつか絶対押し倒してやるからなあああ",
+      "❌ Someday I will absolutely pin you down",
+      "✅ SOMEDAY I'M GONNA PIN YOU DOWN",
+      "*Note: 絶対 + high-intensity + elongated ending → CAPS + informal grammar. 'Absolutely' flattens the helpless rage. [Source: 男女比1:5 Vol 2, Ch 5]*",
+      "",
+      "---",
+      "",
+      "### ❌ CRITICAL — DO NOT translate JP physiological/behavioral emotion as English emotional labels",
+      "",
+      "**RULE:** JP uses the body and environment to ENACT emotion. EN must do the same. NEVER replace anatomical or behavioral cues with emotion-label sentences or wave-of-emotion templates.",
+      "",
+      "| Pattern | ❌ Do NOT produce | ✅ Produce instead |",
+      "|---|---|---|",
+      "| 腸が煮えくり返る | my blood was boiling | my guts churned, seething — clawing up my throat |",
+      "| 胸に痛みが走る | a pang of jealousy hit me | A sharp sting lanced through my chest. |",
+      "| 複数感情同時 | I felt frustrated. I was angry. I was jealous. | My hands had balled into fists. My jaw ached. The mineral water sat there, untouched. |",
+      "| any wave template | dread crashed over me / warmth washed through me | my throat tightened / the tension leaked out of my shoulders |",
+      "",
+      "**ICL — physiological rendering (series gold standard):**",
+      "JP: 胸に痛みが走った (hearing 'like a little sister')",
+      "❌ A pang of jealousy hit me.",
+      "✅ A sharp sting lanced through my chest.",
+      "*Note: The word 'jealousy' never appears. Reader infers from physical fact alone. Anatomical, immediate, unmediated. [Source: 男女比1:5 Vol 2, Ch 4 — Yuka POV]*",
+      "",
+      "**ICL — body-first crisis narration (zero emotion labels):**",
+      "JP: 嘔吐 scene, emotional breakdown (Seira)",
+      "✅ [Physical crisis rendered entirely without emotion labels. Involuntary reactions, environmental detail, fragmented syntax. The body is the narrator.]",
+      "*Note: Model for all high-intensity POV crisis moments. [Source: 男女比1:5 Vol 3, Ch 2 — Seira POV]*",
+      "",
+      "---",
+      "",
+      "### ⚠️ MAJOR — DO NOT insert bridging sentences absent from the JP source",
+      "",
+      "**RULE:** JP trusts white space and reader inference. DO NOT add sentences whose only function is to connect ideas the JP leaves implicitly connected. Delete them.",
+      "",
+      "**Prohibited bridge starters:** 'I was so wrong' / 'Something told me' / 'Looking back,' / 'In hindsight,' / 'Of course I was wrong' / 'Naturally,' / 'That was naive of me'",
+      "",
+      "| ❌ Do NOT produce | ✅ Produce instead |",
+      "|---|---|",
+      "| I'd fully expected this to be fine. I was so wrong. | I thought I could handle this. [Cut directly to the sensation.] |",
+      "| I hadn't planned any of this. I'd just... said it. | The words were out before I'd thought them through. |",
+      "",
+      "**ICL — world premise distributed into character voice (not block narration):**",
+      "❌ 'The gender ratio in this world was skewed. For every one guy, there were five girls. There'd even been growing support for legalizing polygamy, and apparently the whole landscape of romance had shifted dramatically.'",
+      "✅ 'Three girlfriends,' he said, like he was ordering a coffee. [That was just Tuesday in this world.]",
+      "*Note: 3-sentence premise block → 1 dialogue reaction. The character's normalcy carries all the worldbuilding. [Source: 男女比1:5 Vol 1, FAN_TL comparative standard]*",
+      "",
+      "---",
+      "",
+      "### ⚠️ MAJOR — DO NOT flatten JP adversative structures (けど / が / でも)",
+      "",
+      "**RULE:** Both halves of a JP contrast carry equal weight. The second half must feel SURPRISING or contradictory — not additive. Use em-dash (—) or structural break to make the pivot felt.",
+      "",
+      "| JP | ❌ Flattened | ✅ With adversative weight |",
+      "|---|---|---|",
+      "| A けど B (beauty ignored) | '...breeze past her. Or chat with her like a buddy.' | '...blew past her like she was just another classmate — no hesitation, no second glance.' |",
+      "| A が B (warmth under cold) | 'She was quiet. But she always helped.' | 'She barely said a word — but if you were struggling, she'd be right there.' |",
+      "",
+      "**ICL — external/internal contrast as adversative structure:**",
+      "❌ She panicked. 'W-what are you doing?!'",
+      "✅ 'My, how bold.' Her voice came out perfectly steady. [Her heart was doing something catastrophically undignified.]",
+      "*Note: The composed speech tag IS the first clause. The bracketed interior IS the けど second clause. Both feel equally real. [Source: 男女比1:5 Vol 2 — Shiori dual-layer]*",
+      "",
+      "---",
+      "",
+      "### ⚠️ MAJOR — DO NOT use filter words in close POV",
+      "",
+      "**RULE:** Close first-person POV has direct access to sensation. Cut the intermediary verb.",
+      "",
+      "| ❌ Filter | ✅ Direct |",
+      "|---|---|",
+      "| My eyes were drawn to her twin-tails. | Her twin-tails caught my eye — I couldn't look away. |",
+      "| I realized she'd been staring at me. | She'd been staring at me the whole time. |",
+      "| I internally noted that... | [Delete 'internally noted that'. Always redundant in first-person.] |",
+      "| I was genuinely surprised. | The shock knocked the air out of me. / I actually stepped back. |",
+      "",
+      "**ICL — filter removed, OL register preserved (Seira):**",
+      "❌ Ugh, I was so into him it was embarrassing.",
+      "✅ It was embarrassing, how far gone I was. I noted it. Filed it. Did nothing useful with the information.",
+      "*Note: 'I felt' removed. Emotion rendered as clinical self-observation — Seira's OL internal register. The action (noting, filing) replaces the feeling. [Source: 男女比1:5 Vol 3, Ch 2]*",
+      "",
+      "---",
+      "",
+      "### ⚠️ MAJOR — Match register — casual teen ≠ formal literary",
+      "",
+      "**RULE:** Match the source register exactly. Casual JP teen → casual EN teen. Strategic JP → strategic EN. NEVER normalize source register to neutral.",
+      "",
+      "| ❌ Elevated | ✅ Colloquial |",
+      "|---|---|",
+      "| an extraordinary human being | a ridiculous person in the best way |",
+      "| I was head over heels for her. | I'd fallen for her. Hard. |",
+      "| When pigs fly. | Not in a million years. |",
+      "",
+      "**ICL — source register preserved in transcreation:**",
+      "JP: 外堀りから埋める (military siege idiom — Koumi's romance strategy)",
+      "❌ I'd try to get closer to him through indirect means",
+      "✅ lay siege from outside in",
+      "*Note: 外堀りから埋める is military vocabulary. EN must carry the same tactical register, not flatten to neutral description. [Source: 男女比1:5 Vol 2, Ch 3 — Koumi internal strategy]*"
+    ]
+  }
+}

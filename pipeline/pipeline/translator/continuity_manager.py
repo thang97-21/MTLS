@@ -25,6 +25,44 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+class CharacterState:
+    """
+    Emotional/voice state for a character at a point in the story.
+    Used for arc-aware voice consistency across volumes.
+    """
+    character_id: str
+    emotional_rtas: str           # e.g., "CLOSED", "GUARDED", "OPEN", "BONDED"
+    voice_modifiers: List[str]    # e.g., ["more_formal", "guarded"]
+    relationship_states: Dict[str, str]  # other_char → state
+    narrative_flags: List[str]    # active plot flags
+    arc_position: str            # e.g., "V3Ch5" or "vol3_chapter5"
+    last_appearance: str         # volume.chapter where last seen
+
+    def to_dict(self) -> Dict:
+        return {
+            "character_id": self.character_id,
+            "emotional_rtas": self.emotional_rtas,
+            "voice_modifiers": self.voice_modifiers,
+            "relationship_states": self.relationship_states,
+            "narrative_flags": self.narrative_flags,
+            "arc_position": self.arc_position,
+            "last_appearance": self.last_appearance,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict) -> 'CharacterState':
+        return cls(
+            character_id=data.get("character_id", ""),
+            emotional_rtas=data.get("emotional_rtas", "CLOSED"),
+            voice_modifiers=data.get("voice_modifiers", []),
+            relationship_states=data.get("relationship_states", {}),
+            narrative_flags=data.get("narrative_flags", []),
+            arc_position=data.get("arc_position", ""),
+            last_appearance=data.get("last_appearance", ""),
+        )
+
+
+@dataclass
 class ContinuityPack:
     """Continuity pack from a previous volume."""
     volume_id: str
@@ -34,7 +72,16 @@ class ContinuityPack:
     relationships: Dict[str, str]  # Character relationships
     glossary: Dict[str, str]  # Specialized terminology
     narrative_flags: List[str]  # Active plot states
-    
+    # Phase 2 expansion: character arc states
+    character_states: Dict[str, CharacterState] = None  # character_id → CharacterState
+    arc_milestones: Dict[str, str] = None  # character_id → milestone description
+
+    def __post_init__(self):
+        if self.character_states is None:
+            self.character_states = {}
+        if self.arc_milestones is None:
+            self.arc_milestones = {}
+
     def to_dict(self) -> Dict:
         return {
             "volume_id": self.volume_id,
@@ -43,20 +90,34 @@ class ContinuityPack:
             "roster": self.roster,
             "relationships": self.relationships,
             "glossary": self.glossary,
-            "narrative_flags": self.narrative_flags
+            "narrative_flags": self.narrative_flags,
+            "character_states": {
+                k: v.to_dict() for k, v in (self.character_states or {}).items()
+            },
+            "arc_milestones": self.arc_milestones or {}
         }
-    
+
     @classmethod
     def from_dict(cls, data: Dict) -> 'ContinuityPack':
-        return cls(
+        char_states_raw = data.pop("character_states", {})
+        char_states = {
+            k: CharacterState.from_dict(v) for k, v in char_states_raw.items()
+        } if char_states_raw else {}
+
+        arc_milestones = data.pop("arc_milestones", {})
+
+        pack = cls(
             volume_id=data["volume_id"],
             series_title=data["series_title"],
             volume_number=data["volume_number"],
             roster=data.get("roster", {}),
             relationships=data.get("relationships", {}),
             glossary=data.get("glossary", {}),
-            narrative_flags=data.get("narrative_flags", [])
+            narrative_flags=data.get("narrative_flags", []),
         )
+        pack.character_states = char_states
+        pack.arc_milestones = arc_milestones
+        return pack
 
 
 class ContinuityPackManager:
@@ -381,49 +442,3 @@ class ContinuityPackManager:
         lines.append("[/CONTINUITY_PACK]")
         
         return "\n".join(lines)
-
-
-def detect_and_offer_continuity(work_dir: Path, manifest: Dict, target_language: str = 'en') -> Optional[ContinuityPack]:
-    """
-    LEGACY SYSTEM - DISABLED
-    
-    This function previously detected sequel volumes and injected continuity packs
-    from .context directories. This has been disabled in favor of the v3 enhanced
-    schema system which provides richer character_profiles via manifest.json.
-    
-    The v3 schema stores:
-    - character_profiles with keigo_switch, relationship_to_others, speech_pattern
-    - inherited_from field for tracking volume lineage  
-    - volume_specific_notes for sequel context
-    
-    These provide superior continuity tracking compared to the legacy .context files.
-    
-    Args:
-        work_dir: Current volume work directory (unused)
-        manifest: Current volume manifest (unused)
-        target_language: Target language code (unused)
-        
-    Returns:
-        None - Legacy continuity system disabled
-    """
-    # Check if v3 schema is present
-    metadata_en = manifest.get('metadata_en', {})
-    schema_version = metadata_en.get('schema_version', '')
-    character_profiles = metadata_en.get('character_profiles', {})
-    
-    if schema_version == 'v3_enhanced' and character_profiles:
-        logger.info("="*60)
-        logger.info("LEGACY CONTINUITY SYSTEM DISABLED")
-        logger.info("="*60)
-        logger.info(f"✓ V3 enhanced schema detected: {len(character_profiles)} character profiles")
-        inherited_from = metadata_en.get('inherited_from', 'N/A')
-        if inherited_from != 'N/A':
-            logger.info(f"✓ Schema inherited from: {inherited_from}")
-        logger.info("✓ Using v3 character_profiles for continuity (richer context)")
-        logger.info("✓ Legacy .context directory files will be ignored")
-        logger.info("="*60)
-    else:
-        logger.info("Legacy continuity system disabled. V3 schema preferred.")
-        logger.info("To enable continuity, populate character_profiles in manifest.json metadata_en")
-    
-    return None

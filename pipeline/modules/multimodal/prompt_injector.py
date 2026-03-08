@@ -48,6 +48,22 @@ class CanonNameEnforcer:
         return primary
 
     @staticmethod
+    def _profile_canonical_name(profile: Dict[str, Any]) -> str:
+        """
+        Resolve canonical EN name across schema variants.
+
+        Priority keeps backward compatibility with existing `full_name`, while
+        accepting newer metadata payloads that only populate `character_name_en`.
+        """
+        if not isinstance(profile, dict):
+            return ""
+        for key in ("full_name", "canonical_en", "character_name_en", "name_en", "english_name"):
+            value = str(profile.get(key, "")).strip()
+            if value:
+                return value
+        return ""
+
+    @staticmethod
     def _extract_relation_label(
         japanese_name: str,
         relationship_to_protagonist: str,
@@ -251,7 +267,7 @@ class CanonNameEnforcer:
         if not isinstance(profile, dict):
             return ""
 
-        full_name = str(profile.get("full_name", "")).strip()
+        canonical_name = cls._profile_canonical_name(profile)
         nickname = cls._first_nickname(str(profile.get("nickname", "")))
         rel_to_protag = str(profile.get("relationship_to_protagonist", "")).strip()
         rel_to_others = str(profile.get("relationship_to_others", "")).strip()
@@ -262,8 +278,8 @@ class CanonNameEnforcer:
 
         # Proper named characters should keep explicit canonical names.
         # Relation relabeling is reserved for role-like keys (e.g. "Xの母親").
-        if full_name and not cls._key_has_relation_suffix(japanese_name):
-            return full_name
+        if canonical_name and not cls._key_has_relation_suffix(japanese_name):
+            return canonical_name
 
         if relation_label:
             # Preferred: explicit "<Name>'s <Relation>" from relationship text.
@@ -277,16 +293,16 @@ class CanonNameEnforcer:
                 owner = rel_match.group(1).strip()
                 return f"{owner}'s {relation_label}"
 
-            if full_name:
-                suffix = "'" if full_name.endswith("s") else "'s"
-                return f"{full_name}{suffix} {relation_label}"
+            if canonical_name:
+                suffix = "'" if canonical_name.endswith("s") else "'s"
+                return f"{canonical_name}{suffix} {relation_label}"
             if nickname:
                 suffix = "'" if nickname.endswith("s") else "'s"
                 return f"{nickname}{suffix} {relation_label}"
             return relation_label
 
-        if full_name:
-            return full_name
+        if canonical_name:
+            return canonical_name
         return nickname
     
     def _load_canon_names(self) -> None:
@@ -301,38 +317,82 @@ class CanonNameEnforcer:
         for kanji_name, profile in profiles.items():
             if not isinstance(profile, dict):
                 continue
-            full_name = self.build_canonical_label(kanji_name, profile)
+            jp_key = str(profile.get("character_name_jp", "")).strip() or str(kanji_name).strip()
+            if not jp_key:
+                continue
+
+            full_name = self.build_canonical_label(jp_key, profile)
             nickname = profile.get("nickname", "")
             
             if full_name:
-                self.canon_map[kanji_name] = full_name
+                self.canon_map[jp_key] = full_name
             if nickname:
-                self.nickname_map[kanji_name] = nickname
+                self.nickname_map[jp_key] = nickname
             visual_identity = self._normalize_visual_identity(
                 profile.get("visual_identity_non_color"),
                 profile.get("appearance", "")
             )
             if visual_identity:
-                self.visual_identity_map[kanji_name] = visual_identity
+                self.visual_identity_map[jp_key] = visual_identity
             biological_arrays = self._normalize_biological_arrays(
                 profile.get("biological_arrays"),
                 str(profile.get("relationship_to_others", "")),
             )
             if biological_arrays:
-                self.biological_arrays_map[kanji_name] = biological_arrays
+                self.biological_arrays_map[jp_key] = biological_arrays
 
         if self.canon_map:
             logger.debug(f"[CANON] Loaded {len(self.canon_map)} character names")
 
     @staticmethod
+    def _normalize_habitual_gestures(raw_value: Any) -> List[Dict[str, Any]]:
+        """Normalize habitual gesture payload into a compact structured list."""
+        normalized: List[Dict[str, Any]] = []
+
+        if isinstance(raw_value, str) and raw_value.strip():
+            return [{"gesture": raw_value.strip()}]
+
+        if not isinstance(raw_value, list):
+            return normalized
+
+        for item in raw_value:
+            if isinstance(item, dict):
+                gesture = str(item.get("gesture", "")).strip()
+                if not gesture:
+                    continue
+                entry: Dict[str, Any] = {"gesture": gesture}
+                for key in ("trigger", "intensity", "narrative_effect"):
+                    value = item.get(key)
+                    if isinstance(value, str) and value.strip():
+                        entry[key] = value.strip()
+                chapters = item.get("evidence_chapters")
+                if isinstance(chapters, list):
+                    cleaned_chapters = [str(v).strip() for v in chapters if str(v).strip()]
+                    if cleaned_chapters:
+                        entry["evidence_chapters"] = cleaned_chapters[:6]
+                confidence = item.get("confidence")
+                if isinstance(confidence, (int, float)):
+                    entry["confidence"] = round(max(0.0, min(1.0, float(confidence))), 3)
+                normalized.append(entry)
+            else:
+                text = str(item).strip()
+                if text:
+                    normalized.append({"gesture": text})
+
+            if len(normalized) >= 6:
+                break
+
+        return normalized
+
+    @staticmethod
     def _normalize_visual_identity(identity: Any, appearance: str = "") -> Dict[str, Any]:
         """Normalize visual identity payload to a stable non-color dict shape."""
         if isinstance(identity, str) and identity.strip():
-            return {"identity_summary": identity.strip()}
+            return {"identity_summary": identity.strip(), "habitual_gestures": []}
         if isinstance(identity, list):
             markers = [str(v).strip() for v in identity if str(v).strip()]
             if markers:
-                return {"non_color_markers": markers[:8]}
+                return {"non_color_markers": markers[:8], "habitual_gestures": []}
         if isinstance(identity, dict):
             cleaned: Dict[str, Any] = {}
             for key in (
@@ -352,10 +412,15 @@ class CanonNameEnforcer:
                     values = [str(v).strip() for v in value if str(v).strip()]
                     if values:
                         cleaned[key] = values[:8]
+            habitual_gestures = CanonNameEnforcer._normalize_habitual_gestures(
+                identity.get("habitual_gestures")
+            )
+            if habitual_gestures:
+                cleaned["habitual_gestures"] = habitual_gestures
             if cleaned:
                 return cleaned
         if isinstance(appearance, str) and appearance.strip():
-            return {"identity_summary": appearance.strip()}
+            return {"identity_summary": appearance.strip(), "habitual_gestures": []}
         return {}
 
     @staticmethod
@@ -369,6 +434,7 @@ class CanonNameEnforcer:
             ("expr", "expression_signature"),
             ("pose", "posture_signature"),
             ("acc", "accessory_signature"),
+            ("habit", "habitual_gestures"),
             ("id", "identity_summary"),
         ]
         chunks: List[str] = []
@@ -376,6 +442,19 @@ class CanonNameEnforcer:
             value = identity.get(key)
             if isinstance(value, str) and value.strip():
                 chunks.append(f"{label}:{value.strip()}")
+            elif key == "habitual_gestures" and isinstance(value, list):
+                gestures: List[str] = []
+                for item in value:
+                    if isinstance(item, dict):
+                        g = str(item.get("gesture", "")).strip()
+                        if g:
+                            gestures.append(g)
+                    else:
+                        text = str(item).strip()
+                        if text:
+                            gestures.append(text)
+                if gestures:
+                    chunks.append(f"habit:{', '.join(gestures[:2])}")
             elif isinstance(value, list):
                 items = [str(v).strip() for v in value if str(v).strip()]
                 if items:
@@ -601,39 +680,113 @@ Begin your response with the translated text immediately.
 
 # Canon Event Fidelity constraint for visual context integration
 CANON_EVENT_FIDELITY_DIRECTIVE = """
-=== CANON EVENT FIDELITY (ABSOLUTE PRIORITY) ===
+=== CANON EVENT FIDELITY v2 (ABSOLUTE PRIORITY) ===
 
-The Art Director's Notes above provide STYLISTIC guidance only (vocabulary, atmosphere, emotional tone).
-SOURCE-OF-TRUTH RULE: Raw source text is the only source of truth for events and facts.
+Rule 1 — JP source text is canonical truth for events, dialogue, and plot facts.
+Rule 2 — Translation is rendering, not authoring; no invention outside explicit exception.
+Rule 3 — Preserve character voice fingerprints; EPS is guidance, not a hard overwrite.
+Rule 4 — Dialogue register follows JP source; visual EPS informs nuance only.
+Rule 5 — Atmospheric descriptors can be enhanced, but do not invent events.
+Rule 6 — Illustration is descriptive context, not additional canon.
+Rule 7 — Multimodal guidance governs style; source governs substance.
+Rule 8 — bridge_prose allowed only when canon_fidelity_override=true and within word_budget.
+Rule 9 — Every ADN directive must be acknowledged (WILL_APPLY/PARTIAL/BLOCKED).
+Rule 10 — Post-marker EPS consistency scan required for constrained characters.
 
-**STRICT 1:1 CANON EVENT RULES:**
-1. NEVER add events, actions, or dialogue that appear in illustrations but NOT in the source text
-2. NEVER alter the sequence or timing of events based on what illustrations show
-3. NEVER describe visual details that the source text does not describe
-4. If an illustration shows a character crying but the text only mentions they "looked sad", translate as "looked sad"
-5. If an illustration shows physical contact but the text only implies it, maintain the implication
-6. The illustration INFORMS your vocabulary choice, NOT your content invention
-7. Multimodal guidance is descriptive context only; raw text remains canonical truth
+BLOCKED codes:
+  BLOCKED:POV_MISMATCH | BLOCKED:CHARACTER_ABSENT | BLOCKED:SOURCE_CONTRADICTION |
+  BLOCKED:CANON_FIDELITY | BLOCKED:WORD_BUDGET_EXCEEDED
 
-**WHAT TO USE FROM ART DIRECTOR'S NOTES:**
-✓ Emotional tone vocabulary ("cold", "distant", "frozen" vs generic "sad")
-✓ Atmosphere descriptors matching visual mood
-✓ Character expression adjectives that fit the scene
-✗ Adding unwritten actions visible in the illustration
-✗ Describing unmentioned clothing/accessories details
-✗ Revealing plot points the text hasn't confirmed
+SPOILER PREVENTION:
+The do_not_reveal_before_text list contains visual spoilers.
+Do NOT reveal those details until JP source text confirms them.
 
-**SPOILER PREVENTION:**
-The "do_not_reveal_before_text" list contains visual spoilers.
-Even if you SEE it in the Art Director's Notes, DO NOT translate it until the SOURCE TEXT confirms it.
-
-=== END CANON EVENT FIDELITY ===
+=== END CANON EVENT FIDELITY v2 ===
 """
+
+
+def _coerce_typed_directives(entry: Dict[str, Any], visual_context: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Return typed ADN directives, coercing legacy string directives when needed."""
+    typed = entry.get("narrative_directives", []) if isinstance(entry, dict) else []
+    out: List[Dict[str, Any]] = []
+    if isinstance(typed, list):
+        for idx, item in enumerate(typed, start=1):
+            if isinstance(item, dict):
+                did = str(item.get("id", "") or f"auto-d{idx}").strip()
+                instruction = str(item.get("instruction", "") or "").strip()
+                if not instruction:
+                    continue
+                out.append({
+                    "id": did,
+                    "type": str(item.get("type", "atmospheric_frame") or "atmospheric_frame"),
+                    "priority": str(item.get("priority", "recommended") or "recommended"),
+                    "scope": str(item.get("scope", "post_marker_scene") or "post_marker_scene"),
+                    "canon_fidelity_override": bool(item.get("canon_fidelity_override", False)),
+                    "word_budget": item.get("word_budget"),
+                    "instruction": instruction,
+                    "placement_scene_type": str(item.get("placement_scene_type", "") or ""),
+                    "placement_rule": str(item.get("placement_rule", "") or ""),
+                    "anchor_pattern": str(item.get("anchor_pattern", "") or ""),
+                    "marker_offset": str(item.get("marker_offset", "") or ""),
+                })
+    if out:
+        return out
+
+    legacy = visual_context.get("narrative_directives", []) if isinstance(visual_context, dict) else []
+    if not isinstance(legacy, list):
+        return []
+    for idx, text in enumerate(legacy, start=1):
+        instruction = str(text or "").strip()
+        if not instruction:
+            continue
+        out.append({
+            "id": f"legacy-d{idx}",
+            "type": "atmospheric_frame",
+            "priority": "recommended",
+            "scope": "post_marker_scene",
+            "canon_fidelity_override": False,
+            "word_budget": None,
+            "instruction": instruction,
+        })
+    return out
+
+
+def build_adn_directive_receipt(illustration_id: str, entry: Dict[str, Any]) -> str:
+    """Build §0 ADN directive receipt markdown for THINKING logs."""
+    if not isinstance(entry, dict):
+        return ""
+    visual_context = entry.get("visual_ground_truth", {})
+    directives = _coerce_typed_directives(entry, visual_context if isinstance(visual_context, dict) else {})
+    if not directives:
+        return ""
+    scene_type = str(entry.get("placement_scene_type", "unknown") or "unknown")
+    pov = str(entry.get("pov_character", "unknown") or "unknown")
+    verification = str(entry.get("character_verification_status", "inferred") or "inferred")
+    lines = [
+        "## § 0 · ADN DIRECTIVE RECEIPT",
+        f"**Illustration**: {illustration_id} · **Scene type**: {scene_type}",
+        f"**POV**: {pov} · **Verification**: {verification}",
+        "",
+        "| DID | Type | Priority | Scope | Canon Override | Word Budget | Summary |",
+        "|-----|------|----------|-------|----------------|-------------|---------|",
+    ]
+    for directive in directives:
+        summary = str(directive.get("instruction", "")).strip().replace("\n", " ")
+        if len(summary) > 70:
+            summary = summary[:67] + "..."
+        lines.append(
+            f"| {directive.get('id', '')} | {directive.get('type', '')} | {directive.get('priority', '')} | "
+            f"{directive.get('scope', '')} | {str(directive.get('canon_fidelity_override', False)).upper()} | "
+            f"{directive.get('word_budget', '—') if directive.get('word_budget') is not None else '—'} | {summary} |"
+        )
+    lines.append("")
+    return "\n".join(lines)
 
 
 def build_visual_context_block(
     illustration_id: str,
     visual_context: Dict[str, Any],
+    entry: Optional[Dict[str, Any]] = None,
     spoiler_prevention: Optional[Dict[str, Any]] = None,
     identity_resolution: Optional[Dict[str, Any]] = None,
     validation: Optional[Dict[str, Any]] = None,
@@ -658,7 +811,8 @@ def build_visual_context_block(
     composition = visual_context.get("composition", "N/A")
     emotional_delta = visual_context.get("emotional_delta", "N/A")
     key_details = visual_context.get("key_details", {})
-    directives = visual_context.get("narrative_directives") or []
+    entry = entry if isinstance(entry, dict) else {}
+    directives = _coerce_typed_directives(entry, visual_context)
 
     lines = [
         f"--- ART DIRECTOR'S NOTES [{illustration_id}] ---",
@@ -675,7 +829,30 @@ def build_visual_context_block(
     if directives:
         lines.append("Translation Directives:")
         for d in directives:
-            lines.append(f"  - {d}")
+            if isinstance(d, dict):
+                did = str(d.get("id", "")).strip() or "directive"
+                dtype = str(d.get("type", "")).strip() or "atmospheric_frame"
+                instruction = str(d.get("instruction", "")).strip()
+                if dtype == "placement_hint":
+                    anchor_pattern = str(d.get("anchor_pattern", "")).strip()
+                    placement_rule = str(d.get("placement_rule", "")).strip() or "before"
+                    marker_offset = str(d.get("marker_offset", "")).strip() or "before_anchor"
+                    scene_type = str(d.get("placement_scene_type", "")).strip()
+                    details = []
+                    if scene_type:
+                        details.append(f"scene_type={scene_type}")
+                    if anchor_pattern:
+                        details.append(f"anchor={anchor_pattern}")
+                    details.append(f"rule={placement_rule}")
+                    details.append(f"offset={marker_offset}")
+                    lines.append(
+                        f"  - [{did} | {dtype}] {instruction}"
+                        f" ({', '.join(details)})"
+                    )
+                else:
+                    lines.append(f"  - [{did} | {dtype}] {instruction}")
+            else:
+                lines.append(f"  - {d}")
 
     if identity_resolution:
         recognized = identity_resolution.get("recognized_characters", [])
@@ -792,6 +969,7 @@ def build_chapter_visual_guidance(
     found_count = 0
 
     for illust_id in illustration_ids:
+        entry = cache_manager.get_entry(illust_id) if hasattr(cache_manager, "get_entry") else {}
         visual_ctx = cache_manager.get_visual_context(illust_id)
         spoiler = cache_manager.get_spoiler_prevention(illust_id)
         identity_resolution = cache_manager.get_identity_resolution(illust_id)
@@ -809,7 +987,8 @@ def build_chapter_visual_guidance(
             block = build_visual_context_block(
                 illust_id,
                 visual_ctx,
-                spoiler,
+                entry=entry,
+                spoiler_prevention=spoiler,
                 identity_resolution=identity_resolution,
                 validation=validation,
             )
@@ -844,6 +1023,7 @@ def build_chapter_visual_guidance(
 def build_visual_thinking_log(
     illustration_ids: List[str],
     volume_path: Path,
+    cache_manager: Any = None,
 ) -> str:
     """
     Build a visual thinking log section for THINKING markdown files.
@@ -867,6 +1047,14 @@ def build_visual_thinking_log(
     sections = []
     
     for illust_id in illustration_ids:
+        if cache_manager is not None and hasattr(cache_manager, "get_entry"):
+            try:
+                receipt = build_adn_directive_receipt(illust_id, cache_manager.get_entry(illust_id))
+                if receipt:
+                    sections.append(receipt)
+            except Exception:
+                pass
+
         log_entry = thought_logger.get_log(illust_id)
         
         if log_entry and log_entry.thoughts:

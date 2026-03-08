@@ -21,6 +21,7 @@ import logging
 from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
+from pipeline.common.embedding_client import EmbeddingClient
 
 # ChromaDB for vector storage
 try:
@@ -30,14 +31,6 @@ try:
 except ImportError:
     CHROMADB_AVAILABLE = False
     logging.warning("ChromaDB not installed. Run: pip install chromadb>=0.4.0")
-
-# Gemini for embeddings
-try:
-    from pipeline.common.genai_factory import create_genai_client, resolve_api_key
-    GEMINI_AVAILABLE = True
-except ImportError:
-    GEMINI_AVAILABLE = False
-    logging.warning("Google GenAI not installed.")
 
 # Pinyin helper for Chinese text disambiguation
 try:
@@ -109,14 +102,21 @@ class PatternVectorStore:
             metadata={"hnsw:space": "cosine"}
         )
         
-        # Initialize Gemini client for embeddings
-        api_key = resolve_api_key(api_key=gemini_api_key, required=False) if GEMINI_AVAILABLE else None
-        if GEMINI_AVAILABLE and api_key:
-            self.gemini_client = create_genai_client(api_key=api_key)
-            self._embedding_model = "gemini-embedding-001"
-        else:
-            self.gemini_client = None
-            logger.warning("Gemini client not initialized. Embedding functions will fail.")
+        # Initialize config-driven embedding client (OpenRouter/Gemini)
+        try:
+            self.embedding_client = EmbeddingClient(api_key=gemini_api_key)
+            self._embedding_provider = self.embedding_client.provider
+            self._embedding_model = self.embedding_client.model
+            logger.info(
+                "[EMBED] Provider=%s | Model=%s",
+                self._embedding_provider,
+                self._embedding_model,
+            )
+        except Exception as exc:
+            self.embedding_client = None
+            self._embedding_provider = "unavailable"
+            self._embedding_model = "unavailable"
+            logger.warning("Embedding client not initialized. Embedding functions will fail: %s", exc)
         
         # Track uncertain matches for analysis
         self._uncertain_matches_log: List[Dict] = []
@@ -131,19 +131,15 @@ class PatternVectorStore:
         Returns:
             768-dimensional embedding vector
         """
-        if not self.gemini_client:
-            raise RuntimeError("Gemini client not initialized. Set GOOGLE_API_KEY (or GEMINI_API_KEY).")
+        if not self.embedding_client:
+            raise RuntimeError("Embedding client not initialized. Check config.yaml/provider API key.")
         
         import time
         max_retries = 3
         
         for attempt in range(max_retries):
             try:
-                result = self.gemini_client.models.embed_content(
-                    model=self._embedding_model,
-                    contents=text
-                )
-                return list(result.embeddings[0].values)
+                return self.embedding_client.embed_text(text)
             except Exception as e:
                 logger.warning(f"Embedding attempt {attempt + 1} failed: {e}")
                 if attempt < max_retries - 1:
@@ -165,29 +161,44 @@ class PatternVectorStore:
         Returns:
             List of 768-dimensional embedding vectors (one per input text)
         """
-        if not self.gemini_client:
-            raise RuntimeError("Gemini client not initialized. Set GOOGLE_API_KEY (or GEMINI_API_KEY).")
+        if not self.embedding_client:
+            raise RuntimeError("Embedding client not initialized. Check config.yaml/provider API key.")
 
         if not texts:
             return []
+
+        # Defensive normalization: caller bugs or mixed RAG schemas can leak
+        # dict/list entries. Gemini embedding requires text-like content.
+        normalized_texts: List[str] = []
+        non_string_inputs = 0
+        for item in texts:
+            if isinstance(item, str):
+                normalized_texts.append(item)
+                continue
+
+            non_string_inputs += 1
+            if isinstance(item, (dict, list, tuple, set)):
+                try:
+                    normalized_texts.append(json.dumps(item, ensure_ascii=False))
+                except Exception:
+                    normalized_texts.append(str(item))
+            elif item is None:
+                normalized_texts.append("")
+            else:
+                normalized_texts.append(str(item))
+
+        if non_string_inputs:
+            logger.warning(
+                f"[EMBED] Normalized {non_string_inputs} non-string input(s) "
+                "to plain text for batch embedding."
+            )
 
         import time
         max_retries = 3
 
         for attempt in range(max_retries):
             try:
-                # Use batch embedding endpoint (embed_content accepts list of strings)
-                result = self.gemini_client.models.embed_content(
-                    model=self._embedding_model,
-                    contents=texts  # Pass list of texts directly
-                )
-
-                # Extract embeddings from batch result
-                embeddings = []
-                for embedding in result.embeddings:
-                    embeddings.append(list(embedding.values))
-
-                return embeddings
+                return self.embedding_client.embed_texts(normalized_texts)
 
             except Exception as e:
                 logger.warning(f"Batch embedding attempt {attempt + 1} failed: {e}")

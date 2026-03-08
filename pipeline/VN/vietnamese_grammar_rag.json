@@ -209,7 +209,7 @@
         "patterns": [
             {
                 "id": "vn-missing-particles",
-                "rule": "Add natural particles based on RTAS and archetype",
+                "rule": "Add natural particles based on PAIR_ID and archetype",
                 "severity": "critical",
                 "examples": {
                     "cold_to_warm": {
@@ -1857,7 +1857,7 @@
         },
         "family_override": {
             "priority": "ABSOLUTE",
-            "note": "Family pronouns CANNOT be overridden by RTAS or archetype",
+            "note": "Family pronouns CANNOT be overridden by PAIR_ID or archetype",
             "mappings": {
                 "younger_to_elder_sibling": {
                     "self": "Em",

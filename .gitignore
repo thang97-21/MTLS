@@ -14,6 +14,15 @@
 **/.env
 pipeline/.env
 
+# Private keys / cert bundles
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+id_rsa
+id_ed25519
+
 # ============================================
 # WORKING DIRECTORIES - LARGE/TRANSIENT DATA
 # ============================================
@@ -21,7 +30,11 @@ pipeline/.env
 pipeline/WORK/
 pipeline/INPUT/
 pipeline/OUTPUT/
+WORK/
+INPUT/
+OUTPUT/
 Official_Repo/
+scripts/
 
 # Development workspaces (internal testing/experimentation)
 bleu_workspace/
@@ -45,6 +58,13 @@ pipeline/chroma_vietnamese_patterns/
 
 # Bible data (large copyrighted text)
 pipeline/Bible/
+pipeline/bibles/
+bibles/
+series_continuity/
+
+# Series Bible vector DB artifacts (copyrighted embeddings/runtime DB)
+pipeline/chroma_series_bible/
+chroma_series_bible/
 
 # ============================================
 # DOCUMENTATION - INTERNAL/DEVELOPMENT NOTES
@@ -56,7 +76,21 @@ pipeline/pipeline/narrator/
 pipeline/pipeline/pdf_builder
 
 # Root level docs (setup guides, verification reports)
-docs/
+/docs/*
+/documents/
+
+# Keep canonical engineering docs and top-level security audit in repo
+!/docs/MTL_STUDIO_ENGINEERING/
+!/docs/MTL_STUDIO_ENGINEERING/*.md
+!/docs/SECURITY_AUDIT_V4.md
+
+# Keep pipeline phase/documentation index tree tracked
+!/pipeline/docs/
+!/pipeline/docs/**
+
+# Re-exclude test scripts inside whitelisted docs directory
+pipeline/docs/test_*.py
+pipeline/docs/*_test.py
 
 # Keep publisher structure documentation (non-copyrighted analysis)
 !pipeline/docs/KODANSHA_STRUCTURE.md
@@ -66,6 +100,9 @@ docs/
 UNIVERSAL_CONTINUITY_PACK_DESIGN.md
 VERIFICATION_REPORT.md
 AUDIT_AGENT.md
+
+# Archived model thinking logs (copyright-sensitive analysis artifacts)
+pipeline/DESIGN/THINKING_LOGS/
 
 # Analysis and build documents (internal investigation notes)
 pipeline/96_TO_99_QUALITY_GAP_ANALYSIS.md
@@ -118,10 +155,41 @@ pipeline/scripts/*_test.py
 pipeline/scripts/corpus_scan_results*.json
 pipeline/scripts/corpus_scan_sino_vn.json
 pipeline/scripts/scan_output.txt
+docs/
+
+# Old README.md
+README_BACKUP.md
+
+# Sensitive/generated JSON artifacts (scoped to runtime/output data)
+WORK/**/*.json
+INPUT/**/*.json
+OUTPUT/**/*.json
+pipeline/WORK/**/*.json
+pipeline/INPUT/**/*.json
+pipeline/OUTPUT/**/*.json
+*translation_log*.json
+*visual_cache*.json
+*cost_audit*.json
+*manifest*.json
+*secrets*.json
+*secret*.json
+*credentials*.json
+*service_account*.json
 
 # Backup files
 *_v1_backup.py
 *_backup.py
+*_BACKUP*.py
+*_BACKUP_*.py
+*.backup
+
+# Root-level ad-hoc test scripts
+test_*.py
+*_test.py
+scripts/test_*.py
+scripts/*_test.py
+**/test_*.py
+**/*_test.py
 
 # ============================================
 # PYTHON ARTIFACTS
@@ -175,6 +243,10 @@ pipeline/.vscode/
 **/.agent/
 pipeline/.agent/
 
+# MCP workspace config (may contain local endpoints/tokens)
+.mcp.json
+**/.mcp.json
+
 # ============================================
 # OS GENERATED FILES
 # ============================================
@@ -217,6 +289,10 @@ workspace/
 # Vietnamese reference materials (copyrighted content)
 pipeline/VN/Reference/
 
+# Copyrighted publication outputs
+*.epub
+**/*.epub
+
 # ============================================
 # PROMPTS (PROPRIETARY)
 # ============================================
@@ -239,3 +315,4 @@ MTL Studio.app/
 # ============================================
 # All TTS-related development files (guides, tests, voice samples)
 TTS_development/
+pipeline/openrouter-agent/

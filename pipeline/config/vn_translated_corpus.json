@@ -1,0 +1,1352 @@
+{
+  "real_world_jp_en_corpus": {
+    "description": "Corpus chuyên nghiệp JP→EN dùng cho đo đạc chất lượng văn xuôi ICL. v3.0: 76 ví dụ thuộc 24 phân loại tâm trạng từ 8 nguồn được nhà xuất bản xác minh. Không nhiễm fan-TL.",
+    "source": "Hibike! Euphonium [Yen Press] · Adachi & Shimamura [Seven Seas] · Tình Yêu Vô Hình Dưới Bầu Trời Đêm Quang [Yen Press] · 86—Eighty-Six [Yen Press] · Thám Tử Đã Chết Rồi [Yen Press] · Vòng Lặp Thứ 7 [Seven Seas] · Lớp Học Của Tinh Hoa [Seven Seas] · Không Có Cách Nào Tôi Sẽ Yêu Bạn! Trừ Khi [Seven Seas] · Cô Gái Tôi Cứu Trên Tàu [Yen Press]",
+    "total_volumes": "Hibike Tập 1 · Adachi Tập 1,3 · Love Unseen Toàn Tập · 86 Tập 2,4 · Detective Dead Tập 1-4 · Loop7 Tập 1 · CotE Tập 1 · NfW Tập 1 · Train Tập 1",
+    "generated": "2026-02-03",
+    "free_indirect_discourse_examples": {
+      "description": "Các đoạn văn EN thể hiện nhận thức trực tiếp không có từ lọc (felt/saw/thought)",
+      "instruction": "Sử dụng từ vựng cảm xúc của nhân vật để mô tả thực tại một cách trực tiếp, không qua trung gian",
+      "pattern": "Nhận thức cảm xúc trực tiếp không có từ lọc (felt/saw/thought)",
+      "examples": [
+        {
+          "text": "Frost-san's eyes narrowed suspiciously as she stared me down.",
+          "source_volume": "孤高の華と呼ばれる英国美少女、義妹になったら不器用に甘えてきた 1_20260125_0164",
+          "chapter": "CHAPTER_02"
+        },
+        {
+          "text": "My heart pounded at her expression as I forced a smile and spoke.",
+          "source_volume": "孤高の華と呼ばれる英国美少女、義妹になったら不器用に甘えてきた 1_20260125_0164",
+          "chapter": "CHAPTER_06"
+        },
+        {
+          "text": "When I said that—her eyes widened again, and she buried her face.",
+          "source_volume": "孤高の華と呼ばれる英国美少女、義妹になったら不器用に甘えてきた 4_20260126_2172",
+          "chapter": "CHAPTER_07"
+        },
+        {
+          "text": "*Thump-thump.* Her heart pounded… She knew this was wrong, she knew she was betraying her daughters, but Sakina couldn't stop herself.",
+          "source_volume": "男嫌いな美人姉妹を名前も告げずに助けたら一体どうなる？2_20260127_024a",
+          "chapter": "CHAPTER_05"
+        },
+        {
+          "text": "Sitoen's eyes narrowed. My sudden silence must have worried her.",
+          "source_volume": "隣国から来た嫁が可愛すぎてどうしよう。ー冬熊と呼ばれる俺が相手で本当にいいのか！？ー【電子版特典付】_20260127_211e",
+          "chapter": "CHAPTER_03"
+        },
+        {
+          "text": "Seeing our group, the young man's eyes widened. But even that was a subtle reaction. His swollen eyelids barely lifted.",
+          "source_volume": "隣国から来た嫁が可愛すぎてどうしよう。ー冬熊と呼ばれる俺が相手で本当にいいのか！？ー【電子版特典付】_20260127_211e",
+          "chapter": "CHAPTER_03"
+        },
+        {
+          "text": "When I asked that, Shimizu-san's eyes widened as if she'd been slapped.",
+          "source_volume": "(迷子になっていた幼女を助けたら、お隣に住む美少女留学生が家に遊びに来るようになった件について (2)_20260126_1478",
+          "chapter": "CHAPTER_04"
+        },
+        {
+          "text": "Spotting her best friend, her purple eyes widened, and she called out.",
+          "source_volume": "貴族令嬢。俺にだけなつく_20260119_1d74",
+          "chapter": "CHAPTER_02"
+        },
+        {
+          "text": "The moment I answered, her golden eyes narrowed. The first emotion I could read from her was 'suspicion'.",
+          "source_volume": "貴族令嬢。俺にだけなつく_20260119_1d74",
+          "chapter": "CHAPTER_04"
+        },
+        {
+          "text": "Her eyes narrowed as she approached and started poking my sides with her finger. Ugh, the guilt is way stronger than the sense of accomplishment…!",
+          "source_volume": "弓道部の美人な先輩が、俺の部屋でお腹出して寝てる_20260129_165c",
+          "chapter": "CHAPTER_05"
+        },
+        {
+          "text": "The mother's eyes widened, but she quickly let out a small laugh.",
+          "source_volume": "男嫌いな美人姉妹を名前も告げずに助けたら一体どうなる？1_20260127_1cca",
+          "chapter": "CHAPTER_05"
+        },
+        {
+          "text": "Sana glared at Shintarou, her guard up and her eyes narrowed.",
+          "source_volume": "年上幼馴染と再会したら、姉妹で俺の取り合いが始まった　どっちがいいか、試してみる？_20260125_038e",
+          "chapter": "CHAPTER_04"
+        },
+        {
+          "text": "Momo-nee's voice rose with delight. Even in the darkness, I could tell her eyes were sparkling, and sitting next to her, my heart pounded a little.",
+          "source_volume": "年上幼馴染と再会したら、姉妹で俺の取り合いが始まった　どっちがいいか、試してみる？_20260125_038e",
+          "chapter": "CHAPTER_05"
+        },
+        {
+          "text": "Akari-chan's gaze darted about in a slight panic. She squeezed my hand just a little tighter—and gave a small nod.",
+          "source_volume": "友人に500円貸したら借金のカタに妹をよこしてきたのだけれど、俺は一体どうすればいいんだろう_20260129_205c",
+          "chapter": "CHAPTER_06"
+        },
+        {
+          "text": "His heart pounded, and he frantically tried to back away.",
+          "source_volume": "この中に1人、妹がいる! 4_20260201_0523",
+          "chapter": "CHAPTER_04"
+        }
+      ]
+    },
+    "professional_prose_icl_examples": {
+      "version": "3.0",
+      "description": "Ví dụ văn xuôi cao cấp được lấy độc quyền từ bản dịch nhà xuất bản được cấp phép. v3.0 thêm 26 ví dụ mới thuộc 12 phân loại tâm trạng mới từ Vòng Lặp Thứ 7 [Seven Seas], Lớp Học Của Tinh Hoa [Seven Seas], Không Có Cách Nào Tôi Sẽ Yêu Bạn! Trừ Khi [Seven Seas], và Cô Gái Tôi Cứu Trên Tàu [Yen Press]. Tổng: 76 ví dụ, 24 phân loại tâm trạng. Không nhiễm fan-TL.",
+      "examples_by_mood": {
+        "literary_poetic": {
+          "description": "Hình ảnh trực quan, chi tiết vật lý động, trọng lượng cảm xúc được truyền tải qua quan sát giác quan thay vì tuyên bố trừu tượng. Câu ngắn dồn dập tạo căng thẳng; câu dài tạo không khí. Lý tưởng cho cảnh kịch tính, giới thiệu nhân vật, chuyển cảnh.",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "Áp dụng kỹ thuật hình ảnh trực quan và chi tiết vật lý động. Sử dụng câu ngắn tạo nhịp căng thẳng, câu dài tạo không khí. Tránh tuyên bố trừu tượng về cảm xúc — để cảnh quan nói thay. Trong tiếng Việt: ưu tiên hình ảnh giác quan cụ thể (mùi, xúc giác, âm thanh), tránh 'cô ấy buồn' → dùng 'ánh mắt cô ấy như chìm xuống'.",
+          "examples": [
+            {
+              "id": "hibike_001",
+              "source": "Hibike! Euphonium Volume 01 [Yen Press]",
+              "text": "Hundreds of gazes focused on the same spot. The atmosphere was tinged with a swirling, feverish energy that brought a flush to the girls' faces. Kumiko slowly exhaled, trying to steel herself against the contagious emotion. Her heartbeat hammered in her eardrums. Her fingernails pressed crescent-shaped marks into the sweat-sticky palms of her clenched fists.",
+              "chapter": "",
+              "why_premium": "\"Crescent-shaped marks into the sweat-sticky palms\" là chi tiết xúc giác chính xác, không phải \"cô ấy lo lắng.\" Đoạn văn di chuyển từ đám đông đến nhân vật chính đến da, thu hẹp tiêu điểm như zoom máy ảnh.",
+              "context": "Concert climax — physical response to collective performance energy",
+              "word_count": 60,
+              "techniques": [
+                "physiological_cascade",
+                "collective_to_individual_zoom",
+                "tactile_specificity"
+              ]
+            },
+            {
+              "id": "hibike_002",
+              "source": "Hibike! Euphonium Volume 01 [Yen Press]",
+              "text": "The courtyard was enclosed by a border of sakura cherry trees, which were already shedding their pink petals, and pale green buds were hesitantly beginning to peek out from the slender branches. The students passing beneath seemed uninterested in the scattering blossoms; not a single one paid them any mind.",
+              "chapter": "",
+              "why_premium": "\"Hesitantly beginning to peek out\" trao quyền cho nụ nở hoa. Dấu chấm phẩy xoay từ красота đến thờ ơ — đối lập LÀ tuyên bố cảm xúc. Không ai nói cô đơn. Cảnh nói điều đó.",
+              "context": "Spring courtyard — transitional season, students indifferent to beauty",
+              "word_count": 52,
+              "techniques": [
+                "seasonal_symbolism",
+                "human_indifference_contrast",
+                "semicolon_pivot"
+              ]
+            },
+            {
+              "id": "hibike_003",
+              "source": "Hibike! Euphonium Volume 01 [Yen Press]",
+              "text": "The two girls' shadows fell starkly on the white-painted hallway. It was bright outside, but the space they occupied felt somehow dim. The shouts of the baseball team floated in as they practiced outside on the athletics field. They seemed to come from a distant world, and it felt like this particular hallway was somehow separated from the rest of existence. The two girls were drowning inside that invisible membrane.",
+              "chapter": "",
+              "why_premium": "\"Invisible membrane\" đóng đoạn văn như chìa khóa xoay trong ổ khóa. Âm thanh từ bên ngoài (đội bóng chày) làm sâu sắc thêm sự cô lập của họ qua đối lập: thế giới tiếp tục; khoảnh khắc của họ bị đình chỉ.",
+              "context": "Hallway confrontation — two characters isolated from the rest of the school",
+              "word_count": 72,
+              "techniques": [
+                "spatial_isolation",
+                "ambient_sound_as_distance",
+                "closing_metaphor_beat"
+              ]
+            },
+            {
+              "id": "hibike_004",
+              "source": "Hibike! Euphonium Volume 01 [Yen Press]",
+              "text": "Her strained voice carved itself with unpleasant clarity into Kumiko's brain. It was the last competition of middle school. When she remembered the moment, it was always Reina's eyes that came to mind. And whenever she thought of them, Kumiko wanted to run as far away from that summer as she could.",
+              "chapter": "",
+              "why_premium": "\"Carved itself with unpleasant clarity\" — giọng nói là một lưỡi dao. Ký ức quay lại qua chi tiết vật lý cụ thể (đôi mắt), không phải mặc cảm trừu tượng. \"Chạy khỏa mùa hè đó\" — mùa trở thành vết thương, không phải người.",
+              "context": "A recurring memory of a classmate's raw grief after a competition loss",
+              "word_count": 53,
+              "techniques": [
+                "sensory_memory_anchor",
+                "avoidance_as_guilt",
+                "season_as_emotional_landmark"
+              ]
+            }
+          ]
+        },
+        "tension_suspense": {
+          "description": "Lo âu nội tâm, phản ứng sinh lý với căng thẳng, hiệu ứng giãn thời gian, nỗi sợ chờ đợi. Lý tưởng cho căng thẳng lãng mạn, cảnh trước thú nhận, lo xã hội, khoảnh khắc chờ đợi.",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "Chuyển lo âu nội tâm thành phản ứng sinh lý: tim đập nhanh, tay run, thời gian kéo dài. Kỹ thuật: 'cố gắng KHÔNG làm X' mạnh hơn 'cố không làm'. Trong tiếng Việt: dùng hình ảnh cơ thể ('chân như đóng đinh', 'tim như muốn nhảy ra') thay vì nói 'tôi lo lắng'.",
+          "examples": [
+            {
+              "id": "adachi_001",
+              "source": "Adachi & Shimamura Volume 03",
+              "text": "So, there I stood, tying myself in knots, to the point that I actually forgot about how much leg I was showing.",
+              "chapter": "",
+              "why_premium": "\"Tying myself in knots\" là thành ngữ và hình ảnh. Neo lo âu trừu tượng vào chi tiết cụ thể (quên sự khiêm tốn). Tránh \"tôi lo lắng\" kể.",
+              "context": "Protagonist anxious about Valentine's Day plans",
+              "word_count": 24,
+              "techniques": [
+                "physiological_detail",
+                "self_aware_humor",
+                "concrete_image"
+              ]
+            },
+            {
+              "id": "adachi_002",
+              "source": "Adachi & Shimamura Volume 03",
+              "text": "It gnawed and gnawed at me until I gave in and checked my phone.",
+              "chapter": "",
+              "why_premium": "\"Gnawed and gnawed\" truyền tải việc kiểm tra ám ảnh qua lặp lại hành động. \"Gave in\" cho thấy giải quyết xung đột nội tâm. Nhịp chặt.",
+              "context": "Protagonist checking phone obsessively",
+              "word_count": 15,
+              "techniques": [
+                "verb_repetition",
+                "gradual_surrender",
+                "active_verbs"
+              ]
+            },
+            {
+              "id": "adachi_003",
+              "source": "Adachi & Shimamura Volume 01",
+              "text": "Terrified that she might catch me looking again, I focused all my energy into not glancing in her direction.",
+              "chapter": "",
+              "why_premium": "\"Focused all my energy into NOT doing X\" mạnh hơn \"cố không nhìn.\" Làm cho sự tránh né chủ động, không bị động.",
+              "context": "Classroom tension, protagonist hyper-aware of crush",
+              "word_count": 20,
+              "techniques": [
+                "exaggerated_effort",
+                "negative_action",
+                "tension_through_restraint"
+              ]
+            },
+            {
+              "id": "adachi_004",
+              "source": "Adachi & Shimamura Volume 03",
+              "text": "The clock that once ran agonizingly slowly now spun its hands at breakneck speed. It was so dizzying, I was scared I might just pass out.",
+              "chapter": "",
+              "why_premium": "Nắm bắt lo âu qua chuyển dịch nhận thức thời gian (chậm → nhanh). \"Dizzying\" cầu nối ẩn dụ với cảm giác leo thang đến sợ hãi cụ thể (ngất xỉu).",
+              "context": "Pre-confession anxiety, time perception shift",
+              "word_count": 28,
+              "techniques": [
+                "time_dilation",
+                "physiological_response",
+                "contrast_structure"
+              ]
+            },
+            {
+              "id": "loveunseen_008",
+              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
+              "text": "Fear seemed to have nailed my feet to the floor.",
+              "chapter": "",
+              "why_premium": "\"Nailed\" là động và bạo lực — thứ gì đó bên ngoài đã cố định anh ta, không phải lựa chọn. Khung bị động (\"seemed to\") thêm kinh hoàng: anh ta là chủ thể, không phải tác nhân. Khác với kiềm chế chủ động (adachi_003) — đây là tắt máy không tự nguyện dưới cực độ cảm xúc.",
+              "context": "Protagonist arrives at hospital after running; Fuyutsuki has just been taken for emergency treatment",
+              "word_count": 11,
+              "techniques": [
+                "involuntary_freeze_metaphor",
+                "kinetic_verb_violence",
+                "passive_construction_as_helplessness"
+              ]
+            }
+          ]
+        },
+        "playful_banter": {
+          "description": "Đối thoại trêu đùa, châm biếm nhẹ, sự thân mật thoải mái qua đùa cợt. Lý tưởng cho mối quan hệ đã thiết lập, giải trợ, tán tỉnh không thú nhận.",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "Đối thoại trêu đùa nhẹ, thân mật thoải mái qua đùa cợt. Kỹ thuật: kết hợp hành động vật lý + so sánh + quan sát của người kể. Trong tiếng Việt: giữ giọng tự nhiên, tránh ngôn ngữ quá trang trọng trong đối thoại thân mật.",
+          "examples": [
+            {
+              "id": "adachi_005",
+              "source": "Adachi & Shimamura Volume 01",
+              "text": "\"I told you, I don't want you to visit!\" She turned her back to me, pouting. It reminded me of a little kid who didn't want their mom to visit them at school.",
+              "chapter": "",
+              "why_premium": "Đối thoại + hành động vật + so sánh của người kể tạo cảnh đầy đủ. So sánh (\"như đứa trẻ\") thêm tình cảm mà không nói \"tôi thấy dễ thương\".",
+              "context": "Friends discussing part-time job, playful refusal",
+              "word_count": 35,
+              "techniques": [
+                "physical_reaction",
+                "simile",
+                "narrator_observation"
+              ]
+            },
+            {
+              "id": "adachi_006",
+              "source": "Adachi & Shimamura Volume 01",
+              "text": "\"Wait, what? Do I stink or something?\" That was news to me. I felt my self-esteem getting ready to plummet.",
+              "chapter": "",
+              "why_premium": "\"Self-esteem getting ready to plummet\" là cường điệu hài hước. Dùng cấu trúc động từ chủ động (tự trọng như tác nhân) để tạo hài hước.",
+              "context": "Misunderstanding during intimate moment",
+              "word_count": 21,
+              "techniques": [
+                "dialogue_intrusion",
+                "exaggeration",
+                "self_deprecating_humor"
+              ]
+            },
+            {
+              "id": "adachi_007",
+              "source": "Adachi & Shimamura Volume 01",
+              "text": "She seemed surprised to find me peering at her, but it was too late to look away. So, instead, we exchanged silent 'What?' looks a dozen or so times.",
+              "chapter": "",
+              "why_premium": "\"Dozen or so times\" lượng hóa sự khó xử mà không nghĩ đen. \"Silent What? looks\" là show-dont-tell cho sự bối rối.",
+              "context": "Protagonist caught staring, awkward eye contact",
+              "word_count": 31,
+              "techniques": [
+                "escalating_absurdity",
+                "quantified_action",
+                "mutual_embarrassment"
+              ]
+            }
+          ]
+        },
+        "wistful_bittersweet": {
+          "description": "Nostalgia, buồn man mác dịu dàng, nhận thức về sự phù du, chấp nhận cảm xúc mềm mại. Lý tưởng cho lời từ biệt, chuyển mùa, tình cảm không được đáp lại, khoảnh khắc suy tư.",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "Nostalgia, buồn man mác dịu dàng, nhận thức về sự phù du. Kỹ thuật: lặp lại hành động (xem đồng hồ), kết thúc mở ('rồi sao nữa?'). Trong tiếng Việt: dùng ẩn dụ xúc giác (thời gian trượt qua tay như nước) để diễn đạt sự trôi qua.",
+          "examples": [
+            {
+              "id": "adachi_008",
+              "source": "Adachi & Shimamura Volume 01",
+              "text": "I looked back at the clock, even though I'd only just checked it. Somehow, I dreaded every tick of the second hand. Soon lunch would end, cleanup would begin…and then what?",
+              "chapter": "",
+              "why_premium": "Lặp lại xem đồng hồ để cho thấy nhận thức ám ảnh. \"Và rồi sao?\" để câu hỏi treo, phản ánh sự không chắc chắn của nhân vật.",
+              "context": "Watching time pass during intimate moment",
+              "word_count": 34,
+              "techniques": [
+                "time_awareness",
+                "ellipsis_trailing",
+                "open_ended_anxiety"
+              ]
+            },
+            {
+              "id": "adachi_009",
+              "source": "Adachi & Shimamura Volume 01",
+              "text": "I grabbed a lock of hair and ran it through my fingers; it slipped away so fast, it practically evaporated.",
+              "chapter": "",
+              "why_premium": "Cảm giác vật lý (tóc trượt) trở thành ẩn dụ cho sự phù du. \"Evaporated\" nâng hành động đơn giản lên thành hình ảnh buồn man mác.",
+              "context": "Protagonist reflecting on relationship changes",
+              "word_count": 21,
+              "techniques": [
+                "tactile_metaphor",
+                "ephemeral_imagery",
+                "sensory_to_emotional"
+              ]
+            },
+            {
+              "id": "adachi_010",
+              "source": "Adachi & Shimamura Volume 03",
+              "text": "I stared blankly at the poster, imagining our faces superimposed over theirs. With her there to guide me, I could go just about anywhere. Ugh, I'm such a terminal case.",
+              "chapter": "",
+              "why_premium": "Kích thích bên ngoài → ẩn dụ nội tâm → kiểm tra tự giễu thực tế. \"Terminal case\" hài hước nhưng cũng tiết lộ chiều sâu cảm xúc.",
+              "context": "Movie poster triggers emotional reflection",
+              "word_count": 33,
+              "techniques": [
+                "visual_trigger",
+                "fantasy_insertion",
+                "self_aware_deflation"
+              ]
+            },
+            {
+              "id": "adachi_011",
+              "source": "Adachi & Shimamura Volume 03",
+              "text": "Just then, the icy wind brought me back to my senses, but that was probably for the best. The next thing I knew, all the warmth had evaporated, leaving behind only the bone-chilling cold and the faintest outline of Shimamura, distinct from the hazy darkness all around us.",
+              "chapter": "",
+              "why_premium": "Lạnh thể xác phản chiếu khoảng cách cảm xúc. \"Faintest outline\" là thơ trực quan. Câu dài phù hợp trạng thái suy tư.",
+              "context": "Cold night, emotional distance metaphor",
+              "word_count": 51,
+              "techniques": [
+                "weather_as_emotion",
+                "synesthesia",
+                "visual_fade"
+              ]
+            }
+          ]
+        },
+        "intimate_quiet_moments": {
+          "description": "Sự gần gũi thể xác, nhạy cảm giác quan cao độ, im lặng như giao tiếp, thân mật qua chạm. Lý tưởng cho cao trào lãng mạn, cảnh an ủi, sự vulnerable.",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "Gần gũi thể xác, nhạy cảm giác quan cao độ, im lặng như giao tiếp. Kỹ thuật: mô tả xúc giác tuần tự, chi tiết vi mô. Trong tiếng Việt: tập trung vào cảm giác cụ thể (ngón tay chạm vào tóc, hơi thở ấm) để xây dựng sự thân mật.",
+          "examples": [
+            {
+              "id": "adachi_012",
+              "source": "Adachi & Shimamura Volume 01",
+              "text": "I squirmed slightly as gravity pulled her hair down onto my leg, tickling me. Meanwhile, Adachi stared blankly at my stomach area, blinking hard, as though she was trying to will away drowsiness.",
+              "chapter": "",
+              "why_premium": "Nắm bắt hai trải nghiệm vật lý đồng thời (ticklish vs buồn ngủ). \"Blinking hard\" là hành động cụ thể cho sự mệt mỏi trừu tượng.",
+              "context": "Using friend as pillow, tactile focus",
+              "word_count": 35,
+              "techniques": [
+                "dual_perspective",
+                "micro_physical_details",
+                "simultaneous_actions"
+              ]
+            },
+            {
+              "id": "adachi_013",
+              "source": "Adachi & Shimamura Volume 03",
+              "text": "Shimamura's hands always felt so big and warm whenever I held them, and yet whenever she grasped my shoulders, they felt small and frail. Was that because I was in the supportive role for a change?",
+              "chapter": "",
+              "why_premium": "Cùng bàn tay cảm thấy khác tùy bối cảnh. Câu hỏi triết học theo quan sát. Cho thấy động lực quan hệ qua cảm giác thể xác.",
+              "context": "Hand on shoulder, size perception shift",
+              "word_count": 38,
+              "techniques": [
+                "perspective_shift",
+                "tactile_contradiction",
+                "self_analysis"
+              ]
+            },
+            {
+              "id": "adachi_014",
+              "source": "Adachi & Shimamura Volume 03",
+              "text": "First, I felt her fingers against my hair; then her big, warm palm cupped the back of my head. As her fingers combed through my hair, my heart pounded so hard, it made my gums throb.",
+              "chapter": "",
+              "why_premium": "\"Gums throb\" là chi tiết cụ thể bất thường khiến cảm xúc trở nên trực quan. Mô tả xúc giác tuần tự xây dựng sự thân mật từ từ.",
+              "context": "Head-patting scene, physiological response",
+              "word_count": 39,
+              "techniques": [
+                "sequential_sensation",
+                "physiological_overflow",
+                "unexpected_detail"
+              ]
+            }
+          ]
+        },
+        "deep_introspection": {
+          "description": "Tự kiểm miễn cưỡng, mặc cảm được thể hiện qua sự do dự, xấu hổ qua sự bất động. Nhân vật nhận ra điều không hay về bản thân và không né tránh. Lý tưởng cho xung đột nội tâm, khoảnh khắc hèn nhát, tự ghét, khoảng cách giữa ta là ai và ta muốn là ai.",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "Tự kiểm miễn cưỡng, mặc cảm thể hiện qua sự do dự, xấu hổ qua sự bất động. Không có từ lọc, không 'tôi nghĩ'. Trong tiếng Việt: dùng câu ngắn, không có lối thoát — nhân vật tự kết án chính mình.",
+          "examples": [
+            {
+              "id": "loveunseen_001",
+              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
+              "text": "I hated myself for noticing these things and being upset by them.",
+              "chapter": "",
+              "why_premium": "Câu không có lối thoát. \"Noticing\" và \"being upset\" bị lên án đồng thời — anh ta ghét việc nhận th ghét việc nó làmấy VÀ anh ta buồn. 14 từ chứa bẫy tâm lý đầy đủ. Không từ lọc, không \"tôi nghĩ,\" không làm dịu. Show-dont-tell thuần túy của nhân vật không thể tha thứ cho bản thân.",
+              "context": "Protagonist freezes instead of picking up a blind girl's dropped cane; imagines how his friends would have acted without hesitation",
+              "word_count": 14,
+              "techniques": [
+                "self_disgust_as_statement",
+                "double_bind",
+                "brutal_brevity"
+              ]
+            },
+            {
+              "id": "loveunseen_002",
+              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
+              "text": "I waited for someone else to step up, which made me feel like such a lowlife.",
+              "chapter": "",
+              "why_premium": "\"Waited for someone else\" là hành động — hoặc không-hành động. Xấu hổ đến ngay lập tức không có đệm. \"Such a lowlife\" là tự kết án thẳng thắn, không văn chương, khiến nó trung thực hơn. Anh ta không văn chương hóa thất bại của mình. Anh ta đặt tên nó.",
+              "context": "Protagonist watches more socially confident friends act instinctively while he freezes",
+              "word_count": 17,
+              "techniques": [
+                "passive_inaction_as_shame",
+                "self_labeling",
+                "compressed_moral_failure"
+              ]
+            },
+            {
+              "id": "loveunseen_003",
+              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
+              "text": "Just telling myself that excuse made my heart ache.",
+              "chapter": "",
+              "why_premium": "Từ \"excuse\" đang làm công việc lớn — anh ta đã phân loại lý luận của mình là một lời biện minh trước khi kết thúc câu. Đau thể xác xác nhận nó. 10 từ. Nhân vật đã tự kết án hoàn toàn trước khi độc giả có thể.",
+              "context": "Protagonist catches himself rationalizing his emotional distance from Fuyutsuki",
+              "word_count": 10,
+              "techniques": [
+                "meta_self_awareness",
+                "excuse_collapse",
+                "physiological_truth"
+              ]
+            },
+            {
+              "id": "loveunseen_004",
+              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
+              "text": "I could feel a transparent wall between us.",
+              "chapter": "",
+              "why_premium": "\"Transparent\" là từ quan trọng — anh ta có thể thấy cô rõ ràng nhưng không thể chạm đến. Bức tường không đục (thờ ơ) mà trong suốt (khát khao không có quyền truy cập). 9 từ chứa toàn bộ cung trọng lượng cảm xúc của tiểu thuyết.",
+              "context": "Protagonist realizes he cannot reach across the gap between his world and Fuyutsuki's",
+              "word_count": 9,
+              "techniques": [
+                "physical_metaphor_for_distance",
+                "transparent_not_opaque",
+                "understated_devastation"
+              ]
+            },
+            {
+              "id": "loveunseen_011",
+              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
+              "text": "That day I gave up on giving up on you.",
+              "chapter": "",
+              "why_premium": "\"Gave up on giving up\" ngữ pháp đệ quy và cảm xúc tinh khiết — phủ định kép không vụng về, nó chính xác. Anh ta cố gắng tách ra. Anh ta thất bại. Thất bại đó là khởi đầu. 11 từ đặt tên điểm bản lề chính xác của toàn bộ mối quan hệ.",
+              "context": "Posthumous letter; protagonist writes about the exact moment he stopped resisting love",
+              "word_count": 11,
+              "techniques": [
+                "double_negation_as_confession",
+                "recursive_surrender",
+                "narrative_hinge_sentence"
+              ]
+            }
+          ]
+        },
+        "dramatized_romance": {
+          "description": "Cảm xúc được truyền tải hoàn toàn qua hành vi, né tránh, hoặc hành động vi mô — không bao giờ được tuyên bố. Sự hấp dẫn được thể hiện qua kiềm chế: nhìn đi chỗ khác, thở có kiểm soát, cố tình không chạm. Lý tưởng cho lãng mạn chậm, nhận thức đầu tiên về cảm xúc, cảnh nơi nhân vật từ chối thừa nhận điều họ cảm thấy.",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "Cảm xúc được thể hiện hoàn toàn qua hành vi, tránh né, hoặc hành động vi mô — không bao giờ tuyên bố. Trong tiếng Việt: dùng hành động cụ thể (quay đi, nín thở) thay lời thú nhận.",
+          "examples": [
+            {
+              "id": "loveunseen_005",
+              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
+              "text": "Her unexpected smile made my heart race. I didn't want to dwell on that feeling, though, so I turned away.",
+              "chapter": "",
+              "why_premium": "Từ xoay là \"though\" — nó tách phản ứng không tự nguyện khỏi phản ứng được chọn. \"Turned away\" là toàn bộ lãng mạn cô đọng trong một hành động. Anh ta không nói \"tôi thích nụ cười của cô.\" Anh ta quay đi từ nó. Độc giả hiểu mọi thứ nhân vật từ chối.",
+              "context": "Protagonist's heart races at Fuyutsuki's smile; he immediately suppresses the feeling",
+              "word_count": 22,
+              "techniques": [
+                "emotion_then_immediate_suppression",
+                "avoidance_as_confession",
+                "though_as_pivot"
+              ]
+            },
+            {
+              "id": "loveunseen_006",
+              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
+              "text": "Fuyutsuki's face was now right in front of mine, and she blinked in surprise. \"Thank you for protecting me,\" she said with a smile, so close I could almost feel her breath. I held my own breath for as long as I could until we reached our station stop, trying not to breathe on her.",
+              "chapter": "",
+              "why_premium": "\"Held my own breath... trying not to breathe on her\" — sự kiềm chế của anh ta LÀ sự dịu dàng. Anh ta đang bảo vệ cô khỏi sự hiện diện của chính mình. Đây lãng mạn hơn bất kỳ tuyên bố nào vì nó cho thấy một người đàn ông cố chiếm ít không gian hơn vì sự kính trọng. Mong muốn được thể hiện như sự tự phủ nhận.",
+              "context": "Fuyutsuki is suddenly close after he catches her on a crowded train; he holds his breath until their stop",
+              "word_count": 52,
+              "techniques": [
+                "proximity_hyperawareness",
+                "breath_as_intimacy_marker",
+                "self_erasure_as_reverence"
+              ]
+            },
+            {
+              "id": "loveunseen_007",
+              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
+              "text": "The scattered lights of the apartment buildings looked like real stars. The huge moon peeked out through high-rise buildings, looking as if it were suspended in a star-filled sky. So this is what the city looks like at night, I thought—but then something else struck me. Fuyutsuki wouldn't be able to see the moon, would she?",
+              "chapter": "",
+              "why_premium": "Cấu trúc như ngạc nhiên sau đó nhận ra sau đó tàn phá. Anh ta nhận ra cái đẹp, sau đó nhận ra cô không thể chia sẻ — khoảng đó LÀ lãng mạn. Câu hỏi cuối cùng không phải tu từ; đó là khoảnh khắc đầu tiên anh ta thực sự nhìn thấy tình huống của cô. Trăng trở thành mọi thứ anh ta muốn cho cô mà anh ta không thể.",
+              "context": "Moonlit walk after the party; he realizes Fuyutsuki cannot see what he is seeing",
+              "word_count": 61,
+              "techniques": [
+                "wonder_then_gap",
+                "beauty_as_exclusion",
+                "question_ending_as_emotional_beat"
+              ]
+            },
+            {
+              "id": "loveunseen_009",
+              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
+              "text": "\"You always tell such kind lies, don't you, Kakeru?\"",
+              "chapter": "",
+              "why_premium": "Cô không buộc tội anh ta lừa dối — cô đang nói với anh ta cô biết anh ta yêu cô, bằng ngôn ngữ cho phép cả hai sống sót qua sự thú nhận. \"Kind lies\" tái định nghĩa không trung thực như sự tận tâm. Dấu hỏi không phải câu hỏi. Đó là tuyên bố với khả năng chối bỏ được xây dựng trong đó. Cách sử dụng tinh vi nhất của đối thoại-như-thú-nhận trong corpus.",
+              "context": "Sparkler scene; Fuyutsuki says this after he insists she will recover despite knowing her prognosis",
+              "word_count": 11,
+              "techniques": [
+                "confession_through_accusation",
+                "plausible_deniability",
+                "tenderness_as_challenge"
+              ]
+            },
+            {
+              "id": "loveunseen_010",
+              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
+              "text": "I took a deep breath—then an even deeper one—in an effort to hold back the tears.",
+              "chapter": "",
+              "why_premium": "Hơi thở đầu tiên thất bại — đó là điều hơi thở thứ hai cho chúng ta biết. Anh ta không bao giờ nói \"tôi gần như khóc.\" Sự lặp lại (\"then an even deeper one\") là manh mối. \"In an effort to hold back\" xác nhận anh ta ở bờ vực mà không xác nhận liệu anh ta có thành công. Độc giả hoàn thành bức tranh. Show-dont-tell hoàn hảo cho nhân vật từ chối gục ngã.",
+              "context": "Protagonist alone in hospital corridor after seeing Fuyutsuki's 5% survival statistic on the chart",
+              "word_count": 19,
+              "techniques": [
+                "two_step_breath",
+                "effort_as_emotional_marker",
+                "repetition_reveals_failure"
+              ]
+            }
+          ]
+        },
+        "endurance_as_devotion": {
+          "description": "Tình yêu được thể hiện qua chi phí thể xác, vi tế, hoặc điều ước bất khả thi — không bao giờ được tuyên bố. Nhân vật chịu đựng, hy sinh, hoặc thực hiện một hành động quan tâm nhỏ, và trọng lượng cảm xúc được mang hoàn toàn bởi cường độ không cân xứng của hành động. Lý tưởng cho cảnh khủng hoảng cao trào, khoảnh khắc nhân vật nhận ra cảm xúc sâu đến mức nào, hoặc cảnh yên tĩnh nơi một cử chỉ nhỏ tiết lộ tất cả.",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "Tình yêu được thể hiện qua chi phí thể xác, vi tế, hoặc điều ước bất khả thi — không tuyên bố. Trong tiếng Việt: cho nhân vật chịu đựng đau đớn thể xác và ngay lập tức bỏ qua nó ('tôi không quan tâm, chẳng có gì quan trọng').",
+          "examples": [
+            {
+              "id": "loveunseen_012",
+              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
+              "text": "I could taste blood. My lungs were aching. I didn't care, though—none of it mattered. I just wanted to see Fuyutsuki as soon as possible.",
+              "chapter": "",
+              "why_premium": "Đau khổ vật lý được đặt tên (\"blood,\" \"aching\") và ngay lập tức bị bỏ qua (\"none of it mattered\"). Sự bỏ qua LÀ tuyên bố. Anh ta không nói \"tôi yêu cô.\" Anh ta nói tên cô và \"càng sớm càng tốt.\" Sự khẩn cấp ở trong ngữ pháp — không mệnh đề phụ, không phản ánh. Chỉ chuyển động về phía trước. Dùng khi tình yêu của nhân vật phải được thể hiện qua hành động trong cực độ thay vì ngôn ngữ cảm xúc.",
+              "context": "Protagonist sprints to hospital after hearing Fuyutsuki has collapsed; internal monologue during the run",
+              "word_count": 27,
+              "techniques": [
+                "body_cost_as_love_proof",
+                "dismissal_of_pain",
+                "single_sentence_mission"
+              ]
+            },
+            {
+              "id": "loveunseen_013",
+              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
+              "text": "It looked like she was about to run out of paper, so I silently placed more next to her. \"Thank you,\" she said. I was so elated I couldn't stop myself from talking to her.",
+              "chapter": "",
+              "why_premium": "Hành động nhỏ phi thường (đặt giấy). Lời cảm ơn là hai từ (\"Cảm ơn\"). Phản ứng của anh ta là hân hoan quá mãnh liệt anh ta mất kiểm soát bản thân. Tải trọng cảm xúc không cân xứng là dấu hiệu của giai đoạn đầu của tình yêu — mọi mảnh chú ý trở nên to lớn. Dùng khi nhân vật chưa thể thú nhận cảm xúc nhưng niềm vui của họ ở những điều nhỏ nhặt phản bội họ.",
+              "context": "Library scene; protagonist notices Fuyutsuki is running low on origami paper and places more next to her without a word",
+              "word_count": 33,
+              "techniques": [
+                "micro_act_disproportionate_joy",
+                "silence_as_care",
+                "elation_from_minimal_acknowledgment"
+              ]
+            },
+            {
+              "id": "loveunseen_014",
+              "source": "Love Unseen Beneath the Clear Night Sky [Yen Press]",
+              "text": "I hoped Fuyutsuki's sparkler would last longer than mine. I hoped she'd live longer than I did, even if just by a second. I wished that from the bottom of my heart.",
+              "chapter": "",
+              "why_premium": "Ba câu: thời gian pháo hoa → tuổi thọ → xác nhận từ trái tim. Nén cấu trúc hoàn hảo: đối tượng cụ thể mở ra suy nghĩ, điều ước bất khả thi theo sau, \"from the bottom of my heart\" đóng nó không có mỉa mai. Anh ta không nói \"tôi yêu cô, đừng chết.\" Anh ta nói nó qua pháo hoa đang cháy trong bóng tối. Điều ước LÀ sự thú nhận.",
+              "context": "Sparkler scene at night; protagonist holds sparkler next to Fuyutsuki's and makes a silent wish",
+              "word_count": 34,
+              "techniques": [
+                "object_as_wish",
+                "sparkler_to_lifetime_compression",
+                "triple_escalation"
+              ]
+            }
+          ]
+        },
+        "kinetic_action_sequence": {
+          "description": "Chuỗi hành động mecha/quân sự chi tiết — nhịp cảm biến ngắn, vật lý được mô tả như mối đe dọa, chi phí thể xác như bằng chứng sống. Dùng cho bản dịch hành động đòi hỏi sự trực tiếp nội tạng mà không làm chậm đà cảnh.",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "Hành động mecha/quân sự chi tiết — nhịp cảm biến ngắn, vật lý như mối đe dọa. Kỹ thuật: thay đổi động từ liên tiếp (ngã, né, đỡ). Trong tiếng Việt: giữ câu ngắn dưới 8 từ khi hành động căng thẳng.",
+          "examples": [
+            {
+              "id": "eighty6_001",
+              "source": "86—Eighty-Six, Vol. 4 [Yen Press]",
+              "text": "There was nothing in front of him, according to the main screen's footage. Nothing on his radar screen, either, even if it was set to passive. But a sense separate from his usual five picked up on the artificial killing intent and urged him to pull his control stick sideways. Undertaker evaded by tumbling aside, and the moment it did, the ominous sound of wind swept through where it had stood just a moment ago. A single shard of glass on the floor sprang up, as if something had stepped over it.",
+              "chapter": "",
+              "why_premium": "Mối đe dọa được chứng minh bởi một mảnh kính trên sàn — không phải đau đớn của nhân vật chính, không phải đối thoại cảnh báo, không phải cắt máy quay. Radar nói không có gì; kính nói tất cả. \"Một giác quan tách biệt khỏi năm giác quan thông thường\" thiết lập radar siêu nhiên của nhân vật mà không giải thích quá mức.",
+              "context": "Shin engages an invisible Legion type; his radar and optical sensors return nothing. He tracks it solely through the para-RAID's quasi-neural 'voices'.",
+              "word_count": 87,
+              "techniques": [
+                "body_as_sensor",
+                "absence_as_presence",
+                "environmental_displacement_as_proof"
+              ]
+            },
+            {
+              "id": "eighty6_002",
+              "source": "86—Eighty-Six, Vol. 4 [Yen Press]",
+              "text": "The blade was capable of cutting through a Dinosauria's composite armor like butter, but in the next moment, its vibrations were interrupted by opposing vibrations, and a vector of the opposite direction forced both blades and the enemy fuselage to deflect off each other. The high-pitched screech of metal rose up, cutting through the blue air.",
+              "chapter": "",
+              "why_premium": "Cấu trúc câu phản chiếu sự lệch hướng: mệnh đề phụ dài thiết lập khả năng (\"cắt như bơ\") đâm vào xoay nghịch (\"nhưng trong khoảnh khắc tiếp theo\") rồi va vào mệnh đề đối lập. Vật lý cảm thấy được sống vì thuật ngữ cụ thể (rung động, vector, thân máy bay) nhưng cảnh kết thúc bằng âm thanh thuần túy.",
+              "context": "Shin's high-frequency blade contacts the enemy's opposing vibration frequency; both machines deflect off each other.",
+              "word_count": 52,
+              "techniques": [
+                "physics_as_threat",
+                "established_power_subverted",
+                "sound_as_scene_close"
+              ]
+            },
+            {
+              "id": "eighty6_003",
+              "source": "86—Eighty-Six, Vol. 4 [Yen Press]",
+              "text": "Eight-thousand-meter-per-second shock waves spread out spherically, with sizzling flames rushing after them. And as planned, the faintly wavering heat haze was torn open and exposed. The shock waves capable of easily bending iron plates were merely a by-product of producing the metal jet, but they tore off the scenery surrounding the enemy. Lapped at by tongues of black-orange flames, fragments of silver flaked off and burned away. It landed, wreathed in flaming silver shards.",
+              "chapter": "",
+              "why_premium": "Sự chuyển đổi từ thuật ngữ kỹ thuật sang trực giác — từ \"tần số đối ứng\" đến \"thứ gì đó mùi như thứ gì đó chết\" — đánh dấu khoảnh khắc Shin ngừng chiến đấu bằng phân tích và bắt đầu chiến đấu bằng trực giác.",
+              "context": "Shin deduces the Eintagsfliege optical camouflage can be stripped by shockwave bloom. He fires a timed-fused HEAT round and the camouflage burns away.",
+              "word_count": 79,
+              "techniques": [
+                "kinetic_verb_chain",
+                "physics_as_threat",
+                "color_as_revelation"
+              ]
+            },
+            {
+              "id": "eighty6_004",
+              "source": "86—Eighty-Six, Vol. 4 [Yen Press]",
+              "text": "The figures emerged from the darkness, with staggering steps that made them appear wounded, just like the self-propelled mines that couldn't walk upright. But their silver colors stood out all too clearly. An Adularia's silver eyes stared at Cyclops. They stared at her. The Legion used their blatantly unfair technological advantage to tirelessly develop and stay one step ahead of humankind. But their programming prohibited them from making a weapon that was too similar to a human. Even the self-propelled mines, which were close in that regard, didn't have human faces. They lacked mouths, noses, and of course, eyes. Which meant that this…",
+              "chapter": "",
+              "why_premium": "Giọng khàn, cổ họng khô, canopy không mở trong nhiều giờ — đây là những chi phí chiến thắng duy nhất được phép. Không tự khen ngợi qua hành động; chỉ qua những gì cơ thể không làm được.",
+              "context": "Shiden's Cyclops locks sight on what she believes are self-propelled mines, but Shin's order stops her. The figures step into the light — they have eyes.",
+              "word_count": 100,
+              "techniques": [
+                "absence_as_presence",
+                "horror_through_specification",
+                "trailing_sentence_as_realization"
+              ]
+            },
+            {
+              "id": "eighty6_005",
+              "source": "86—Eighty-Six, Vol. 2 [Yen Press]",
+              "text": "All sensation of time had long since abandoned him. The surroundings reflected in his optical screen were dyed red, and he had lost count of how many enemies he destroyed and how many remained. He bit into solid combat rations in the pause between one battle and the next and closed his eyes for brief spells of rest. The Legion surged forth without schemes or tactics, making it not a battle but a primeval clash. Raising his eyes, Shin suddenly realized it was raining. The Juggernaut's audio sensors picked up white noise and the sound of the faint rain pattering against its armor. It was the sound of peaceful silence, a rare occurrence on the tumultuous battlefield. And it took his exhausted consciousness a few seconds too long to realize why he could hear it.",
+              "chapter": "",
+              "why_premium": "Câu ngắn 4 từ kết thúc bởi từ sai chính tả — giọng nói mệt mỏi của ai đó quá mệt để nói đúng. Đây là FID hoạt động như kết thúc cảnh: không có gì cần nói thêm, chỉ có thực tế của sự sống sót.",
+              "context": "The climactic Legion retreat after a sustained multi-day battle. Shin opens his canopy into the rain for the first time in hours.",
+              "word_count": 133,
+              "techniques": [
+                "survival_cost_as_proof",
+                "sensory_recession",
+                "delayed_realization_as_cost"
+              ]
+            }
+          ]
+        },
+        "mystery_deduction": {
+          "description": "Logic suy luận của truyện trinh thám được thể hiện qua giọng nhân vật — suy luận qua im lặng, nhượng bộ chiến lược trong đối đầu phản diện. Lý tưởng cho cảnh trinh thám, đối đầu tâm lý, khoảnh khắc suy luận.",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "Logic suy luận của truyện trinh thám qua giọng nhân vật — suy luận qua im lặng, nhượng bộ chiến lược. Trong tiếng Việt: cho nhân vật đưa ra kết luận dựa trên chi tiết cụ thể, không giải thích rõ ràng.",
+          "examples": [
+            {
+              "id": "tanmoshi_001",
+              "source": "The Detective Is Already Dead, Vol. 1 [Yen Press]",
+              "text": "'You were probably executing this hijack on instructions from someone else. In addition, you yourself were ordered to crash and die with the plane. Am I wrong?' '……' His silence indicated that she wasn't. 'But you don't want to. You're actually afraid to die, so you used us to give yourself an excuse that would let you survive. Correct?' A hijacker had been given orders to die by somebody else. He'd obeyed the order initially, but when it got down to the wire, he'd realized he valued his life. Thus, he'd come up with the idea of calling a detective and staging a deduction game.",
+              "chapter": "",
+              "why_premium": "'His silence indicated that she wasn't' — the ellipsis carries the entire confession. Siesta's deduction doesn't feel aggressive; it's a gift. She gives Bat permission to admit he wanted to live. The paragraph that follows ('called a detective to stage a deduction game') reveals the hijacker's emotional logic through Kimizuka's narration post-hoc, so the reader feels clever for having it outlined after the silence confirmed it. Use for mystery scenes where the protagonist reads a villain's secret wish rather than their crime.",
+              "context": "Siesta reveals that the hijacker Bat never intended to die — he staged the entire hijack to give himself an excuse to survive.",
+              "word_count": 107,
+              "techniques": [
+                "deduction_as_compassion",
+                "lie_in_silence",
+                "retrospective_irony"
+              ]
+            },
+            {
+              "id": "tanmoshi_002",
+              "source": "The Detective Is Already Dead, Vol. 1 [Yen Press]",
+              "text": "'How did you know all that?' Finally, having been soundly beaten by the ace detective, the villain of this story asked her why he'd lost. 'What gave it away? Was it really just because I backed down too fast, or—?' 'Haaah. That was a factor as well, but…' Sounding unenthused, Siesta turned around. 'I already knew about you.' '…What do you mean?' 'I knew you'd be on this plane today and that you were planning to hijack it. I know about your companions who ordered you to do it. Everything.' …Wait, what? Knowing all that, she'd boarded this flight anyway? Had she known how all this would play out from the very beginning? 'First-rate detectives resolve incidents before they even occur, you see. I was just a bit late, since I let myself fall asleep.'",
+              "chapter": "",
+              "why_premium": "The punchline is deadpan: 'I was just a bit late, since I let myself fall asleep.' The reveal of omniscience arrives after the villain has already capitulated and already asked his question — which means the greatest proof of the detective's power is not that she won, but that the win was always already over. Use as the model for 'the detective was ahead' reveals: the more casual the delivery, the more crushing the implication.",
+              "context": "Siesta confronts Bat post-deduction; he asks how she knew, and she reveals she'd known everything before even boarding the flight.",
+              "word_count": 128,
+              "techniques": [
+                "strategic_concession",
+                "revelation_via_understatement",
+                "pre_resolution_omniscience"
+              ]
+            },
+            {
+              "id": "tanmoshi_003",
+              "source": "The Detective Is Already Dead, Vol. 2 [Yen Press]",
+              "text": "'I'd suspected that Hel, or Jack the Devil, was actually Alicia, and yet until the very, very end, I'd behaved as though I still had at least a tiny shred of belief in her.' 'No, I think those were genuine.' That was some small consolation. 'Alicia's encouragement really did help her.' Yeah. She'd said it with tears on her face. She'd hugged Alicia to her, and— '…!' I broke out in goose bumps all over, and a choked noise escaped me. 'Back then, Alicia had…'",
+              "chapter": "",
+              "why_premium": "The realization is not stated — it interrupts. The body reacts ('goose bumps') before the thought completes ('Back then, Alicia had…'). The ellipsis at the end makes the reader finish the sentence themselves, and whatever they imagine is worse than what the narrator could say. Kimizuka's retroactive re-reading of a tender moment as manipulation is the exact technique for mystery reveals that recontextualize earlier 'innocent' scenes as evidence.",
+              "context": "Siesta forces Kimizuka to face the truth that Alicia is Hel by reconstructing the chain of evidence he'd been refusing to follow.",
+              "word_count": 88,
+              "techniques": [
+                "omission_as_proof",
+                "goose_bump_as_realization",
+                "trailing_sentence_breaks_on_horror"
+              ]
+            },
+            {
+              "id": "tanmoshi_004",
+              "source": "The Detective Is Already Dead, Vol. 2 [Yen Press]",
+              "text": "That train of thought naturally led me to a certain deduction. '…Oh!' Natsunagi gave a small cry, as if she'd realized something. She might have come to the same conclusion through the process of elimination. In which case… 'I dunno. There's no telling what goes on in the minds of those lunatics.' Giving a faint smile, I punted Natsunagi's unease off the field. '…You think?' 'Yeah.' After all, this was just a deduction—no more than a theory. I was sure it wasn't the truth. What if SPES's true target wasn't Saikawa or me, but Natsunagi, who had Siesta's heart? No, that couldn't be it. It shouldn't be. It was wrong for Natsunagi's life to be destroyed over this.",
+              "chapter": "",
+              "why_premium": "The protagonist reaches the correct deduction, then actively chooses not to share it. The reader sees both the conclusion and the reason for hiding it. 'It shouldn't be. It was wrong for Natsunagi's life to be destroyed over this' — the self-correction isn't confusion, it's love dressed as doubt. Use for first-person mystery narrators who know more than they admit, where the gap between what they deduce and what they say reveals character.",
+              "context": "Aboard a cruise ship, Kimizuka reasons through why SPES is acting now — then deliberately suppresses the deduction to protect Natsunagi.",
+              "word_count": 120,
+              "techniques": [
+                "suppressed_deduction",
+                "omission_as_protection",
+                "retrospective_irony"
+              ]
+            },
+            {
+              "id": "tanmoshi_005",
+              "source": "The Detective Is Already Dead, Vol. 4 [Yen Press]",
+              "text": "'Say a Tuner's role is to risk everything to fight the enemies of the world, until they eventually meet the end one would expect. They may avert one crisis, but the enemies will keep coming. The fight won't ever end. Until the world is destroyed, they'll just keep pretending to save it, using every trick in the book, while only the people who fill those positions change. Can you find any hope in a future like that?' Mia Whitlock's lilac eyes were right in front of me, wavering. This was her counterargument to the wish I'd brought her: 'Can the future be changed?' Her answer was: No matter which future you choose, it will end badly. With the end of the world. She wasn't exaggerating, though.",
+              "chapter": "",
+              "why_premium": "The Oracle's argument is framed as a question to the protagonist, but structurally it's a philosophical thesis. 'Can you find any hope in a future like that?' is not a genuine question — it's an invitation to disagree she expects to lose. 'Lilac eyes were right in front of me, wavering' shifts the camera from argument to face in one phrase, grounding abstract doom in a single vulnerable detail. Use for antagonist speeches that must feel genuinely correct before the protagonist refutes them.",
+              "context": "Mia Whitlock (Oracle) explains why she has no hope and no ambition — she has already seen every future end badly.",
+              "word_count": 115,
+              "techniques": [
+                "villain_as_tragic_realist",
+                "question_as_thesis",
+                "eye_color_as_emotional_register"
+              ]
+            }
+          ]
+        },
+        "psychological_duel": {
+          "description": "Đối đầu tâm trí nơi thuyết phục, cảm xúc, và logic là vũ khí — số phận bất khả kháng cứ vs hành động. Lý tưởng cho cảnh đối đầu căng thẳng, thương lượng cao, xung đột chiến lược.",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "Đối đầu tâm trí — thuyết phục, cảm xúc, và logic là vũ khí. Trong tiếng Việt: giữ nhịp điệu căng thẳng, dùng câu ngắn cho các đòn đánh, câu dài cho sự do dự.",
+          "examples": [
+            {
+              "id": "tanmoshi_006",
+              "source": "The Detective Is Already Dead, Vol. 4 [Yen Press]",
+              "text": "'Sorry, though. I may understand it, but I can't sympathize.' I scooped Mia up in what's known as the 'princess carry.' '……Huh?' In my arms, Mia blinked at me rapidly. What's the matter? You sound kinda silly. You realize you're breaking character, right? She can't actually have thought she'd convince me with that. 'I'm going to show you just how uncertain the future really is.' Right then—an alarm began to sound in the room, or maybe all through the building. Then the window Mia had just been leaning against shattered.",
+              "chapter": "",
+              "why_premium": "The protagonist's rebuttal to a deterministic worldview is a princess carry. This is the core tone of the series: tragedy answered with absurd warmth. The universe punctuates his point immediately (alarm, shattered window) — reality rewards the refusal of fatalism. Use when a character needs to respond to an airtight logical argument through action rather than counter-logic: the body argues back when words cannot.",
+              "context": "Kimizuka confronts Mia's fatalism by physically picking her up — the counterargument to prophecy is bodily action, not words.",
+              "word_count": 82,
+              "techniques": [
+                "prophetic_surrender_inverted",
+                "physical_action_as_argument",
+                "comedy_as_philosophy"
+              ]
+            },
+            {
+              "id": "tanmoshi_007",
+              "source": "The Detective Is Already Dead, Vol. 4 [Yen Press]",
+              "text": "'Alicia tried to protect Siesta and me, ignoring the danger to herself—that's friendship! Hel always stayed close to you and did her very best at everything—that's sadness! Yui thought of her parents, and her parents constantly put their only daughter first—that's love! Charlie inherited Siesta's last wish after she died and kept carrying out missions all on her own—that's dedication! Albert risked every facet of his own life to save his little sister—that's devotion! Siesta died, entrusting everything to Kimizuka, to me, and to her friends—that's passion! All of that— They're all human emotions. Having them is what makes us human!' … 'I see. I didn't understand that in the slightest. It's probably similar to the way humans can't perceive insect calls as intelligible speech.'",
+              "chapter": "",
+              "why_premium": "Six emotions named, each anchored to a character and an action — the taxonomy becomes a eulogy for everyone who died. The villain's response ('similar to the way humans can't perceive insect calls') destroys the speech's emotional power without engaging it — the alien literally cannot hear it. The tragedy is that the speech is both correct and useless. Use this pattern for climactic character-defining monologues: the parallel construction (that's X! / that's Y!) builds to a thesis sentence, then the villain's flat response produces the devastation.",
+              "context": "On a burning battlefield, Natsunagi catalogs all human emotions to the alien Seed, who admits he cannot understand any of them.",
+              "word_count": 129,
+              "techniques": [
+                "alien_epistemology",
+                "emotion_taxonomy_as_battle_speech",
+                "parallel_construction_climax"
+              ]
+            },
+            {
+              "id": "tanmoshi_008",
+              "source": "The Detective Is Already Dead, Vol. 3 [Yen Press]",
+              "text": "'Fuubi Kase, you can't take a single step from that spot.' Fuubi stopped dead. '…!' She stood petrified, her eyes wide with astonishment. Just one more step—her knife had frozen just before it plunged into Natsunagi's chest. Natsunagi's red eyes were using the mind control. When she talked to Hel, then accepted her, she'd become able to use that ability. '…! This isn't…enough to—!' However, the Assassin wouldn't stop until she'd destroyed her target. 'Don't think you can stop me with an ability you just picked up!'",
+              "chapter": "",
+              "why_premium": "The ability is granted by emotional acceptance, not training — Natsunagi didn't learn mind control, she earned it by choosing to understand the person who used it against her. 'You can't take a single step from that spot' is a sentence that functions as both dialogue and incantation. The technique lesson: power gained through compassion should be shown in the moment of its activation, with the origin explained immediately after so the reader feels the causal logic.",
+              "context": "Natsunagi uses Hel's mind-control ability (gained by accepting Hel into herself) to stop Fuubi the Assassin mid-strike.",
+              "word_count": 89,
+              "techniques": [
+                "word_soul_power",
+                "ability_rooted_in_acceptance",
+                "dialogue_as_weapon"
+              ]
+            },
+            {
+              "id": "tanmoshi_009",
+              "source": "The Detective Is Already Dead, Vol. 3 [Yen Press]",
+              "text": "'Yui Saikawa: Your death will save the world. Charlotte Arisaka Anderson: If you kill Yui Saikawa, you'll save the world. Nagisa Natsunagi: If you were as strong as the former ace detective, you would save the world. So why don't you do it? What, you can't? Oh, well, I understand everything now.' … 'The detective was too right, and she died.' Justice didn't necessarily win. 'So I want to choose something I know might be wrong. Even if it isn't correct, even if justice doesn't win, even then—I want to choose a future where the people who are precious to me are smiling next to me.'",
+              "chapter": "",
+              "why_premium": "Fuubi's speech is correct: utilitarian logic is hard to refute. Natsunagi doesn't refute it — she admits it ('I think what you're saying is probably correct') and then rejects it anyway ('So I want to choose something I know might be wrong'). This is the series' central moral stance — love over justice even knowing love is less efficient. 'The detective was too right, and she died' is a single-sentence thesis that redefines the protagonist's entire journey. Use when two characters argue values: let both sides be right, then let one character knowingly choose the less correct side.",
+              "context": "Fuubi the Assassin (utilitarian justice) confronts Natsunagi (personal love) in a final ideological standoff before combat.",
+              "word_count": 108,
+              "techniques": [
+                "justice_vs_love_binary",
+                "two_truths_collision",
+                "thesis_delivered_mid_fight"
+              ]
+            }
+          ]
+        },
+        "grief_romance": {
+          "description": "Tình yêu được thể hiện qua mất mát, hy sinh, và sứ mệnh kế thừa — tình yêu chỉ có thể được nói qua cái chết hoặc hành động. Lý tưởng cho cảnh tang lễ, bi kịch, hy sinh anh hùng.",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "Tình yêu được thể hiện qua mất mát, hy sinh, và sứ mệnh kế thừa. Trong tiếng Việt: biểu hiện tang lễ và tình yêu qua hành động cấu trúc, không qua 'Tôi yêu bạn'.",
+          "examples": [
+            {
+              "id": "tanmoshi_010",
+              "source": "The Detective Is Already Dead, Vol. 3 [Yen Press]",
+              "text": "'Kimi—be my assistant.' When I heard her say it, my mind jumped back four years. It was the same. Just like the time we'd met, at ten thousand meters. Right now, the girl standing there was Nagisa Natsunagi—but my eyes saw Siesta as she'd been on that day, four years ago, clearly and vividly. …In that case, this was never an actual choice. 'As you wish—ace detective.' I took Siesta's hand and gave her my very best smile. '…That expression is straight out of a horror movie.' 'Leave me alone!'",
+              "chapter": "",
+              "why_premium": "'Right now, the girl standing there was Nagisa Natsunagi—but my eyes saw Siesta.' That one sentence admits something the protagonist has never said out loud: he is not in love with only one of them, maybe not clearly with either, but the gesture is muscle memory from a dead woman. The immediate comedy payoff ('That expression is straight out of a horror movie') prevents this from becoming melodrama while fully preserving the emotional devastation. Use for proxy-romance moments: acknowledge the double vision, let one character crack a joke.",
+              "context": "Natsunagi (who carries Siesta's heart) extends her left hand to Kimizuka in a burning casino; a flashback to Siesta's original offer four years ago overlays the scene.",
+              "word_count": 91,
+              "techniques": [
+                "echo_recognition",
+                "proxy_body_romance",
+                "comedy_as_grief_valve"
+              ]
+            },
+            {
+              "id": "tanmoshi_011",
+              "source": "The Detective Is Already Dead, Vol. 4 [Yen Press]",
+              "text": "'Are you sure that's okay?' Out of nowhere, I felt as if a voice had echoed in my mind. It was the question I'd been asked two days ago, at the top of the highest clock tower in England, by a girl who could see the future. After she'd made Kimizuka leave and it was just the two of us, she told me about the distortion that would result if we overturned a predetermined future, attempting the taboo of resurrecting the dead. Just as there could only ever be one person in the world with the gifts of an Oracle, it was possible that the world would only allow one Ace Detective. So if we created a future where Siesta came back to life, I'd be— 'Yes, it's fine.' Back then, I hadn't been able to respond to the question immediately, but I had an answer now. 'I mean, it's true, isn't it?'",
+              "chapter": "",
+              "why_premium": "'So if we created a future where Siesta came back to life, I'd be—' — the self-erasure is cut off by an em-dash, and 'Yes, it's fine' answers it anyway. The character doesn't say 'I will disappear.' She says 'It's fine.' The understatement is the sacrifice. Then 'I mean, it's true, isn't it?' is the most heartbreaking sentence in the series — casual confirmation of her own death as a gift. Use when a character accepts their own destruction: the more casual their register, the heavier the weight.",
+              "context": "Natsunagi learns from Mia that resurrecting Siesta means Natsunagi (the current bearer of Siesta's heart) will be displaced — she accepts this anyway.",
+              "word_count": 127,
+              "techniques": [
+                "future_forfeit_sacrifice",
+                "interrupted_self_erasure",
+                "conviction_delivered_in_casual_register"
+              ]
+            },
+            {
+              "id": "tanmoshi_012",
+              "source": "The Detective Is Already Dead, Vol. 4 [Yen Press]",
+              "text": "'—I'm the proxy detective.' I'd decided as much a year ago. '…………!' The next moment, Seed's tentacle ran through my stomach. '………………gk, ah, ………kh!' Pain fiercer than anything I'd ever felt broke over me, and I almost blacked out. —Even so. 'Run, legs!' Using my word-soul power one more time, I gave myself a firm order. Run, run. The pain doesn't matter. Forget about everything except going forward. In the midst of the blazing flames, I crawled toward Kimizuka's prone body. There wasn't much oxygen. I'd lost too much blood. My grip on my consciousness was slipping, and I couldn't seem to get enough air. Even so, I stretched my hand, my fingertips, toward him. 'Tha…nk…'",
+              "chapter": "",
+              "why_premium": "'Run, legs!' is a word-soul command given to her own dying body — she is literally ordering herself to keep loving him. The ellipsis-filled vocalization of pain ('gk, ah, kh') replaces a paragraph of agony with authentic physical noise. 'Even so, I stretched my hand, my fingertips, toward him' — she doesn't reach him; she only reaches toward. The incomplete farewell ('Tha…nk…') is cut off not because she dies in narrative, but because love doesn't need the sentence to finish.",
+              "context": "Natsunagi makes her final charge against Seed impaled through the stomach, using word-soul as her last power, then crawls toward Kimizuka's unconscious body.",
+              "word_count": 118,
+              "techniques": [
+                "word_soul_power",
+                "survival_cost_as_proof",
+                "interrupted_farewell"
+              ]
+            },
+            {
+              "id": "tanmoshi_013",
+              "source": "The Detective Is Already Dead, Vol. 4 [Yen Press]",
+              "text": "Feeling just a little satisfied, I fell asleep. My name is Nagisa. Nagisa Natsunagi, proxy detective. My last wish kept the detective's mission from dying out, and it will be inherited by the next person to fight.",
+              "chapter": "",
+              "why_premium": "Thirty-seven words. Full stop. The character names herself in three tiers (first name → full name → title), and the title IS her confession: she chose to become the detective to keep Siesta's love alive. 'Feeling just a little satisfied' is the only self-congratulation allowed — small, precise, earned. 'It will be inherited by the next person to fight' is not resignation; it is how she survives by passing forward. Use as the model for final-paragraph character closes: name the character, name their role, name what they leave behind.",
+              "context": "Natsunagi's final lines — she names herself formally, defines her role, and surrenders to the succession chain.",
+              "word_count": 37,
+              "techniques": [
+                "name_as_eulogy",
+                "inherited_mission_as_confession",
+                "satisfaction_as_closure"
+              ]
+            }
+          ]
+        },
+        "cunning_heroine_agency": {
+          "description": "POV nữ chính kết hợp hành động thời gian thực với kiến thức chuyên môn nội tại. Năng lực được thể hiện qua tính toán giữa chừng hành động qua FID in nghiêng — cơ thể quản lý nhiệm vụ trong khi tâm trí đánh giá nó. Không bao giờ nói nhân vật là giỏi; cho thấy tính toán cô ấy chạy trong khi làm điều đó.",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "POV nữ chính kết hợp hành động thời gian thực với kiến thức chuyên môn nội tại. Trong tiếng Việt: cho nhân vật tính toán trong khi hành động — thể hiện kỹ năng qua quá trình suy nghĩ, không qua tuyên bố.",
+          "examples": [
+            {
+              "id": "loop7_001",
+              "source": "7th Time Loop, Vol. 1 [Seven Seas]",
+              "text": "Weight evenly distributed on the soles of my feet, roll to transfer the impact to my shins and thighs, then onto my hips and my back.\nShe landed safely, rolled nimbly in her dress, and popped back up. Her hair was covered in leaves.\nI need to hurry up!\nBracing against a nearby rock, she used her weight to snap the heels off of her shoes. There. That would make running a little easier. Satisfied, she slipped them back on and made haste toward the family estate.",
+              "chapter": "",
+              "why_premium": "\"Trọng lượng phân bố đều trên mu bàn chân\" là danh sách kiểm tra vật lý được giao trong khi ngã — không phải hồi tưởng, không phải lời bình của người kể, mà là hướng dẫn trực tiếp chạy song song với hành động. Độc giả học nhân vật được huấn luyện trong khi xem cô tự huấn luyện.",
+              "context": "Rishe (on her seventh life cycle) leaps from a palace balcony in a ballgown, applying knight training from a previous life to land safely. The italics are her real-time internal instruction to herself.",
+              "word_count": 82,
+              "techniques": [
+                "in_motion_fid",
+                "competence_as_show",
+                "staccato_urgency_snap"
+              ]
+            },
+            {
+              "id": "loop7_002",
+              "source": "7th Time Loop, Vol. 1 [Seven Seas]",
+              "text": "\"Would you care to join me for a drink, Mr. Tully?\"\nTully had to clear his throat several times before he managed to ask, \"What happened to those guys?\"\n\"Oh, we bet on who could hold their liquor, and they lost.\" Rishe grinned and tilted her glass. \"Don't worry, I'm not here for drinking games. I was hoping we could continue our discussion.\"\nTully had to clear his throat several times before he managed to ask, \"What happened to those guys?\"\n\"Oh, we bet on who could hold their liquor, and they lost.\" Rishe grinned and tilted her glass. \"Don't worry, I'm not here for drinking games.\"\nIt took a lot to surprise Tully, but the sight in front of him caught him completely off guard. He'd predicted she would come, but not so soon. He thought she'd disguise herself, but he truthfully had not anticipated the mousy brown of freshly dyed hair.\nNo, that wasn't what surprised him. What drew him up short was the score of unconscious men seated around her, half-full mugs still gripped in their hands.",
+              "chapter": "",
+              "why_premium": "Năng lực của Rishe được truyền tải hoàn toàn qua sự sốc của Tully — chúng ta thấy nó qua mắt chuyên gia, khiến nó có trọng lượng gấp đôi.",
+              "context": "Rishe, exiled and in disguise with dyed hair, outdrinks Arnold's entire retinue in a tavern while waiting to ambush her would-be trading partner Tully for a second meeting.",
+              "word_count": 148,
+              "techniques": [
+                "reversal_as_entrance",
+                "competence_through_observer_reaction",
+                "understatement_punchline"
+              ]
+            },
+            {
+              "id": "loop7_003",
+              "source": "7th Time Loop, Vol. 1 [Seven Seas]",
+              "text": "I had no chance back there, Rishe thought, idly sipping a cup of tea. She'd shed the ridiculous jewels and changed into a plain, serviceable gown that was easier to move in. She was sitting in her parlor in the detached wing with a plate of fresh-baked cookies in front of her, but she couldn't even summon up the energy to try one.\nI admit, I was nervous, but I thought I maintained my composure well enough. Yet he still saw through me. I lost that round, no doubt about it.\nThe truth was, she'd never beaten Tully. Not even in her subsequent lives, when she knew what to expect.\nAfter much thinking, she only had one conclusion: He didn't choose me, and that's a fact.",
+              "chapter": "",
+              "why_premium": "Bánh quy không đụng đang làm việc cảm xúc mà người kể không bao giờ nói: cô ấy quá buồn để ăn. Show-dont-tell qua đạo cụ.",
+              "context": "Rishe, stripped of jewels and gown, quietly refuses to accept her failure with Tully and reasons out her next move alone over tea while her maids gossip around her.",
+              "word_count": 112,
+              "techniques": [
+                "fid_defeat_processing",
+                "plain_setting_as_interiority_anchor",
+                "self_accountability_without_self_pity"
+              ]
+            }
+          ]
+        },
+        "retrospective_layering": {
+          "description": "Kiến thức đa kiếp hoặc đa thời gian được dệt vào hành động hiện tại như nhận thức hiện tại, không phải hồi tưởng hay khối giải thích. Kinh nghiệm quá khứ xuất hiện như sự thật thời gian thực — 'hắn sẽ xâm lược' không phải 'trong kiếp trước cô ấy đã học hắn sẽ xâm lược'.",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "Kiến thức đa thời gian được dệt vào hành động hiện tại như nhận thức hiện tại, không phải hồi tưởng. Trong tiếng Việt: dùng thì tương lai từ hiện tại ('năm năm sau hắn sẽ xâm lược') thay vì 'trong kiếp trước cô ấy đã thấy'.",
+          "examples": [
+            {
+              "id": "loop7_004",
+              "source": "7th Time Loop, Vol. 1 [Seven Seas]",
+              "text": "Uh-oh. Rishe pasted on a smile as her mind spun in circles. This man was dangerous. She had to avoid entanglements with him at all costs. Five years from now, Arnold Hein would invade Hermity.\nHe was an extraordinarily skilled swordsman and, with a powerful military at his back, was destined to conquer kingdom after kingdom. He had done as much in her second, third, fourth, and fifth lives. In her sixth, Rishe had faced him in battle herself and died by his hand.\nWe never had a chance. That war was lost before it began.\nArnold's brilliance lay not in his swordplay but in his skill as a tactician. He set countries up for conquest and knocked them down, swallowing them one by one.\nI know him, but he doesn't know me. We haven't met in this life. I need an excuse fast.",
+              "chapter": "",
+              "why_premium": "\"Năm năm sau, Arnold Hein sẽ xâm lược Hermity\" được viết bằng thì tương lai từ hiện tại, không phải \"trong những kiếp trước cô ấy đã thấy.\" Độc giả nhận tin tình báo như sự thật hoạt động, không phải tiểu sử.",
+              "context": "Rishe runs directly into Arnold Hein at a palace banquet — the man who killed her in her sixth life. She must perform ignorance while processing years of tactical knowledge about him.",
+              "word_count": 117,
+              "techniques": [
+                "fid_present_tense_past_knowledge",
+                "enumerated_trauma_as_data",
+                "dual_register_switching"
+              ]
+            },
+            {
+              "id": "loop7_005",
+              "source": "7th Time Loop, Vol. 1 [Seven Seas]",
+              "text": "\"Mwa ha ha! I knew he wouldn't know a fake sapphire when he saw one. Idiot! We took bets on whether you could dupe that intermediary, and I had my money on you, Rishe. Thanks for helping me fleece my birdbrained staff.\"\n\"Rishe! Here's your final examination. We took a loss of five million in gold due to negligence. Not yours, someone else's, but you are the one who's going to make it back. Oh, and by the way, you've got one week, so get cracking.\"\nShe had a faraway look in her eyes. That was fine. Let Tully think she was dreaming of her bright future.\n\"The white of a wedding dress will complement your features, if I might be so bold.\"",
+              "chapter": "",
+              "why_premium": "Trích dẫn Tully nhúng vào giữa cảnh là ký ức — nhưng chúng đến với khung zero: không \"cô ấy nhớ anh ấy nói,\" không in nghiêng, không ngắt đoạn.",
+              "context": "Rishe meets Tully for the first time in this life — a man who was once her mentor and employer — and must perform the role of a stranger who has merely 'heard of him.'",
+              "word_count": 107,
+              "techniques": [
+                "flashback_as_present_knowledge_no_frame",
+                "surface_concealment_of_depth",
+                "dramatic_irony_through_layering"
+              ]
+            }
+          ]
+        },
+        "earned_softening": {
+          "description": "Nhân vật lạnh lùng, đe dọa, hoặc thù địch được tiết lộ là ấm áp — nhưng sự tiết lộ được kiếm qua kiềm chế: một động từ, một nụ cười, một ký ức, không phải tuyên bố. Kỹ thuật phụ thuộc vào đầu tư trước vào sự cứng rắn của nhân vật; vết nứt phải cảm thấy như bất ngờ mà độc giả ngay lập tức nhận ra là tất yếu.",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "Nhân vật lạnh lùng được tiết lộ là ấm áp — nhưng sự tiết lộ được kiếm qua kiềm chế: một động từ, một nụ cười. Trong tiếng Việt: chỉ dùng một chi tiết nhỏ để phá vỡ sự cứng rắn, không tuyên bố.",
+          "examples": [
+            {
+              "id": "loop7_006",
+              "source": "7th Time Loop, Vol. 1 [Seven Seas]",
+              "text": "Up on the balcony, Crown Prince Arnold of Galkhein watched the spectacle play out from beginning to end. He gazed at the girl with the coral hair. Her appearance was that of any young noblewoman, but she moved like a well-trained knight. She'd leapt from the balcony and landed skillfully, showing no signs of distress at her ripped dress or disheveled hair. Instead, she'd knocked the heels off her shoes and dashed away.\nAlso, she had called him an emperor.\nPlaying it all over again in his head, Arnold broke out into a rare chuckle. As his shoulders quivered with laughter, his attendant approached him from behind.\n\"There you are, Your Highness… Did something happen?\"\n\"Oliver, ready my coach. Wait, no. That will take too much time. Bring me a horse.\"\nHe didn't respond—he just grinned like a hungry wolf catching scent of his prey.",
+              "chapter": "",
+              "why_premium": "\"A rare chuckle\" — từ \"rare\" mang toàn bộ lịch sử sự nghiêm khắc của người đàn ông này trong hai âm tiết. Phản ứng kinh ngạc của người hầu nhân đôi tín hiệu qua một nhân chứng.",
+              "context": "Arnold watches Rishe leap from the palace balcony, snap her own heels off, and sprint away. His attendant finds him laughing for the first time anyone can remember.",
+              "word_count": 137,
+              "techniques": [
+                "third_person_observation_crack",
+                "understated_laugh_as_reveal",
+                "predator_simile_for_warmth"
+              ]
+            },
+            {
+              "id": "loop7_007",
+              "source": "7th Time Loop, Vol. 1 [Seven Seas]",
+              "text": "\"Don't ever do something stupid like this again.\"\nTheodore grimaced as his brother pushed him away once more. Rishe's heart ached as she realized these two might never understand each other.\nBut what Arnold said next surprised her. \"I'm pretty sure I've told you this once before—don't put your life in danger needlessly.\"\nTheodore's voice trembled as he asked, \"You remember that day?\"\n\"Of course I do.\"\nTheodore choked, tears welling up in those big eyes to trail down his cheeks. His voice quivered. \"I'm sorry.\" He repeated himself over and over through his tears. \"I'm so sorry, Brother.\"\nArnold looked at an utter loss. \"Okay, we get it already. Stop crying.\"",
+              "chapter": "",
+              "why_premium": "\"Of course I do\" — bốn từ làm việc của một đoạn văn backstory. Arnold chưa bao giờ thể hiện sự ấm áp công khai, nên sự thú nhận này của ký ức tương đương với một tuyên bố.",
+              "context": "On a rooftop, Arnold has just stopped Theodore from falling. Theodore asks if Arnold remembers saving him as children. Arnold's answer is the shortest sentence in the chapter.",
+              "word_count": 112,
+              "techniques": [
+                "short_sentence_as_emotional_apex",
+                "remembered_detail_as_confession",
+                "flustered_cold_character_comedy"
+              ]
+            }
+          ]
+        },
+        "sibling_grief_payoff": {
+          "description": "Cảm xúc gia đình được thể hiện qua hành động thay vì tuyên bố. Bạo lực, kiềm chế thể xác, hoặc can thiệp đứng thay cho tình yêu không thể nói ra. Nhân vật lạnh giận tiết lộ sự quan tâm; nhân vật ấm áp phản ứng bối rối thay vì dịu dàng.",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "Cảm xúc gia đình được thể hiện qua hành động, không tuyên bố. Trong tiếng Việt: để nhân vật POV diễn giải cảm xúc mà nhân vật không thể nói ra.",
+          "examples": [
+            {
+              "id": "loop7_008",
+              "source": "7th Time Loop, Vol. 1 [Seven Seas]",
+              "text": "A shadow rushed past her.\nThe figure grabbed Theodore by the arm, yanking him off the railing. Theodore gasped in recognition. \"Brother?!\" He gazed up at Arnold, stupefied.\nArnold's back was turned to Rishe, so she couldn't make out his expression. Still, what he did next surprised her.\nSmack!\nArnold grabbed Theodore by the collar and slapped him across the face. \"What the hell were you thinking?\"\nRishe had never heard Arnold shout like that before. Theodore pressed a hand to his cheek, gaping up at his brother.\n\"I—\" Theodore's voice was choked down to nothing. \"Th-this is it. This is the only way I can help you. I'll never matter to you!\"\n\"Don't be a fool.\" Arnold's tone was frigid. \"What kind of idiot would throw his life away for someone who has never done a single thing to earn his esteem?\"\nDespite his words, Rishe was sure of her conclusions. Arnold kept Theodore at a distance out of love.",
+              "chapter": "",
+              "why_premium": "Smack! — dấu ngắt trước và sau một onomatopoeia duy nhất làm nó trở thành khoảnh khắc lớn nhất chương. Đối thoại của Arnold vẫn lạnh (\"Loại ngốc nào...\") nhưng giọng hét là một vết nứt.",
+              "context": "Arnold arrives to find Theodore about to fall from a rooftop. He grabs him — and slaps him. It is the most emotional thing Arnold has done in the entire volume.",
+              "word_count": 141,
+              "techniques": [
+                "violence_as_love_signal",
+                "shouting_as_emotional_break",
+                "pov_interpretation_of_suppressed_care"
+              ]
+            },
+            {
+              "id": "loop7_009",
+              "source": "7th Time Loop, Vol. 1 [Seven Seas]",
+              "text": "Theodore now sat on the ground, clenching his fist. \"It's all I've ever wanted.\" Theodore's numb confusion was gone, replaced by determination. \"I want to stand by you. I want you to need me! If there's any way I can help you, I'll do it, no matter what.\" His eyes—the same eyes—pierced Arnold's. \"Because you're my only brother, and I care about you.\"\nArnold didn't reply. Rishe wished she could see his face. She watched them both attentively. Before long, Arnold released Theodore's collar and slowly stood back up.\n\"Don't ever do something stupid like this again.\"\nTheodore grimaced as his brother pushed him away once more.\n(...)  \nTheodore choked, tears welling up in those big eyes to trail down his cheeks. His voice quivered. \"I'm sorry.\" He repeated himself over and over through his tears. \"I'm so sorry, Brother.\"\nArnold looked at an utter loss. \"Okay, we get it already. Stop crying.\"",
+              "chapter": "",
+              "why_premium": "\"Đôi mắt — cùng đôi mắt đó\" là lựa chọn của dịch giả để nhấn mạnh anh em chia sẻ khuôn mặt: sự tổn thương của Theodore LÀ của Arnold, phản chiếu.",
+              "context": "After the rooftop crisis, Theodore cries in earnest for the first time. Arnold, the stoic crown prince, has no idea what to do with this.",
+              "word_count": 149,
+              "techniques": [
+                "flustered_cold_character_as_care_signal",
+                "his_eyes_the_same_eyes_doubling",
+                "grief_release_through_comedy"
+              ]
+            }
+          ]
+        },
+        "cold_intellectual_narrator": {
+          "description": "Người kể chuyện mô tả bản thân với sự cô lập lâm sàng — báo cáo trạng thái nội tâm như dữ liệu bên ngoài, không biểu hiện xấu hổ cho sự không hành động chiến lược, phân tích sự tốt của người khác từ vị trí không tham gia có chủ đích. Sự vắng mặt phản ứng cảm xúc LÀ sự đặc trưng hóa.",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "Người kể chuyện mô tả bản thân với sự cô lập lâm sàng — báo cáo trạng thái nội tâm như dữ liệu bên ngoài. Trong tiếng Việt: giữ giọng phẳng, không thêm ấm áp. Chỉ cho phép những khoảnh khắc phá vỡ rất hiếm.",
+          "examples": [
+            {
+              "id": "cote_001",
+              "source": "Classroom of the Elite, Vol. 1 [Seven Seas]",
+              "text": "At any rate, I had to at least partly agree with the boy.\nIf you ignored the question of a moral imperative, it was true that he wasn't legally obligated to give up his seat.\nHow could someone pour so much courage, determination, and compassion into so few words? That was no simple feat. The girl might have seemed like a nuisance to those around her, but she appealed to the other passengers earnestly and without fear.\nThough not in a priority seat, I was near the elderly woman. I imagined if I raised my hand and offered my spot, then the matter would be settled.\nHowever, like everyone else, I didn't move. None of us had thought it necessary to move.",
+              "chapter": "",
+              "why_premium": "Ayanokouji nhận ra và đặt tên lòng can của cô gái (\"no simple feat\") và vẫn không nhúc nhích. Không có xung đột nội tâm, không \"Tôi muốn nhưng không thể.\"",
+              "context": "On a crowded bus, Ayanokouji watches a girl defend an elderly woman against a rude boy. He philosophically agrees with the boy and does not offer his seat.",
+              "word_count": 104,
+              "techniques": [
+                "absence_of_guilt_as_voice",
+                "moral_analysis_without_moral_action",
+                "flat_observation_of_courage"
+              ]
+            },
+            {
+              "id": "cote_002",
+              "source": "Classroom of the Elite, Vol. 1 [Seven Seas]",
+              "text": "What is 'friends,' anyway? Where do friends come from? Do people become friends after sharing a meal together? Can you become friends with someone after you walk to the bathroom together for the first time? The more I thought about it, the more I wondered: What is friendship? Is it something deep and meaningful? I tried to piece it together.\nTrying to make friends is incredibly bothersome. Besides, don't human relationships tend to form naturally? My thoughts were in utter disarray, as though a raucously loud festival was being staged inside my head. While I sat lost in a haze, the classroom quickly filled.\nBefore I knew it, the rotund, bespectacled boy in front of me had started to talk with another classmate.\nWearing a bitter smile, I realized that there was no new friendship to be cultivated there. I'm happy for you, Glasses-kun. It looks like you made your first friend.\n\"I got beaten to the punch!\"",
+              "chapter": "",
+              "why_premium": "Vòng lặp triết học (\"Tình bạn là gì?\") là hài kịch qua trì hoãn — càng phân tích lâu, càng nhiều bạn bè người khác có được.",
+              "context": "Ayanokouji attempts to make friends during the entrance ceremony and fails through philosophical overthinking, watching his only target acquire a friend without him.",
+              "word_count": 143,
+              "techniques": [
+                "philosophical_spiral_as_comedy",
+                "sardonic_fid_nickname",
+                "involuntary_mask_slip_outburst"
+              ]
+            },
+            {
+              "id": "cote_003",
+              "source": "Classroom of the Elite, Vol. 1 [Seven Seas]",
+              "text": "\"Let me tell you about myself,\" I said. \"I have no particular hobbies, but I'm interested in just about anything. I don't need many friends, but I think it would be nice to have at least a few. And, well, that's about it.\"\n\"Spoken just like someone who avoids trouble. I don't think I could ever like such a person,\" she said.\n\"Jeez, I feel like you trashed my entire existence in one second,\" I muttered.\n\"I pray this will be my only upset.\"\n\"I sympathize, but, unfortunately, I don't think your prayers will be answered.\" I pointed to the classroom entrance. Standing there was—\n\"This seems like a rather well-equipped classroom. It would appear to live up to people's expectations, hmm?\" Yes. The boy who'd quarreled with those women on the bus.\n\"I see. This certainly is bad luck,\" she said.",
+              "chapter": "",
+              "why_premium": "Giới thiệu là bài học về sự đơn điệu chiến lược — \"interested in just about anything\" và \"at least a few\" friends là cố ý chung chung.",
+              "context": "Ayanokouji introduces himself to Horikita. She immediately deconstructs him. He responds with the most honest self-assessment he gives in the volume.",
+              "word_count": 118,
+              "techniques": [
+                "flat_self_introduction_as_comedy",
+                "horikita_as_mirror_character",
+                "irony_in_prophetic_response"
+              ]
+            }
+          ]
+        },
+        "sardonic_analysis_loop": {
+          "description": "Người kể chuyện lạnh hoặc phân tích áp dụng cách quan sát của họ vào tình huống absurd hoặc tầm thường, tạo hài kịch qua sự không tương xứng giữa trọng lượng của phân tích và sự tầm thường của chủ đề. Vòng lặp leo thang bằng cách trả lời câu hỏi của chính nó với kết luận không đủ ngày càng tăng.",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "Người kể chuyện lạnh lùng áp dụng cách quan sát vào tình huống absurd hoặc tầm thường. Trong tiếng Việt: mô tả lâm sàng, đặt câu hỏi tu từ, trả lời bằng cách xác nhận sự phi lý.",
+          "examples": [
+            {
+              "id": "cote_004",
+              "source": "Classroom of the Elite, Vol. 1 [Seven Seas]",
+              "text": "\"Pah. Utter nonsense. That's so marvelously stupid that I can't even find the words.\" Kouenji didn't even stop polishing his nails or turn to face Yukimura as he spoke. \"The school simply hasn't seen my potential yet. I pride myself on being great, and I value, respect, and regard myself more highly than anyone. So, the school arbitrarily placing me into Class D means nothing. Say, for instance, that I dropped out of school—I would be perfectly fine. After all, I am 100 percent positive that the school would come crying to take me back.\"\nThat certainly sounded like something Kouenji would say. Was it being macho? Or narcissism? It's true that if you didn't care about the school's classification of students, then it really wasn't a big deal.",
+              "chapter": "",
+              "why_premium": "\"That certainly sounded like something Kouenji would say\" — phản ứng của Ayanokouji với tự yêu bản thân spectacular là xác nhận nó nghe có vẻ đúng nhân vật. Không sốc, không phán xét, chỉ phân loại.",
+              "context": "Kouenji explains why being placed in Class D is irrelevant to his personal value, with zero social awareness.",
+              "word_count": 116,
+              "techniques": [
+                "narcissism_as_logic",
+                "ayanokouji_flat_analysis_of_absurdity",
+                "rhetorical_question_unanswered"
+              ]
+            },
+            {
+              "id": "cote_005",
+              "source": "Classroom of the Elite, Vol. 1 [Seven Seas]",
+              "text": "\"Ayanokouji! Come on, you're my only hope!\"\n\"Why am I the only one? I can't afford it, anyway.\"\nYamauchi looked at me all teary-eyed, which grossed me out. I looked the other way. He must have realized I wasn't biting, so he immediately switched to a new target.\n\"Professor! Your best buddy has a favor to ask! Buy this game system for 22,000 points!\"\nHe was trying to get the Professor to buy it and had shamelessly increased the price.\n\"Things must be really tough for the people who used up their points,\" remarked Kushida as she observed Yamauchi.",
+              "chapter": "",
+              "why_premium": "\"He was trying to get the Professor to buy it and had shamelessly increased the price\" — người kể nhận ra sự tăng giá và báo cáo trung lập, không bình luận về sự táo bạo.",
+              "context": "Yamauchi desperately tries to sell his game console after spending all his school points, escalating his price and pitch with each failed attempt.",
+              "word_count": 98,
+              "techniques": [
+                "flat_observation_of_desperation",
+                "immediate_target_switch_comedy",
+                "price_escalation_as_character_reveal"
+              ]
+            }
+          ]
+        },
+        "slapstick_interiority": {
+          "description": "Hài kịch thể xác được mô tả qua nội tâm nhân vật thời gian thực. Hài kịch đến từ khoảng cách giữa mức độ nghiêm trọng của tình huống (nguy hiểm thực sự) và giọng của bình luận nội tâm (thanh xuân bình thường, khung văn hóa đại chúng, tự nhận thức absurd).",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "Hài kịch thể xác được mô tả qua nội tâm nhân vật thời gian thực. Trong tiếng Việt: mô tả thảm họa bằng máy móc — những gì cơ thể đang làm, không phải sự sốc cảm xúc.",
+          "examples": [
+            {
+              "id": "nfw_001",
+              "source": "There's No Freaking Way I'll Be Your Lover! Unless, Vol. 1 [Seven Seas]",
+              "text": "She came at me in slow motion, both arms outstretched, with such a look of urgency that I freaked out. I didn't even think. I just tried to get out of her way by pushing off of the fence, and, with a lurch, I toppled right over it.\nI yelped as I pitched forward and started to slip toward the other side. Oh no! Oh no! The ground of the schoolyard loomed up below. Was I legit falling off the roof? At this height? Was I seriously going to plunge dozens of meters and hit the ground head first? I could see the headlines already: \"Society's Dark Side: The Tragedy of a Young Girl Tired of the Constant Pressures of Human Interaction.\"",
+              "chapter": "",
+              "why_premium": "\"Oh no! Oh no!\" — lặp lại exclamation là phiên bản hoảng sợ teen chân thực nhất trong corpus. \"Was I legit falling off the roof?\" — \"legit\" là slang làm sụp đổ tính trang trọng.",
+              "context": "Renako is leaning against a rooftop fence zoned out when Mai runs at her in a panic, causing Renako to lose her balance and go over the railing.",
+              "word_count": 104,
+              "techniques": [
+                "real_time_panic_commentary",
+                "fid_newspaper_headline",
+                "slang_register_in_crisis"
+              ]
+            },
+            {
+              "id": "nfw_002",
+              "source": "There's No Freaking Way I'll Be Your Lover! Unless, Vol. 1 [Seven Seas]",
+              "text": "A branch caught me, and I flopped around it in a u-shape a good three meters off the ground. Now I knew what it must feel like to be a fallen down comforter. I slowly raised my head. W-we were alive…\n\"See? We're safe, aren't we?\" she said. \"Nothing to i… N-nothing to it.\" Oduka Mai was sitting a bit farther up the same branch as me, legs crossed and completely unruffled. Like that, she would have looked right at home reclining on the side of a pool in some deck chair.\n\"Your voice is trembling,\" I pointed out.\n\"I knew there was a tree planted right here,\" she explained, \"so I figured we could land in it, given the proper amount of momentum. Thankfully, my good luck handled the rest.\"\n\"If that's the philosophy you live by, you're going to end up dead one of these days.\"",
+              "chapter": "",
+              "why_premium": "\"I flopped around it in a u-shape\" — độ chính xác cơ học (\"u-shape\") hài hơn bất kỳ cường điệu nào vì nó chính xác.",
+              "context": "After falling, both girls land in a tree. Renako processes surviving a multi-story fall while dangling from a branch.",
+              "word_count": 127,
+              "techniques": [
+                "comic_simile_for_physical_state",
+                "calm_character_trembling_voice_gap",
+                "understated_survival_commentary"
+              ]
+            }
+          ]
+        },
+        "gl_intimate_crescendo": {
+          "description": "Cảnh GL nơi sự phủ nhận của nhân vật chính dần thất bại dưới áp lực thân mật thể xác, thú nhận chân thành, hoặc sự chắc chắn tuyệt đối của nhân vật khác. Cường độ hoạt động theo lớp: cơ thể phản ứng trước, rồi bình luận nội tâm của người kể mâu thuẫn chính nó, rồi trượt POV hoặc vỡ mặt nạ xác nhận điều mà sự phủ nhận đã bảo vệ.",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "Cảnh GL nơi sự phủ nhận của nhân vật dần thất bại dưới áp lực thân mật. Trong tiếng Việt: để cơ thể mâu thuẫn với sự phủ nhận, rồi trượt POV ở cao trào.",
+          "examples": [
+            {
+              "id": "nfw_003",
+              "source": "There's No Freaking Way I'll Be Your Lover! Unless, Vol. 1 [Seven Seas]",
+              "text": "Slowly, as if handling a fragile object, Mai wrapped her arms around me and pulled me into a hug. I'd never been hugged by anyone but my family members before, so this was truly foreign territory to me. I couldn't describe it to you. It was this really weird feeling that made my whole body tense up, yet at the same time it was completely relaxing and satisfying.\n\"Renako,\" she said.\nI gasped. Her voice in my ear reminded me that someone was there. And not just anyone—Mai. Every minute and second of her existence was so valuable. A horrible guilty feeling crawled up my spine. I couldn't hold a candle to her.\n\"Renako,\" she said, \"I really like you.\"\n\"Y-yeah, I get that already. You don't need to keep repeating it,\" I stammered.\nIn that moment, I was the only thing on Mai's mind. She felt nothing but the heat of my body against hers.",
+              "chapter": "",
+              "why_premium": "\"Tense up, yet at the same time completely relaxing and satisfying\" — hai phản ứng vật lý mâu thuẫn trong một câu báo hiệu sự hấp dẫn mà người kể không đặt tên. Dòng cuối là kỳ tự POV: người kể đã trượt vào POV của Mai mà không có thông báo.",
+              "context": "Mai has won a gaming bet and claimed her wish: a hug. Renako agreed because it seemed 'tame.' The hug immediately reveals this was a miscalculation.",
+              "word_count": 138,
+              "techniques": [
+                "body_before_emotion",
+                "fid_pov_slip_into_other_character",
+                "stammer_as_confession"
+              ]
+            },
+            {
+              "id": "nfw_004",
+              "source": "There's No Freaking Way I'll Be Your Lover! Unless, Vol. 1 [Seven Seas]",
+              "text": "\"Maybe, um. To be the mother of my children.\"\n\"How?! You don't even have a dick!\" I cried.\nI was Amaori Renako, sweet sixteen. A virgin. And never in my wildest dreams did I think I'd someday be yelling that.\n\"Also, wait,\" I said, \"were you seriously trying to use a bet to make a major life decision for me?\"\n\"I wanted you to understand just how deep my affection for you goes.\"\n\"You freaking liar! You were just hoping I'd give you a chance, weren't you?\"\n\"Well, how did hearing that make you feel? Did it make your heart skip a beat?\"\n\"Afraid! The more I learn about what dwells in the depths of your depraved mind, the more frightened I get!\"",
+              "chapter": "",
+              "why_premium": "\"How?! You don't even have a dick!\" — exclamation là vụ nổ hài hước hoạt động vì nó là phản ứng trực tiếp nhất có thể; não của người kể đã vượt qua mọi bộ lọc xã hội.",
+              "context": "After the hug, Renako asks what Mai's 'real' wish would have been if she hadn't held back. Mai's answer causes a register explosion.",
+              "word_count": 108,
+              "techniques": [
+                "comedic_escalation_one_word_explosion",
+                "register_collapse_formal_in_panic",
+                "fear_as_denial_proxy"
+              ]
+            },
+            {
+              "id": "nfw_005",
+              "source": "There's No Freaking Way I'll Be Your Lover! Unless, Vol. 1 [Seven Seas]",
+              "text": "\"I really, really like you a lot,\" she said. \"I wish we could stay like this forever.\"\n\"That's, uh, kind of a long time, don't you think?\"\nShe only squeezed me harder, and I gulped. Our torsos were pressed so tightly together that I was afraid she could hear my heart pounding in my chest. My face turned an unnecessarily bright shade of red at the thought. No, there was nothing for me to feel guilty about, really. I was sure that my heart would be thumping just as loudly if anyone else hugged me with this same level of passion. Or maybe I was just adding another excuse to the pile.\nAt any rate, personality aside, Mai was incredibly beautiful.",
+              "chapter": "",
+              "why_premium": "\"My face turned an unnecessarily bright shade of red\" — từ \"unnecessarily\" là phán xét của chính Renako về sự đỏ mặt của mình: cô ấy biết nó không hợp lý và không thể dừng lại.",
+              "context": "During the hug, Mai's repeated confessions force Renako into an internal reckoning she immediately deflects.",
+              "word_count": 111,
+              "techniques": [
+                "self_rationalization_as_comedy",
+                "excuse_pile_acknowledgment",
+                "beauty_as_final_deflection"
+              ]
+            }
+          ]
+        },
+        "comedic_escalation_chain": {
+          "description": "Chuỗi nhanh mỗi nhịp tăng absurd hơn của cái trước — thú nhận → tức giận → tự nhận xét → cáo buộc → né tránh → thành thật ngụy trang thành phủ nhận. Hoạt động qua đà: câu ngắn, ít dừng, không cho độc giả thở cho đến câu kết cuối cùng.",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "Chuỗi nhanh mỗi nhịp tăng absurd hơn — thú nhận → tức giận → tự nhận xét → cáo buộc → né tránh → thành thật ngụy trang thành phủ nhận. Trong tiếng Việt: câu ngắn, ít dừng, không cho độc giả thở.",
+          "examples": [
+            {
+              "id": "nfw_006",
+              "source": "There's No Freaking Way I'll Be Your Lover! Unless, Vol. 1 [Seven Seas]",
+              "text": "\"It's because I bought a game console of my own after I left your house the other day. Then I trained for days so I could surprise you. Did it work?\"\n\"Too well!\" I howled. \"But what surprises me is that you're so freaking talented and persistent that you got this good in a single weekend!\"\nDuring the match itself, I'd entertained the sneaking suspicion that this was the case, but come on! Really? Losing to someone who'd practiced for only two days?\n\"I didn't have enough time to polish my blocking skills,\" she explained. \"All I practiced were combos and making a strong offense. I figured that would be all I needed to beat you on my own. You play a bit too defensively, Renako.\"\n\"Damn you, Little Miss Perfect!\" I roared. \"You—you're so above the rest of us at school that you're bumping heads with the freaking Tokyo Skytree! Curse you!\"",
+              "chapter": "",
+              "why_premium": "\"Too well!\" — mâu thuẫn (thắng quá thuyết phục là vấn đề) đặt logic hài. \"Bumping heads with the freaking Tokyo Skytree!\" — cường điệu là Renako tìm đối tượng lớn nhất có thể để so sánh.",
+              "context": "Mai reveals she practiced the game for two days straight specifically to beat Renako and claim the wish. Renako's pride as a gamer collapses.",
+              "word_count": 131,
+              "techniques": [
+                "escalating_exasperation_chain",
+                "compliment_as_insult",
+                "hyperbole_as_comedy_climax"
+              ]
+            },
+            {
+              "id": "nfw_007",
+              "source": "There's No Freaking Way I'll Be Your Lover! Unless, Vol. 1 [Seven Seas]",
+              "text": "\"I'd like to do a bit of housekeeping today,\" I said.\n\"In what sense?\"\n\"Well, I'd like to actually know what it is you want to do with me as a lover.\"\n\"Ooh,\" she said. \"How about a mouth-to-mouth for good measure?\"\n\"No! We're friends today, remember?\"\nI glared at her, but she just acted like she didn't care, making a big show of winding a strand of her hair around her finger. Now that she'd hugged me, she was acting like she had a big lead on me in the race. This freaking girl, I tell you.\n\"Mai is my friend, Mai is my friend, Mai is my friend, Mai is my friend,\" I chanted to myself. \"Okay, I'm better now!\"\nI felt like I was brute forcing this by insisting it over and over, but Mai only shrugged and took a sip from her cappuccino.",
+              "chapter": "",
+              "why_premium": "\"Housekeeping\" là ngôn ngữ kinh doanh trang trọng được triển khai trong cảnh đàm phán mối quan hệ GL — sự không khớp register là tiếng cười trước khi Mai thậm chí trả lời.",
+              "context": "During the first café meeting after the hug, Renako attempts a formal 'housekeeping' conversation to reset the rules. Mai's response immediately derails it.",
+              "word_count": 133,
+              "techniques": [
+                "chant_as_self_gaslighting_comedy",
+                "formal_word_deflated_by_response",
+                "gap_between_stated_and_actual_state"
+              ]
+            }
+          ]
+        },
+        "observation_as_affection": {
+          "description": "Người kể chuyện không thể hoặc không muốn đặt tên tình cảm lãng mạn thay bằng mô tả vật lý cho tuyên bố cảm xúc. Việc kiểm kê vẻ ngoài của nhân vật khác — được truyền tải với độ chính xác và thời gian dành — LÀ sự thú nhận.",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "Nhân vật không thể hoặc không muốn đặt tên tình cảm lãng mạn thay bằng mô tả vật lý. Trong tiếng Việt: cho phép mô tả mất nhiều thời gian hơn cần thiết, chèn ẩn dụ rỉ một chút ấm áp.",
+          "examples": [
+            {
+              "id": "train_001",
+              "source": "The Girl I Saved on the Train Turned Out to Be My Childhood Friend, Vol. 1 [Yen Press]",
+              "text": "I looked at her while she kept staring straight forward at the teacher.\nHer skin was pale white, her cheeks slightly flushed, and her lips were thin and moist with some kind of lipstick. Her long eyelashes brushed together with every blink; her legs were slender, wrapped in black knee socks, and the pleated skirt of her uniform wasn't too short or too long. Her hands were small, her fingers slim, her nails glossy.\nIt was as if Fushimi's whole body received a fresh coat of cuteness and prettiness every day. As someone who'd known her forever, I felt like I was watching a great piece of art slowly nearing completion.\nEverything the teacher said went in one ear and out the other while I kept my mind occupied with such thoughts.",
+              "chapter": "",
+              "why_premium": "Đoạn văn liệt kê: da, má, môi, lông mi, chân, váy, tay, ngón tay, móng tay — mỗi chi tiết được thêm theo cách ai đó thêm vào danh sách họ không muốn dừng.",
+              "context": "Ryou discovers that the girl he saved on the train is his childhood friend Fushimi, now seated next to him in homeroom. He looks at her while the teacher is speaking.",
+              "word_count": 111,
+              "techniques": [
+                "physical_inventory_as_emotional_displacement",
+                "art_metaphor_as_confession_leak",
+                "lesson_missed_as_proof_of_attention"
+              ]
+            },
+            {
+              "id": "train_002",
+              "source": "The Girl I Saved on the Train Turned Out to Be My Childhood Friend, Vol. 1 [Yen Press]",
+              "text": "Very carefully, Fushimi scooted her desk over until it was right beside mine.\n\"Huh? What?\"\nDid she forget her textbook? …No, she's not usually forgetful.\nThe teacher started explaining whatever the day's lesson was while Fushimi spread her notebook between us on our combined desks.\nDo you get what's going on? she wrote.\nOh, is she asking about the lesson?\n\"Yeah,\" I muttered, and she smiled.\nActually, I wasn't getting it at all—heck, I wasn't even listening to the explanation in the first place.",
+              "chapter": "",
+              "why_premium": "\"Yeah,\" I muttered, and she smiled.\" — giao dịch xuất hiện hoàn thành: câu hỏi được hỏi, trả lời, nụ cười nhận được. Dòng tiếp theo làm nổ tung nó: \"Actually, I wasn't getting it at all.\"",
+              "context": "During class, Fushimi scoots her desk next to Ryou's and starts passing notes. He can't follow the lesson.",
+              "word_count": 85,
+              "techniques": [
+                "literal_question_misread_as_romantic_signal",
+                "self_contradiction_as_comedy",
+                "understated_admission"
+              ]
+            }
+          ]
+        },
+        "silent_channel_intimacy": {
+          "description": "Sự thân mật được thực hiện qua kênh bị giới hạn — ghi chú viết, tin nhắn, bức vẽ — nơi giới hạn của kênh buộc ngắn gọn và chân thành. Điều không thể nói lại (được viết) ràng buộc hơn lời nói.",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "Sự thân mật qua kênh bị giới hạn — ghi chú, tin nhắn, bức vẽ. Trong tiếng Việt: để thông điệp viết ngắn (3-5 từ), để người gửi chuẩn bị, để người nhận diễn giải phụ đề cảm xúc.",
+          "examples": [
+            {
+              "id": "train_003",
+              "source": "The Girl I Saved on the Train Turned Out to Be My Childhood Friend, Vol. 1 [Yen Press]",
+              "text": "Then Fushimi took out a pen and started writing something down in her notebook. She showed it to me.\nThank you for helping me out.\nHelping her out?\nThe only 'helping out' I could remember doing recently was speaking up back on the train. So…that was her? But how could she tell it was me? As far as I knew, she'd seen only my back.\nOur eyes met.\n\"Oh… I heard your voice. And I took a photo.\"\nShe started tapping at her phone below the desk, then showed me the photo of what had been behind her then, taken like a selfie.\nYup, that's me and that guy.\n\"Were you all right?\"\nFushimi gave a vague smile. Of course she wouldn't be all right after that.",
+              "chapter": "",
+              "why_premium": "Ghi chú của Fushimi — ba từ, \"Cảm ơn đã giúp tôi\" — đến trước bất kỳ trao đổi lời nói nào. Lời cảm ơn viết là vĩnh viễn theo cách lời nói không.",
+              "context": "Fushimi identifies Ryou as the boy who helped her on the train — through a photo she took — and thanks him via notebook during homeroom.",
+              "word_count": 116,
+              "techniques": [
+                "fid_interpretation_of_unsaid_emotion",
+                "photo_as_proof_of_attentiveness",
+                "vague_smile_as_emotional_compression"
+              ]
+            },
+            {
+              "id": "train_004",
+              "source": "The Girl I Saved on the Train Turned Out to Be My Childhood Friend, Vol. 1 [Yen Press]",
+              "text": "She showed me her notebook again. There was a drawing of some little…cat…thing, alongside a speech bubble that said, Love!\nFrom what I could gather from our previous conversation, I guessed that meant that she loved math, so she would like to teach me.\n\"Yeah, makes sense. I mean, we're in the same class.\"\nShe was trying to erase the cat's speech bubble as I said that, and she stopped right in her tracks.\nThat seemed strange, so I turned and saw that her face was red as a tomato. Our eyes met, and she started stuttering and shuddering, then whacked her pencil case off the desk.\n\"Awwwawww…\"\nThe heck does that mean?",
+              "chapter": "",
+              "why_premium": "\"She was trying to erase the cat's speech bubble as I said that, and she stopped right in her tracks\" — sự xóa là manh mối: điều gì đó trong phản ứng của anh ta làm cô ấy dừng lại vì nó gần với ý nghĩa thực hơn \"toán học.\"",
+              "context": "Fushimi draws a cat saying 'Love!' in her notebook, apparently as a way to communicate that she loves math. She begins erasing it just as Ryou responds, thinking she meant something else.",
+              "word_count": 107,
+              "techniques": [
+                "mid_erasure_freeze_as_confession",
+                "misread_intent_as_comedy",
+                "untranslatable_sound_as_character_voice"
+              ]
+            }
+          ]
+        },
+        "genre_aware_epilogue": {
+          "description": "Kết chương nơi người kể chuyện bước vào prolepsis ngắn gọn — nói từ góc nhìn muộn hơn về điều họ chưa biết hoặc hiểu tại thời điểm hiện tại của câu chuyện. Hoạt động như tín hiệu thể loại (đây là lãng mạn; chú ý nhân vật này) và như sự mỉa mai nhân vật (tự đánh giá của người kể đã sai ngay với độc giả).",
+          "instruction": "",
+          "pattern": "",
+          "vn_instruction": "Kết chương nơi người kể chuyện bước vào prolepsis — nói từ góc nhìn sau về điều họ chưa biết. Trong tiếng Việt: một dòng, thì tương lai, tự giễu, cờ thể loại để xác nhận điều gì đó đang đến.",
+          "examples": [
+            {
+              "id": "train_005",
+              "source": "The Girl I Saved on the Train Turned Out to Be My Childhood Friend, Vol. 1 [Yen Press]",
+              "text": "I had no way of knowing then that a completely average dude like me would fall in love with Fushimi—an extremely beautiful, popular girl who just happened to be my childhood friend.",
+              "chapter": "",
+              "why_premium": "\"Completely average dude like me\" ngay lập tức bị giảm sức bởi chương vừa xảy ra: \"average dude\" này đã can thiệp vào vụ sờ mó trên tàu với chi phí cá nhân.",
+              "context": "End of Chapter 1. Ryou has saved Fushimi on the train, been seated next to her in homeroom, and watched her for an entire lesson. He does not yet understand what any of this means.",
+              "word_count": 35,
+              "techniques": [
+                "prolepsis_chapter_close",
+                "unreliable_self_label",
+                "genre_declaration_as_irony"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

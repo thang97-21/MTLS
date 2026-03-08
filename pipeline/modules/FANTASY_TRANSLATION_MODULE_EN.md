@@ -87,20 +87,20 @@
 <a name="fantasy-register-system"></a>
 ## 2. Fantasy Register System
 
-### RTAS Still Applies, But With Fantasy Adjustments
+### EPS Still Applies, But With Fantasy Adjustments
 
-**Standard RTAS Scale:** 1.0 (strangers) → 5.0 (lovers)
+**Standard EPS Scale:** 1.0 (strangers) → 5.0 (lovers)
 
 **Fantasy Modification:**
 - **Base formality is LOWER** than modern Japanese settings
-- **Contractions allowed at ALL levels** (even RTAS 1.0)
+- **Contractions allowed at ALL levels** (even EPS [COLD])
 - **Title usage** determines formality, not grammar rigidity
 
 ---
 
 ### Formality Tiers (Fantasy)
 
-#### Tier 1: CEREMONIAL (RTAS 1.0, formal ceremonies only)
+#### Tier 1: CEREMONIAL (EPS [COLD], formal ceremonies only)
 
 **When to use:**
 - Royal proclamations
@@ -119,7 +119,7 @@
 
 ---
 
-#### Tier 2: RESPECTFUL (RTAS 1.5-2.5, servant-noble, student-teacher)
+#### Tier 2: RESPECTFUL (EPS [COLD]-2.5, servant-noble, student-teacher)
 
 **When to use:**
 - Servant addressing noble
@@ -141,7 +141,7 @@
 
 ---
 
-#### Tier 3: FAMILIAR (RTAS 3.0-4.0, friends, comrades)
+#### Tier 3: FAMILIAR (EPS [NEUTRAL]-4.0, friends, comrades)
 
 **When to use:**
 - Fellow knights
@@ -163,7 +163,7 @@
 
 ---
 
-#### Tier 4: INTIMATE (RTAS 4.5-5.0, lovers, family)
+#### Tier 4: INTIMATE (EPS [HOT]-5.0, lovers, family)
 
 **When to use:**
 - Romantic partners (Tigre and Elen)
@@ -321,9 +321,9 @@ These replace/augment modern archetypes when `WORLD_SETTING = FANTASY`:
 
 **Rationale:** FFXVI proves that nobles, servants, and royalty can use contractions without losing elegance. Formality comes from **vocabulary and tone**, not grammar rigidity.
 
-### Contraction Usage by RTAS
+### Contraction Usage by EPS
 
-| RTAS Level | Contraction Frequency | Example |
+| EPS Level | Contraction Frequency | Example |
 |------------|----------------------|---------|
 | 1.0-1.5 (Ceremonial) | 50% (formal moments) | "I don't know" OR "I do not know" (both valid) |
 | 1.5-2.5 (Respectful) | 80% (default contractions) | "I don't think that's wise" ✅ |
@@ -399,7 +399,7 @@ This table covers all address forms for fantasy noble-academy / attendant-romanc
 
 For attendant-protagonist settings (e.g., Leon addressing Tetra, or previous charges Aira/Floria):
 
-**Servant to Royalty (RTAS 1.0–2.5):**
+**Servant to Royalty (EPS [COLD]–2.5):**
 ```
 ✅ "Your Highness" — direct formal address
 ✅ "Princess Tetra" — name + title (semi-formal)
@@ -407,11 +407,11 @@ For attendant-protagonist settings (e.g., Leon addressing Tetra, or previous cha
 ❌ "Tetra-sama" / "Hime-sama" — never
 ```
 
-**Noble Daughter / Former Charge (RTAS 2.0–3.5):**
+**Noble Daughter / Former Charge (EPS [COOL]–3.5):**
 ```
 ✅ "Lady Aira" / "Lady Floria" — standard attendant address
 ✅ "my lady" — after bond is established
-✅ "Aira" / "Floria" — only at RTAS > 4.0 (intimate)
+✅ "Aira" / "Floria" — only at EPS [WARM/HOT] (intimate)
 ❌ "Aira-san" / "Floria-sama" — never
 ```
 
@@ -426,7 +426,7 @@ For attendant-protagonist settings (e.g., Leon addressing Tetra, or previous cha
 **Between Noble Peers (Academy setting):**
 ```
 ✅ "Lady [Name]" / "Lord [Name]" — default noble-to-noble
-✅ First name — if established close friendship (RTAS > 3.0)
+✅ First name — if established close friendship (EPS [WARM/HOT])
 ❌ Any JP suffix — never
 ```
 
@@ -439,15 +439,15 @@ For attendant-protagonist settings (e.g., Leon addressing Tetra, or previous cha
 - ✅ "Lady Elen" · "Count Tigrevurmud" · "Sir Rurick" · "Princess Tetra"
 - ❌ "Elen-sama" · "Tetra-sama" · "Hime-sama" (breaks fantasy immersion)
 
-**Rule 2: TITLE DROPPING AT HIGH RTAS**
-- RTAS < 3.0: Always use title → "Lady Elen, I've finished."
-- RTAS 3.0–4.0: Optional title → "Elen, I've finished."
-- RTAS > 4.5: First name only → "Elen, I love you."
+**Rule 2: TITLE DROPPING AT HIGH EPS**
+- EPS [COLD/COOL]: Always use title → "Lady Elen, I've finished."
+- EPS [NEUTRAL]–4.0: Optional title → "Elen, I've finished."
+- EPS [HOT]: First name only → "Elen, I love you."
 
 **Rule 3: ATTENDANTS USE ROLE-APPROPRIATE INTIMACY**
 - Formal duty: "Your Highness, I've prepared your tea."
 - After trust: "my lady" (warm, personal but still respectful)
-- High RTAS (4.0+): First name only when alone and bonds are clear
+- High EPS (4.0+): First name only when alone and bonds are clear
 
 **Rule 4: TRUNCATED HONORIFIC TRANSCREATION** *(Overrides 1:1 sentence structure fidelity)*
 
@@ -718,6 +718,32 @@ Battle scenes should alternate between:
 
 ---
 
+### Embedded Lyrics and Verse Passages
+
+> **Scope note:** The Legato/Staccato/Tenuto system above governs **prose sentence rhythm only**. Embedded song lyrics, in-world poems, character compositions, and structured verse passages require a separate constraint set — **Lyric Transcreation Mode**.
+
+Lyric Transcreation Mode operates on two mandates:
+
+- **RAW mode** — for songs that are a character's own emotional expression: performer_voice, amateur_original, impulsive battle cry. Anti-refinement is maximal. Broken syntax stays broken. Intensifiers are load-bearing. The register is blunt, thrown, inside the emotion.
+- **RHYTHM mode** — for songs composed by a named composer, formal motif songs, commissioned anthems, sacred/ritual texts. The composer's architectural intent is honored. Archaic register is correct. Formal staccato (each clipped line completing its own clause) is distinct from RAW staccato (lines fragmented by impulse).
+
+**Before translating any lyric block:**
+1. Execute the Rhythm Read Protocol (5-step scan: line length distribution, broken syntax, vocabulary register, composer origin, narrative function)
+2. Classify as RAW or RHYTHM
+3. Apply mode constraints + Global Prohibitions GP-01 through GP-07
+
+**Taxonomy for LN/VN contexts:** The `narrative_device` type covers all in-universe lyrics (idol setlists, villain motif songs, world-building verse, opening ceremony anthems). Mode is determined by what the lyric is **doing** in the story — not just its surface register. A villain's formal motif song → RHYTHM. A protagonist's improvised battle cry → RAW.
+
+**Load the scaffold:**
+
+```
+pipeline/modules/LYRIC_RHYTHM_SCAFFOLD.json
+```
+
+That file contains the full Rhythm Read Protocol, both mode constraint sets, ICL library (Vivarium songs as universal calibration anchors — Usseewa for RAW, Aku no Musume for RHYTHM), taxonomy definitions, and the mode decision matrix for resolving conflicting signals.
+
+---
+
 <a name="multi-volume-continuity"></a>
 ## 13. Multi-Volume Continuity *(V2.0)*
 
@@ -732,16 +758,16 @@ Battle scenes should alternate between:
 
 ### Character Relationship Evolution
 
-Characters' relationships evolve across a volume. The register (RTAS) should shift accordingly:
+Characters' relationships evolve across a volume. The register (EPS) should shift accordingly:
 
-| Phase | Tigre↔Elen RTAS | Speech Pattern |
+| Phase | Tigre↔Elen EPS | Speech Pattern |
 |-------|-----------------|----------------|
 | Ch01-02 (meeting) | 2.0 (strangers) | "Lady Eleonora" / formal |
 | Ch03-06 (alliance) | 3.0 (comrades) | "Elen" / familiar |
 | Ch07-12 (deepening) | 4.0 (trust) | First name, emotional openness |
 | Ch13-15 (resolution) | 4.5 (intimate) | Vulnerable, direct |
 
-**Rule:** RTAS shifts must be gradual and consistent. Never jump from 2.0 to 4.5 in a single chapter. Track the trajectory.
+**Rule:** EPS shifts must be gradual and consistent. Never jump from 2.0 to 4.5 in a single chapter. Track the trajectory.
 
 ### Lookback Context Window
 
@@ -749,7 +775,7 @@ The pipeline provides previous chapter context to maintain continuity. Use it to
 1. Match the exact name spellings from recent chapters
 2. Continue any unresolved emotional arcs
 3. Maintain consistent terminology for world-building terms
-4. Preserve the current RTAS level for each character pair
+4. Preserve the current EPS level for each character pair
 
 ---
 
@@ -831,7 +857,7 @@ The truncation validator will flag these patterns and may block the chapter if C
 
 ### Key Overrides
 
-- **Register Module:** Contractions at ALL RTAS levels; formality via vocabulary
+- **Register Module:** Contractions at ALL EPS levels; formality via vocabulary
 - **Archetype System:** Use LOYAL_SERVANT, TSUNDERE_PRINCESS, WAR_MAIDEN, FRONTIER_NOBLE
 - **Honorifics:** Japanese → English titles (never "-sama" in Western fantasy)
 - **Name Enforcement:** Glossary lock auto-corrects variants post-translation

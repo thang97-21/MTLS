@@ -5,13 +5,14 @@ Language-agnostic extraction that handles various EPUB structures.
 Now uses PublisherProfileManager for publisher detection.
 """
 
+import re
 import zipfile
 import hashlib
 import shutil
 import json
 from pathlib import Path
 from datetime import datetime
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, Dict, Any
 from dataclasses import dataclass, field
 
 from .config import (
@@ -23,6 +24,149 @@ from .config import (
     get_work_dir,
 )
 from .publisher_profiles.manager import PublisherProfileManager, get_profile_manager, PublisherProfile
+
+# ── Component 0: OPF Metadata Registry ────────────────────────────────────────
+
+IMPRINT_MAP: Dict[str, Dict[str, str]] = {
+    "MF文庫J":            {"publisher_site": "mfbunkoj.jp",          "search_prefix": "MF文庫J"},
+    "角川文庫":            {"publisher_site": "kadokawa.co.jp",        "search_prefix": "角川文庫"},
+    "電撃文庫":            {"publisher_site": "dengekibunko.jp",       "search_prefix": "電撃文庫"},
+    "ガガガ文庫":          {"publisher_site": "shogakukan.co.jp",      "search_prefix": "ガガガ文庫"},
+    "GA文庫":              {"publisher_site": "sbcr.jp",              "search_prefix": "GA文庫"},
+    "富士見ファンタジア文庫": {"publisher_site": "fujimishobo.co.jp",    "search_prefix": "富士見ファンタジア文庫"},
+    "HJ文庫":              {"publisher_site": "hobbyjapan.co.jp",     "search_prefix": "HJ文庫"},
+    "オーバーラップ文庫":  {"publisher_site": "overlap.co.jp",        "search_prefix": "オーバーラップ文庫"},
+    "一迅社文庫":          {"publisher_site": "ichijinsha.co.jp",      "search_prefix": "一迅社文庫"},
+    "カドカワBOOKS":       {"publisher_site": "kadokawa.co.jp",        "search_prefix": "カドカワBOOKS"},
+    "ドラゴンノベルス":    {"publisher_site": "fujimishobo.co.jp",     "search_prefix": "ドラゴンノベルス"},
+    "ヒーロー文庫":        {"publisher_site": "herobooks.jp",          "search_prefix": "ヒーロー文庫"},
+    "アース・スターノベル": {"publisher_site": "earthstar.jp",          "search_prefix": "アース・スターノベル"},
+}
+
+
+def extract_imprint(dc_title: str) -> Optional[str]:
+    """Extract imprint from dc:title parenthetical, e.g. '義妹生活 (MF文庫J)' → 'MF文庫J'."""
+    # Match both full-width （） and half-width ()
+    m = re.search(r'[（(]([^）)]+)[）)]', dc_title)
+    if m:
+        candidate = m.group(1).strip()
+        for imprint in IMPRINT_MAP:
+            if imprint in candidate:
+                return imprint
+    # Scan whole title string if no parenthetical match
+    for imprint in IMPRINT_MAP:
+        if imprint in dc_title:
+            return imprint
+    return None
+
+
+def extract_opf_metadata(opf_path: Path) -> Dict[str, Any]:
+    """
+    Extract rich OPF metadata fields for the Component 0 opf_metadata block.
+
+    Returns a dict suitable for manifest['opf_metadata'].
+    Fields: opf_path, author_jp, author_jp_reading, publisher_jp, publisher_short,
+            imprint_jp, dc_title_jp, dc_language, dc_identifier, illustrator_jp.
+    """
+    result: Dict[str, Any] = {
+        "opf_path": "",
+        "author_jp": "",
+        "author_jp_reading": "",
+        "publisher_jp": "",
+        "publisher_short": "",
+        "imprint_jp": None,
+        "dc_title_jp": "",
+        "dc_language": "",
+        "dc_identifier": "",
+        "illustrator_jp": None,
+    }
+    if not opf_path or not opf_path.exists():
+        return result
+
+    try:
+        from lxml import etree as _etree
+        ns = {
+            "opf": "http://www.idpf.org/2007/opf",
+            "dc":  "http://purl.org/dc/elements/1.1/",
+        }
+        tree = _etree.parse(str(opf_path))
+        meta_elem = (
+            tree.getroot().find("opf:metadata", ns)
+            or tree.getroot().find("{http://www.idpf.org/2007/opf}metadata")
+            or tree.getroot().find("metadata")
+        )
+        if meta_elem is None:
+            return result
+
+        def _dc(name: str) -> Optional[_etree._Element]:
+            elem = meta_elem.find(f"dc:{name}", ns)
+            if elem is None:
+                elem = meta_elem.find(f"{{http://purl.org/dc/elements/1.1/}}{name}")
+            return elem
+
+        def _dc_all(name: str):
+            elems = meta_elem.findall(f"dc:{name}", ns)
+            if not elems:
+                elems = meta_elem.findall(f"{{http://purl.org/dc/elements/1.1/}}{name}")
+            return elems
+
+        # dc:title
+        title_elem = _dc("title")
+        dc_title = title_elem.text.strip() if (title_elem is not None and title_elem.text) else ""
+        result["dc_title_jp"] = dc_title
+
+        # imprint from title parenthetical
+        if dc_title:
+            result["imprint_jp"] = extract_imprint(dc_title)
+
+        # dc:creator — first entry is author; look for role='aut'; check for illustrator role='ill'
+        creator_elems = _dc_all("creator")
+        for elem in creator_elems:
+            role = (
+                elem.get("{http://www.idpf.org/2007/opf}role", "")
+                or elem.get("opf:role", "")
+                or "aut"
+            ).lower()
+            text = (elem.text or "").strip()
+            file_as = (
+                elem.get("{http://www.idpf.org/2007/opf}file-as", "")
+                or elem.get("opf:file-as", "")
+                or ""
+            ).strip()
+            if role in ("aut", "author", "") and not result["author_jp"]:
+                result["author_jp"] = text
+                result["author_jp_reading"] = file_as
+            elif role in ("ill", "illustrator") and result["illustrator_jp"] is None:
+                result["illustrator_jp"] = text
+
+        # dc:publisher
+        pub_elem = _dc("publisher")
+        if pub_elem is not None and pub_elem.text:
+            result["publisher_jp"] = pub_elem.text.strip()
+
+        # publisher_short — strip \u682a\u5f0f\u4f1a\u793e prefix and KADOKAWA-style org suffixes
+        pub = result["publisher_jp"]
+        short = re.sub(r'^(\u682a\u5f0f\u4f1a\u793e|\u6709\u9650\u4f1a\u793e|\u6709\u9650\u8cac\u4efb\u4f1a\u793e)', '', pub).strip()
+        # Also strip KADOKAWA full-width romanized variants
+        short = re.sub(r'[\uff21-\uff3a\uff41-\uff5a]+', lambda m: m.group(0), short).strip()
+        result["publisher_short"] = short or pub
+
+        # dc:language
+        lang_elem = _dc("language")
+        if lang_elem is not None and lang_elem.text:
+            result["dc_language"] = lang_elem.text.strip()
+
+        # dc:identifier (first one)
+        id_elem = _dc("identifier")
+        if id_elem is not None and id_elem.text:
+            result["dc_identifier"] = id_elem.text.strip()
+
+    except Exception as exc:
+        print(f"[WARN] extract_opf_metadata failed for {opf_path}: {exc}")
+
+    # Store relative path string
+    result["opf_path"] = str(opf_path)
+    return result
 
 
 @dataclass
@@ -65,7 +209,6 @@ class EPUBExtractor:
         Returns dict with translation info, or None if no translations found.
         """
         manifest_path = work_dir / "manifest.json"
-        vn_dir = work_dir / "VN"
         
         if not manifest_path.exists():
             return None
@@ -74,10 +217,20 @@ class EPUBExtractor:
             with open(manifest_path, encoding='utf-8') as f:
                 manifest = json.load(f)
             
-            # Check for VN files
-            vn_count = 0
-            if vn_dir.exists():
-                vn_count = len(list(vn_dir.glob("*.md")))
+            # Check for translated chapter files across common target-language folders.
+            # Keep this language-agnostic enough to catch EN/VN and variant dirs like "EN 2".
+            translated_dir_counts: Dict[str, int] = {}
+            translated_total = 0
+            for child in work_dir.iterdir():
+                if not child.is_dir():
+                    continue
+                dir_name = child.name.strip().upper()
+                if dir_name.startswith("JP") or dir_name.startswith("QC") or dir_name.startswith("ASSET"):
+                    continue
+                chapter_files = list(child.glob("CHAPTER_*_*.md"))
+                if chapter_files:
+                    translated_dir_counts[child.name] = len(chapter_files)
+                    translated_total += len(chapter_files)
             
             # Check pipeline state
             pipeline_state = manifest.get('pipeline_state', {})
@@ -86,9 +239,10 @@ class EPUBExtractor:
             chapters_completed = translator.get('chapters_completed', 0)
             
             # Only warn if there are actual translations
-            if vn_count > 0 or chapters_completed > 0:
+            if translated_total > 0 or chapters_completed > 0:
                 return {
-                    'vn_count': vn_count,
+                    'translated_total': translated_total,
+                    'translated_dirs': translated_dir_counts,
                     'translator_status': translator_status,
                     'chapters_completed': chapters_completed
                 }
@@ -128,16 +282,30 @@ class EPUBExtractor:
 
         # Create working directory structure
         work_dir = self.work_base / volume_id
+
+        def _derive_rerun_volume_id(base_volume_id: str) -> str:
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            candidate = f"{base_volume_id}_rerun_{ts}"
+            counter = 1
+            while (self.work_base / candidate).exists():
+                counter += 1
+                candidate = f"{base_volume_id}_rerun_{ts}_{counter}"
+            return candidate
         
         # PRE-FLIGHT CHECK: Warn if re-extracting over existing translations
         if work_dir.exists():
             existing_translations = self._check_existing_translations(work_dir)
             if existing_translations:
+                translated_dirs = existing_translations.get('translated_dirs', {})
+                translated_summary = ", ".join(
+                    f"{name}:{count}" for name, count in sorted(translated_dirs.items())
+                ) or "none"
                 print("\n" + "="*70)
                 print("⚠️  WARNING: RE-EXTRACTION DETECTED")
                 print("="*70)
                 print(f"Volume: {volume_id}")
-                print(f"Existing translations: {existing_translations['vn_count']} chapters")
+                print(f"Existing translations: {existing_translations['translated_total']} chapters")
+                print(f"Translation folders: {translated_summary}")
                 print(f"Translation status: {existing_translations['translator_status']}")
                 print("\nRe-extracting will create a NEW directory and LOSE this state.")
                 print("\nRecommended actions:")
@@ -157,10 +325,17 @@ class EPUBExtractor:
                         success=False,
                         error="Re-extraction cancelled by user. Use migration script to preserve translations."
                     )
-                
-                print("\n⚠️  Proceeding with re-extraction (old directory will be removed)...")
-            
-            shutil.rmtree(work_dir)
+
+                # Data-safety default: preserve old translated workspace by writing into a new volume folder.
+                old_work_dir = work_dir
+                volume_id = _derive_rerun_volume_id(volume_id)
+                work_dir = self.work_base / volume_id
+                print(
+                    "\n⚠️  Proceeding with re-extraction in a NEW volume directory "
+                    f"to preserve existing output:\n  {old_work_dir}\n  -> {work_dir}"
+                )
+            else:
+                shutil.rmtree(work_dir)
 
         # Create standard directory structure
         volume_structure = get_volume_structure()

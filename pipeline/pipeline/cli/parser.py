@@ -25,8 +25,8 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Pipeline Flow (v5.2):
-  Phase 1 -> 1.5 -> 1.55 -> 1.6 -> 1.7 -> 2 -> 3 -> 4
-  Librarian -> Metadata -> Rich Cache -> Art Director -> Translator -> Critics -> Builder
+  Phase 1 -> 1.5 -> 1.55 -> 1.56 -> 1.6 -> 1.7 -> 2 -> 2.5 -> 3 -> 4
+  Librarian -> Metadata -> Rich Cache -> Guidance Brief -> Art Director -> Translator -> Bible Update -> Critics -> Builder
 
 Quick Start:
   mtl.py run INPUT/novel_v1.epub
@@ -35,11 +35,17 @@ Quick Start:
 Core Commands:
   mtl.py phase1 INPUT/novel_v1.epub --id novel_v1
   mtl.py phase1.5 novel_v1
+  mtl.py phase1.52 novel_v1
+    mtl.py pronoun-shift novel_v1
   mtl.py phase1.55 novel_v1
+  mtl.py phase1.56 novel_v1
   mtl.py phase1.6 novel_v1
   mtl.py phase1.7 novel_v1 --chapters CHAPTER_01
   mtl.py phase1.7-cp novel_v1
   mtl.py phase2 novel_v1 --enable-multimodal
+  mtl.py phase2.5 novel_v1 --qc-cleared
+  mtl.py fix-name-order novel_v1
+  mtl.py batch novel_v1 --force-brief
   mtl.py phase4 novel_v1
   mtl.py bible list
   mtl.py bible sync novel_v1 --direction both
@@ -74,6 +80,12 @@ Metadata Schema Auto-Transform:
         dest='verbose',
         action='store_false',
         help='Use concise logs (disables verbose debug output)',
+    )
+    parent_parser.add_argument(
+        '--use-env-key',
+        dest='use_env_key',
+        action='store_true',
+        help='Bypass proxy settings in ~/.claude/settings.json and use .env ANTHROPIC_API_KEY directly',
     )
     _add_ui_flags(parent_parser)
 
@@ -115,6 +127,60 @@ Metadata Schema Auto-Transform:
         help='Run Phase 1.5: Metadata Processor (schema autoupdate + title/author/chapter translation)'
     )
     phase1_5_parser.add_argument('volume_id', type=str, nargs='?', help='Volume ID (optional - will prompt if not provided)')
+    phase1_5_parser.add_argument(
+        '--eps-only',
+        action='store_true',
+        help='Backfill only chapter emotional_proximity_signals / scene_intents without regenerating other metadata',
+    )
+    phase1_5_parser.add_argument(
+        '--strict-canonical',
+        action='store_true',
+        help='Abort Phase 1.5 if canonical bible name mismatches remain after post-verification',
+    )
+    phase1_5_parser.add_argument(
+        '--canonical-source',
+        choices=['bible', 'manifest'],
+        default='bible',
+        help='Choose canonical name authority for Phase 1.5 normalization (default: bible)',
+    )
+
+    # Phase 1.15 (Title Philosophy Analyzer)
+    phase1_15_parser = subparsers.add_parser(
+        'phase1.15',
+        parents=[parent_parser],
+        help='Run Phase 1.15: Title Philosophy Analyzer (analyze toc.json for chapter naming philosophy)'
+    )
+    phase1_15_parser.add_argument('volume_id', type=str, nargs='?', help='Volume ID (optional - will prompt if not provided)')
+
+    # Phase 1.51 (Koji Fox Voice RAG Expansion)
+    phase1_51_parser = subparsers.add_parser(
+        'phase1.51',
+        parents=[parent_parser],
+        help='Run Phase 1.51: Koji Fox Voice RAG Expansion backfill (voice fingerprints + scene intent map)'
+    )
+    phase1_51_parser.add_argument('volume_id', type=str, nargs='?', help='Volume ID (optional - will prompt if not provided)')
+
+    # Phase 1.52 (EPS Band Backfill)
+    phase1_52_parser = subparsers.add_parser(
+        'phase1.52',
+        parents=[parent_parser],
+        help='Run Phase 1.52: EPS band backfill (emotional_proximity_signals + scene intents)'
+    )
+    phase1_52_parser.add_argument('volume_id', type=str, nargs='?', help='Volume ID (optional - will prompt if not provided)')
+
+    # Standalone deterministic JP pronoun-shift detector
+    pronoun_shift_parser = subparsers.add_parser(
+        'pronoun-shift',
+        parents=[parent_parser],
+        help='Run standalone deterministic JP pronoun-shift detector (writes pronoun_shift_events_<lang>.json)'
+    )
+    pronoun_shift_parser.add_argument('volume_id', type=str, nargs='?', help='Volume ID (optional - will prompt if not provided)')
+    pronoun_shift_parser.add_argument(
+        '--target-language',
+        type=str,
+        default='',
+        help='Override target language for metadata/context output (default: config target language)',
+    )
 
     # Phase 1.55
     phase1_55_parser = subparsers.add_parser(
@@ -123,6 +189,12 @@ Metadata Schema Auto-Transform:
         help='Run Phase 1.55: Full-LN cache rich metadata enrichment'
     )
     phase1_55_parser.add_argument('volume_id', type=str, nargs='?', help='Volume ID (optional - will prompt if not provided)')
+    phase1_55_parser.add_argument(
+        '--target-language',
+        type=str,
+        default='',
+        help='Override target language for metadata/context output (default: config target language)',
+    )
 
     # Phase 1.6 (Multimodal Processor)
     phase1_6_parser = subparsers.add_parser(
@@ -243,6 +315,78 @@ Metadata Schema Auto-Transform:
             'Requires provider=anthropic in config.yaml.'
         ),
     )
+    phase2_parser.add_argument(
+        '--tool-mode',
+        action='store_true',
+        help='Enable Anthropic translation tool mode (streaming only; disables batch mode).',
+    )
+    phase2_parser.add_argument(
+        '--fallback-model-override',
+        type=str,
+        default='',
+        help='Optional retry fallback model override for failed chapters in Phase 2.',
+    )
+
+    # Phase 2.5
+    phase2_5_parser = subparsers.add_parser(
+        'phase2.5',
+        parents=[parent_parser],
+        help='Run Phase 2.5: Volume Bible Update (post-translation continuity synthesis)'
+    )
+    phase2_5_parser.add_argument(
+        'volume_id',
+        type=str,
+        nargs='?',
+        help='Volume ID (optional - will prompt if not provided)'
+    )
+    phase2_5_parser.add_argument(
+        '--qc-cleared',
+        action='store_true',
+        help='Mark output as QC-cleared for this run (recommended)',
+    )
+    phase2_5_parser.add_argument(
+        '--force',
+        action='store_true',
+        help='Bypass QC gate and run anyway (advanced)',
+    )
+    phase2_5_parser.add_argument(
+        '--target-language',
+        type=str,
+        default='',
+        help='Override target language for EN directory selection (default: config target language)',
+    )
+    phase2_5_parser.add_argument(
+        '--model',
+        type=str,
+        default='',
+        help='Override synthesis model (default: translation.phase_2_5.model)',
+    )
+    phase2_5_parser.add_argument(
+        '--max-output-tokens',
+        type=int,
+        default=0,
+        help='Override max output tokens (default: translation.phase_2_5.max_output_tokens)',
+    )
+    phase2_5_parser.add_argument(
+        '--skip-series-bible-index',
+        action='store_true',
+        help='Do not auto-update SeriesBibleRAG index after Phase 2.5 bible changes',
+    )
+    phase2_5_parser.add_argument(
+        '--rebuild-series-bible-index-if-exists',
+        action='store_true',
+        help='If series index exists, rebuild full index after Phase 2.5 (default is incremental update)',
+    )
+
+    fix_name_order_parser = subparsers.add_parser(
+        'fix-name-order',
+        parents=[parent_parser],
+        help='Normalize persisted names to match manifest.json name-order policy',
+    )
+    fix_name_order_parser.add_argument(
+        'volume_id', type=str, nargs='?',
+        help='Volume ID (optional - will prompt if not provided)'
+    )
 
     # Phase 1.56 (standalone Translation Brief)
     phase156_parser = subparsers.add_parser(
@@ -258,6 +402,11 @@ Metadata Schema Auto-Transform:
         '--force',
         action='store_true',
         help='Re-generate even if a cached brief already exists',
+    )
+    phase156_parser.add_argument(
+        '--enable-prequel-brief-injection',
+        action='store_true',
+        help='Inject prequel volume brief into Phase 1.56 prompt when sequel is detected',
     )
 
     # Batch (Full Anthropic Batch Pipeline — Option 1 for Anthropic provider)
@@ -290,6 +439,11 @@ Metadata Schema Auto-Transform:
         '--force-brief', action='store_true',
         help='Re-generate Phase 1.56 Translator\'s Guidance Brief even if already cached'
     )
+    batch_parser.add_argument(
+        '--enable-prequel-brief-injection',
+        action='store_true',
+        help='Enable sequel-aware prequel brief injection during Phase 1.56 in batch pipeline',
+    )
 
     # Phase 3
     phase3_parser = subparsers.add_parser('phase3', parents=[parent_parser], help='Show Phase 3 instructions (Manual/Agentic Workflow)')
@@ -299,6 +453,20 @@ Metadata Schema Auto-Transform:
     phase4_parser = subparsers.add_parser('phase4', parents=[parent_parser], help='Run Phase 4: Builder (EPUB Packaging)')
     phase4_parser.add_argument('volume_id', type=str, nargs='?', help='Volume ID (optional - will prompt if not provided)')
     phase4_parser.add_argument('--output', type=str, help='Custom output filename')
+    phase4_parser.add_argument(
+        '--include-header-illustrations',
+        action='store_true',
+        default=None,
+        help='Keep chapter-opening illustration placeholders in chapter XHTML'
+    )
+
+    # Phase 4.5 (Structural Geometry Scanner)
+    phase4_5_parser = subparsers.add_parser(
+        'phase4.5',
+        parents=[parent_parser],
+        help='Run Phase 4.5: StructuralGeometryScanner (cross-chapter structural rule verification)'
+    )
+    phase4_5_parser.add_argument('volume_id', type=str, nargs='?', help='Volume ID (optional - will prompt if not provided)')
 
     # Cleanup
     cleanup_parser = subparsers.add_parser(
@@ -363,6 +531,7 @@ Metadata Schema Auto-Transform:
     config_parser.add_argument('--toggle-pre-toc', action='store_true', help='Toggle pre-TOC content detection (rare opening hooks before prologue)')
     config_parser.add_argument('--toggle-multimodal', action='store_true', help='Toggle multimodal visual context (experimental)')
     config_parser.add_argument('--toggle-smart-chunking', action='store_true', help='Toggle smart chunking for massive chapters')
+    config_parser.add_argument('--toggle-proxy-key', action='store_true', help='Toggle Anthropic API proxy (settings.json vs .env)')
     config_parser.add_argument('--language', type=str, choices=['en', 'vn'], help='Switch target language (en=English, vn=Vietnamese)')
     config_parser.add_argument('--show-language', action='store_true', help='Show current target language details')
     config_parser.add_argument(
@@ -384,6 +553,12 @@ Metadata Schema Auto-Transform:
     config_parser.add_argument('--temperature', type=float, help='Set temperature (0.0-2.0, default: 0.6)')
     config_parser.add_argument('--top-p', type=float, help='Set top_p (0.0-1.0, default: 0.95)')
     config_parser.add_argument('--top-k', type=int, help='Set top_k (1-100, default: 40)')
+    config_parser.add_argument(
+        '--phase2-endpoint',
+        type=str,
+        choices=['openrouter', 'official'],
+        help='Set Phase 2 translator endpoint override (openrouter or official Anthropic endpoint)'
+    )
 
     # Metadata inspection
     metadata_parser = subparsers.add_parser(
@@ -418,6 +593,16 @@ Metadata Schema Auto-Transform:
         parents=[parent_parser],
         help='Series Bible management (cross-volume canonical metadata)'
     )
+    bible_parser.add_argument(
+        '--skip-series-bible-index',
+        action='store_true',
+        help='Do not auto-update SeriesBibleRAG index after bible-changing actions',
+    )
+    bible_parser.add_argument(
+        '--rebuild-series-bible-index-if-exists',
+        action='store_true',
+        help='If series index exists, rebuild full index after bible-changing actions (default: incremental)',
+    )
     bible_subparsers = bible_parser.add_subparsers(dest='bible_action')
 
     # bible list
@@ -434,6 +619,16 @@ Metadata Schema Auto-Transform:
     # bible import <volume_id>
     bible_import_p = bible_subparsers.add_parser('import', help='Import terms from volume manifest into bible')
     bible_import_p.add_argument('volume_id', type=str, help='Volume ID (e.g. 25d9)')
+    bible_import_p.add_argument(
+        '--skip-series-bible-index',
+        action='store_true',
+        help='Do not auto-update SeriesBibleRAG index after import',
+    )
+    bible_import_p.add_argument(
+        '--rebuild-series-bible-index-if-exists',
+        action='store_true',
+        help='If series index exists, rebuild full index after import (default: incremental)',
+    )
 
     # bible link <volume_id> [--bible <bible_id>]
     bible_link_p = bible_subparsers.add_parser('link', help='Link volume to series bible')
@@ -456,5 +651,52 @@ Metadata Schema Auto-Transform:
     bible_sync_p.add_argument('volume_id', type=str, help='Volume short ID (e.g. 25d9)')
     bible_sync_p.add_argument('--direction', choices=['pull', 'push', 'both'],
                               default='both', help='Sync direction (default: both)')
+    bible_sync_p.add_argument(
+        '--skip-series-bible-index',
+        action='store_true',
+        help='Do not auto-update SeriesBibleRAG index after sync',
+    )
+    bible_sync_p.add_argument(
+        '--rebuild-series-bible-index-if-exists',
+        action='store_true',
+        help='If series index exists, rebuild full index after sync (default: incremental)',
+    )
+
+    # index-series-bible
+    rag_parser = subparsers.add_parser(
+        'index-series-bible',
+        parents=[parent_parser],
+        help='Build SeriesBibleRAG ChromaDB index for a series (ships at 200K)',
+    )
+    rag_parser.add_argument(
+        'series_id',
+        type=str,
+        help='Series bible ID (e.g. madan_no_ou_to_vanadis)',
+    )
+    rag_parser.add_argument(
+        '--volume-id',
+        dest='volume_id_only',
+        type=str,
+        default=None,
+        help='Index only this volume (incremental add)',
+    )
+    rag_parser.add_argument(
+        '--rebuild',
+        action='store_true',
+        help='Full rebuild — clear existing index before re-indexing',
+    )
+    rag_parser.add_argument(
+        '--work-dir',
+        dest='work_dir',
+        default=None,
+        help='Override WORK/ directory path',
+    )
+    rag_parser.add_argument(
+        '--batch-size',
+        dest='batch_size',
+        type=int,
+        default=50,
+        help='Passages per Gemini embedding batch call (default: 50)',
+    )
 
     return parser

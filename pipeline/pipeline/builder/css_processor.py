@@ -162,6 +162,11 @@ h1, h2.chapter-title {
   font-weight: bold;
 }
 
+h1.post-header-title {
+  page-break-before: avoid;
+  margin-top: 1em;
+}
+
 h2 {
   font-size: 1.2em;
   margin-top: 1em;
@@ -197,6 +202,62 @@ p.section-break {
   page-break-before: avoid;
   page-break-after: avoid;
   page-break-inside: avoid;
+}
+
+/* Blockquotes + lyrics */
+p.blockquote {
+  text-indent: 0;
+  margin: 0.35em 1.25em;
+}
+
+p.lyric {
+  text-indent: 0;
+  margin: 0.05em 0;
+  text-align: left;
+}
+
+p.lyric-break {
+  text-indent: 0;
+  margin: 0.35em 0;
+}
+
+/* Footnotes */
+a.noteref {
+  vertical-align: super;
+  font-size: 0.75em;
+  text-decoration: none;
+  line-height: 0;
+}
+
+section.footnotes {
+  margin-top: 1.5em;
+  padding-top: 0.75em;
+  border-top: 1px solid #cccccc;
+}
+
+section.footnotes h2 {
+  text-indent: 0;
+  font-size: 1em;
+  margin: 0 0 0.5em 0;
+}
+
+section.footnotes ol {
+  margin: 0;
+  padding-left: 1.2em;
+}
+
+section.footnotes li {
+  margin: 0.35em 0;
+}
+
+section.footnotes p {
+  text-indent: 0;
+  margin: 0;
+}
+
+a.footnote-backref {
+  text-decoration: none;
+  margin-left: 0.35em;
 }
 
 /* Insert page styling */

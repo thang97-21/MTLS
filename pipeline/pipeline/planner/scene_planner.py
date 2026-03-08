@@ -10,14 +10,18 @@ import json
 import logging
 import re
 import time
+from difflib import SequenceMatcher
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
 from pipeline.common.gemini_client import GeminiClient
-from pipeline.config import PIPELINE_ROOT
+from pipeline.common.phase_llm_router import PhaseLLMRouter
+from pipeline.common.name_order_normalizer import normalize_payload_names
+from pipeline.config import PIPELINE_ROOT, get_phase_generation_config
 
 logger = logging.getLogger(__name__)
+_PHASE_1_7_GEN = get_phase_generation_config("1.7")
 
 
 class ScenePlanningError(Exception):
@@ -43,6 +47,8 @@ class SceneBeat:
     culture_bleed_source_phrase: Optional[str] = None # the JP phrase triggering the flag
     culture_bleed_warning: Optional[str] = None       # inline warning injected into Stage 2
     culture_bleed_forbidden: Optional[List[str]] = None  # forbidden EN substitutions
+    # Scene-level Emotional Pronoun Shift (EPS) tension band
+    eps_band: Optional[str] = None                    # "HOT" | "WARM" | "NEUTRAL" | "COOL" | "COLD"
 
 
 @dataclass
@@ -58,11 +64,22 @@ class CharacterProfile:
 
 
 @dataclass
+class POVSegment:
+    """Narrator ownership metadata for a contiguous POV span."""
+
+    character: str
+    start_line: Optional[int] = None
+    end_line: Optional[int] = None
+    description: str = ""
+
+
+@dataclass
 class ScenePlan:
     """Narrative scaffold output for a chapter."""
 
     chapter_id: str
     scenes: List[SceneBeat]
+    pov_tracking: List[POVSegment]
     character_profiles: Dict[str, CharacterProfile]
     overall_tone: str
     pacing_strategy: str
@@ -75,7 +92,7 @@ class ScenePlan:
             for key in (
                 "culture_bleed_risk", "culture_bleed_category",
                 "culture_bleed_source_phrase", "culture_bleed_warning",
-                "culture_bleed_forbidden",
+                "culture_bleed_forbidden", "eps_band",
             ):
                 if d.get(key) is None:
                     d.pop(key, None)
@@ -84,6 +101,7 @@ class ScenePlan:
         return {
             "chapter_id": self.chapter_id,
             "scenes": [_scene_to_dict(scene) for scene in self.scenes],
+            "pov_tracking": [asdict(segment) for segment in self.pov_tracking],
             "character_profiles": {
                 name: asdict(profile)
                 for name, profile in self.character_profiles.items()
@@ -109,8 +127,8 @@ class ScenePlanningAgent:
         gemini_client: Optional[GeminiClient] = None,
         config_path: Optional[Path] = None,
         model: str = "gemini-2.5-flash",
-        temperature: float = 0.3,
-        max_output_tokens: int = 65535,
+        temperature: Optional[float] = None,
+        max_output_tokens: Optional[int] = None,
     ):
         self.config_path = config_path or (PIPELINE_ROOT / "config" / "planning_config.json")
         self.config = self._load_config(self.config_path)
@@ -121,12 +139,18 @@ class ScenePlanningAgent:
         self._rhythm_levels = self._build_rhythm_levels()
 
         self.model = model
-        self.temperature = temperature
-        self.max_output_tokens = max_output_tokens
+        self.temperature = float(_PHASE_1_7_GEN.get("temperature", 0.3) if temperature is None else temperature)
+        self.max_output_tokens = int(
+            _PHASE_1_7_GEN.get("max_output_tokens", 65535) if max_output_tokens is None else max_output_tokens
+        )
         self.empty_response_retries = max(0, int(self.config.get("empty_response_retries", 2)))
         self.empty_retry_backoff_seconds = max(0.0, float(self.config.get("empty_retry_backoff_seconds", 1.5)))
         self.enable_safety_sanitized_retry = bool(self.config.get("enable_safety_sanitized_retry", True))
-        self.gemini = gemini_client or GeminiClient(model=model, enable_caching=False)
+        self.gemini = gemini_client or PhaseLLMRouter().get_client(
+            "1.7",
+            model=model,
+            enable_caching=False,
+        )
         self.planning_prompt = self._build_planning_prompt()
 
     @staticmethod
@@ -202,9 +226,23 @@ class ScenePlanningAgent:
             "Required top-level keys:\n"
             "- chapter_id (string)\n"
             "- scenes (array)\n"
+            "- pov_tracking (array)\n"
             "- character_profiles (object)\n"
             "- overall_tone (string)\n"
             "- pacing_strategy (string)\n\n"
+            "POV tracking keys:\n"
+            "- character (string — ALWAYS use the EXACT canonical name from the CHARACTER NAME CANONICAL REFERENCE block above; never generic labels like \"Narrator\" or \"Protagonist\"; never append family/last names)\n"
+            "- start_line (integer)\n"
+            "- end_line (integer or null)\n"
+            "- description (string)\n"
+            "- ALWAYS include pov_tracking even for single-narrator chapters\n"
+            "- For single-narrator chapters, emit one entry covering the whole chapter\n"
+            "- For multi-narrator chapters, emit one entry per narrator segment in reading order\n"
+            "- Infer POV from narrative ownership and surrounding context first: whose internal thoughts, perceptions, interpretations, blind spots, and emotional filtering control the prose\n"
+            "- Use JP pronouns only as a weak supporting clue, never the sole criterion\n"
+            "- Stronger POV evidence includes interior monologue, knowledge asymmetry, private reactions, remembered motives, and narration that stays inside one character's sensory/cognitive frame across nearby paragraphs\n"
+            "- If the chapter opens before the POV character is explicitly named, still infer the most likely POV from surrounding context and use that canonical name\n"
+            "- In description, use neutral labels such as \"POV character for chapter opening\" or \"POV shifts after confrontation\"; do not label someone \"the protagonist\" unless the source explicitly establishes that role\n\n"
             "Scene item keys:\n"
             "- id (string)\n"
             f"- beat_type (one of: {beat_types})\n"
@@ -215,6 +253,12 @@ class ScenePlanningAgent:
             "- consistency rule: if beat_type is 'illustration_anchor', illustration_anchor must be true\n"
             "- start_paragraph (integer or null)\n"
             "- end_paragraph (integer or null)\n"
+            "- eps_band (string: \"HOT\" | \"WARM\" | \"NEUTRAL\" | \"COOL\" | \"COLD\") — the scene's emotional proximity/tension band.\n"
+            "  * HOT = anger, panic, high-tension confrontation, active flustered tsundere, comedy climax\n"
+            "  * WARM = tenderness, intimacy, growing connection, vulnerability\n"
+            "  * NEUTRAL = standard narrative, exposition, casual conversation\n"
+            "  * COOL = detachment, observation, analytical, formal distance\n"
+            "  * COLD = trauma, dissociation, comedic rock-bottom despair, complete disconnect\n"
             "- culture_bleed_risk (string: \"high\" | \"medium\" | \"low\" | omit if none)\n"
             "- culture_bleed_category (string: one of farewell_greeting_formula | school_hierarchy_vocab | gendered_speech_register | otaku_attribute_vocab | emotional_beat_substitution | omit if none)\n"
             "- culture_bleed_source_phrase (string: the exact JP phrase triggering the flag, omit if none)\n"
@@ -254,7 +298,178 @@ class ScenePlanningAgent:
         paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
         return paragraphs if paragraphs else [text.strip()] if text.strip() else []
 
-    def _build_planning_input(self, chapter_id: str, japanese_text: str) -> str:
+    @staticmethod
+    def _normalize_character_key(value: str) -> str:
+        text = re.sub(r"\([^)]*\)|\[[^\]]*\]|\{[^}]*\}", " ", str(value or ""))
+        text = re.sub(r"[^a-z0-9]+", " ", text.lower())
+        return " ".join(text.split())
+
+    @classmethod
+    def _register_alias(
+        cls,
+        aliases: Dict[str, str],
+        alias: Any,
+        canonical: str,
+    ) -> None:
+        alias_key = cls._normalize_character_key(str(alias or ""))
+        canonical_name = str(canonical or "").strip()
+        if alias_key and canonical_name and alias_key not in aliases:
+            aliases[alias_key] = canonical_name
+
+    @classmethod
+    def build_canonical_name_reference(cls, manifest: Dict[str, Any]) -> Dict[str, Any]:
+        """Build manifest-backed canon names for Stage 1 planning."""
+        metadata_en = manifest.get("metadata_en", {}) if isinstance(manifest, dict) else {}
+        canonical_names: List[str] = []
+        aliases: Dict[str, str] = {}
+
+        def add_canonical(raw_name: Any) -> str:
+            name = str(raw_name or "").strip()
+            if not name:
+                return ""
+            if name not in canonical_names:
+                canonical_names.append(name)
+            cls._register_alias(aliases, name, name)
+            return name
+
+        for fp in metadata_en.get("character_voice_fingerprints", []) or []:
+            if isinstance(fp, dict):
+                canonical = add_canonical(fp.get("canonical_name_en"))
+                if canonical:
+                    for alias_key in (
+                        fp.get("full_name"),
+                        fp.get("nickname"),
+                        fp.get("display_name"),
+                    ):
+                        cls._register_alias(aliases, alias_key, canonical)
+                    raw_aliases = fp.get("name_aliases", [])
+                    if isinstance(raw_aliases, list):
+                        for alias_key in raw_aliases:
+                            cls._register_alias(aliases, alias_key, canonical)
+
+        character_names = metadata_en.get("character_names", {})
+        if isinstance(character_names, dict):
+            for _, en_name in character_names.items():
+                add_canonical(en_name)
+
+        profiles = metadata_en.get("character_profiles", {})
+        if isinstance(profiles, dict):
+            for key, profile in profiles.items():
+                canonical = add_canonical(key)
+                if not isinstance(profile, dict):
+                    continue
+                resolved = canonical or add_canonical(profile.get("name")) or add_canonical(profile.get("full_name"))
+                if not resolved:
+                    continue
+                for alias_key in (
+                    profile.get("name"),
+                    profile.get("full_name"),
+                    profile.get("nickname"),
+                    profile.get("ruby_reading"),
+                    profile.get("ruby_base"),
+                ):
+                    cls._register_alias(aliases, alias_key, resolved)
+
+        token_buckets: Dict[str, List[str]] = {}
+        for canonical in canonical_names:
+            for token in cls._normalize_character_key(canonical).split():
+                if token and len(token) >= 3:
+                    token_buckets.setdefault(token, []).append(canonical)
+
+        for token, mapped in token_buckets.items():
+            unique = []
+            for canonical in mapped:
+                if canonical not in unique:
+                    unique.append(canonical)
+            if len(unique) == 1:
+                aliases[token] = unique[0]
+
+        return {
+            "canonical_names": canonical_names,
+            "aliases": aliases,
+        }
+
+    @classmethod
+    def _match_canonical_name(
+        cls,
+        raw_name: Any,
+        canonical_name_reference: Optional[Dict[str, Any]],
+    ) -> str:
+        name = str(raw_name or "").strip()
+        if not name:
+            return ""
+        if not canonical_name_reference:
+            return name
+
+        canonical_names = canonical_name_reference.get("canonical_names") or []
+        aliases = canonical_name_reference.get("aliases") or {}
+        normalized = cls._normalize_character_key(name)
+        if not normalized:
+            return name
+        if normalized in aliases:
+            return aliases[normalized]
+
+        raw_tokens = [token for token in normalized.split() if token]
+        best_name = ""
+        best_score = 0.0
+
+        for canonical in canonical_names:
+            canonical_text = str(canonical or "").strip()
+            if not canonical_text:
+                continue
+            canonical_norm = cls._normalize_character_key(canonical_text)
+            if not canonical_norm:
+                continue
+
+            score = SequenceMatcher(None, normalized, canonical_norm).ratio()
+            canonical_tokens = [token for token in canonical_norm.split() if token]
+            for raw_token in raw_tokens:
+                score = max(score, SequenceMatcher(None, raw_token, canonical_norm).ratio())
+                for canonical_token in canonical_tokens:
+                    score = max(score, SequenceMatcher(None, raw_token, canonical_token).ratio())
+            if score > best_score:
+                best_score = score
+                best_name = canonical_text
+
+        if best_name and best_score >= 0.72:
+            logger.debug(
+                "[SCENE-PLAN] Canonicalized character label '%s' -> '%s' (score=%.3f)",
+                name,
+                best_name,
+                best_score,
+            )
+            return best_name
+        return name
+
+    def _build_canonical_name_block(self, canonical_name_reference: Optional[Dict[str, Any]]) -> str:
+        if not canonical_name_reference:
+            return ""
+        canonical_names = [
+            str(name).strip()
+            for name in canonical_name_reference.get("canonical_names", [])
+            if str(name).strip()
+        ]
+        if not canonical_names:
+            return ""
+        lines = [
+            "## ⚠ CHARACTER NAME CANONICAL REFERENCE — MANDATORY",
+            "The names below are the ONLY permitted values for pov_tracking.character and character_profiles keys.",
+            "STRICT RULES:",
+            "1. Copy the name EXACTLY as written — do NOT alter spelling, capitalisation, or romanisation.",
+            "2. Do NOT append family names, last names, or surnames (e.g. write 'Klael', never 'Klael Burn').",
+            "3. Do NOT invent alternative romanisations of a JP name that already appears in this list.",
+            "4. If a character in the JP text does not appear in this list, use the closest matching name below.",
+            "Canonical names:",
+        ]
+        lines.extend(f"  - {name}" for name in canonical_names[:80])
+        return "\n".join(lines) + "\n\n"
+
+    def _build_planning_input(
+        self,
+        chapter_id: str,
+        japanese_text: str,
+        canonical_name_reference: Optional[Dict[str, Any]] = None,
+    ) -> str:
         paragraphs = self._split_paragraphs(japanese_text)
         numbered = []
         for idx, paragraph in enumerate(paragraphs, 1):
@@ -262,6 +477,7 @@ class ScenePlanningAgent:
         numbered_text = "\n\n".join(numbered)
         return (
             f"CHAPTER_ID: {chapter_id}\n\n"
+            f"{self._build_canonical_name_block(canonical_name_reference)}"
             "JAPANESE_TEXT:\n"
             f"{numbered_text}\n"
         )
@@ -373,6 +589,7 @@ class ScenePlanningAgent:
         japanese_text: str,
         *,
         model: Optional[str] = None,
+        canonical_name_reference: Optional[Dict[str, Any]] = None,
     ) -> ScenePlan:
         if not japanese_text or not japanese_text.strip():
             raise ScenePlanningError(f"Empty Japanese text for chapter {chapter_id}")
@@ -385,11 +602,20 @@ class ScenePlanningAgent:
             and (high_risk or sanitized_text != japanese_text)
         )
 
-        planning_input_primary = self._build_planning_input(chapter_id, japanese_text)
-        planning_input_sanitized = self._build_planning_input(chapter_id, sanitized_text)
+        planning_input_primary = self._build_planning_input(
+            chapter_id,
+            japanese_text,
+            canonical_name_reference=canonical_name_reference,
+        )
+        planning_input_sanitized = self._build_planning_input(
+            chapter_id,
+            sanitized_text,
+            canonical_name_reference=canonical_name_reference,
+        )
         planning_input_ultra_safe = self._build_planning_input(
             chapter_id,
             self._build_ultra_safe_planner_text(japanese_text),
+            canonical_name_reference=canonical_name_reference,
         )
 
         using_sanitized = pre_sanitize
@@ -420,6 +646,7 @@ class ScenePlanningAgent:
                     model=model or self.model,
                     temperature=self.temperature,
                     max_output_tokens=self.max_output_tokens,
+                    generation_config=_PHASE_1_7_GEN,
                 )
             except Exception as e:
                 if self._is_prohibited_content_error(e) and attempt < max_attempts:
@@ -522,7 +749,11 @@ class ScenePlanningAgent:
         if "chapter_id" not in plan_dict or not str(plan_dict.get("chapter_id", "")).strip():
             plan_dict["chapter_id"] = chapter_id
 
-        normalized = self._normalize_plan_dict(plan_dict, total_paragraphs=paragraph_count)
+        normalized = self._normalize_plan_dict(
+            plan_dict,
+            total_paragraphs=paragraph_count,
+            canonical_name_reference=canonical_name_reference,
+        )
         return self._build_scene_plan(normalized)
 
     @staticmethod
@@ -573,6 +804,18 @@ class ScenePlanningAgent:
         )
         return repaired
 
+    @staticmethod
+    def _fix_json_quotes(text: str) -> str:
+        """Heuristic fixer for unquoted or single-quoted property names."""
+        repaired = text
+        # 1. Single quoted keys:  'key': "value"
+        repaired = re.sub(r'(?m)^(\s*)\'([a-zA-Z0-9_]+)\'\s*:', r'\1"\2":', repaired)
+        repaired = re.sub(r'([\{,]\s*)\'([a-zA-Z0-9_]+)\'\s*:', r'\1"\2":', repaired)
+        # 2. Unquoted keys:       key: "value"
+        repaired = re.sub(r'(?m)^(\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":', repaired)
+        repaired = re.sub(r'([\{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":', repaired)
+        return repaired
+
     def _build_json_repair_candidates(self, json_text: str) -> List[str]:
         """
         Build a small set of progressively repaired JSON candidates.
@@ -592,8 +835,11 @@ class ScenePlanningAgent:
 
         trailing = self._remove_trailing_commas(sanitized)
         add(trailing)
+        
+        fixed_quotes = self._fix_json_quotes(trailing)
+        add(fixed_quotes)
 
-        missing_commas = self._insert_missing_object_commas(trailing)
+        missing_commas = self._insert_missing_object_commas(fixed_quotes)
         add(missing_commas)
 
         add(self._remove_trailing_commas(missing_commas))
@@ -870,6 +1116,7 @@ class ScenePlanningAgent:
             "culture_bleed_source_phrase",
             "culture_bleed_warning",
             "culture_bleed_forbidden",
+            "eps_band",
         ):
             raw_val = raw_scene.get(bleed_key)
             if raw_val is not None:
@@ -884,7 +1131,36 @@ class ScenePlanningAgent:
 
         return normalized
 
-    def _normalize_profiles(self, raw_profiles: Any) -> Dict[str, Dict[str, Any]]:
+    def _merge_profile_dicts(
+        self,
+        existing: Dict[str, Any],
+        incoming: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        merged = dict(existing)
+        for key in (
+            "name",
+            "emotional_state",
+            "sentence_bias",
+            "relationship_dynamic",
+        ):
+            if not merged.get(key) and incoming.get(key):
+                merged[key] = incoming[key]
+        for key in ("victory_patterns", "denial_patterns"):
+            current = merged.get(key, []) or []
+            extra = incoming.get(key, []) or []
+            deduped: List[str] = []
+            for item in [*current, *extra]:
+                text = self._coerce_text(item, "")
+                if text and text not in deduped:
+                    deduped.append(text)
+            merged[key] = deduped
+        return merged
+
+    def _normalize_profiles(
+        self,
+        raw_profiles: Any,
+        canonical_name_reference: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Dict[str, Any]]:
         if not isinstance(raw_profiles, dict):
             return {}
 
@@ -894,8 +1170,10 @@ class ScenePlanningAgent:
             if not key_name or not isinstance(raw_profile, dict):
                 continue
 
-            name = self._coerce_text(raw_profile.get("name"), key_name)
-            profiles[key_name] = {
+            canonical_key = self._match_canonical_name(key_name, canonical_name_reference) or key_name
+            name = self._coerce_text(raw_profile.get("name"), canonical_key)
+            name = self._match_canonical_name(name, canonical_name_reference) or canonical_key
+            normalized_profile = {
                 "name": name,
                 "emotional_state": self._coerce_text(raw_profile.get("emotional_state"), "neutral"),
                 "sentence_bias": self._coerce_text(raw_profile.get("sentence_bias"), "8-10w medium"),
@@ -903,13 +1181,87 @@ class ScenePlanningAgent:
                 "denial_patterns": self._coerce_string_list(raw_profile.get("denial_patterns")),
                 "relationship_dynamic": self._coerce_text(raw_profile.get("relationship_dynamic"), "unspecified"),
             }
+            if canonical_key in profiles:
+                profiles[canonical_key] = self._merge_profile_dicts(profiles[canonical_key], normalized_profile)
+            else:
+                profiles[canonical_key] = normalized_profile
         return profiles
+
+    def _normalize_pov_tracking(
+        self,
+        raw_pov_tracking: Any,
+        profiles: Dict[str, Dict[str, Any]],
+        canonical_name_reference: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        pov_tracking: List[Dict[str, Any]] = []
+
+        if isinstance(raw_pov_tracking, list):
+            for raw_segment in raw_pov_tracking:
+                if not isinstance(raw_segment, dict):
+                    continue
+                character = self._coerce_text(raw_segment.get("character"), "")
+                if not character:
+                    continue
+                character = self._match_canonical_name(character, canonical_name_reference) or character
+                start_line = self._coerce_int(raw_segment.get("start_line"))
+                end_line = self._coerce_int(raw_segment.get("end_line"))
+                if start_line is not None and end_line is not None and end_line < start_line:
+                    end_line = start_line
+                description = self._coerce_text(
+                    raw_segment.get("description") or raw_segment.get("context"),
+                    "POV character",
+                )
+                pov_tracking.append(
+                    {
+                        "character": character,
+                        "start_line": start_line,
+                        "end_line": end_line,
+                        "description": description,
+                    }
+                )
+
+        if not pov_tracking:
+            # Prefer the first non-generic profile key so fingerprint lookup succeeds.
+            # Generic labels ("Narrator", "Protagonist", etc.) are skipped because
+            # voice_rag.get_fingerprint() returns None for them, leaving Gap 8.2 dormant.
+            # This was the root cause of 0e48 Ch08 KF failure (interlude narrator mislabeled).
+            _GENERIC_LABELS = frozenset(
+                {"narrator", "protagonist", "pov character", "pov", "unknown", "hero", "heroine"}
+            )
+            fallback_name = ""
+            for _candidate in profiles:
+                if str(_candidate or "").strip().lower() not in _GENERIC_LABELS:
+                    fallback_name = str(_candidate).strip()
+                    break
+            if not fallback_name:
+                # All profile keys are generic — use the first one as last resort
+                fallback_name = next(iter(profiles), "") if profiles else ""
+            if fallback_name:
+                pov_tracking = [
+                    {
+                        "character": fallback_name,
+                        "start_line": 1,
+                        "end_line": None,
+                        "description": "POV character (synthesized fallback — non-generic key)",
+                    }
+                ]
+            else:
+                logger.warning(
+                    "_normalize_pov_tracking: no pov_tracking from LLM and profiles is empty; "
+                    "Gap 8.2 injection will be skipped for this chapter."
+                )
+
+        if len(pov_tracking) == 1 and pov_tracking[0].get("start_line") is None:
+            pov_tracking[0]["start_line"] = 1
+
+        return pov_tracking
 
     def _normalize_plan_dict(
         self,
         plan_dict: Dict[str, Any],
         *,
         total_paragraphs: Optional[int] = None,
+        canonical_name_reference: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         chapter_id = self._coerce_text(plan_dict.get("chapter_id"), "chapter_unknown")
         raw_scenes = plan_dict.get("scenes", [])
@@ -935,11 +1287,20 @@ class ScenePlanningAgent:
             ]
 
         self._heal_tiny_coverage_gaps(scenes, total_paragraphs=total_paragraphs)
-        profiles = self._normalize_profiles(plan_dict.get("character_profiles", {}))
+        profiles = self._normalize_profiles(
+            plan_dict.get("character_profiles", {}),
+            canonical_name_reference=canonical_name_reference,
+        )
+        pov_tracking = self._normalize_pov_tracking(
+            plan_dict.get("pov_tracking"),
+            profiles,
+            canonical_name_reference=canonical_name_reference,
+        )
 
         return {
             "chapter_id": chapter_id,
             "scenes": scenes,
+            "pov_tracking": pov_tracking,
             "character_profiles": profiles,
             "overall_tone": self._coerce_text(plan_dict.get("overall_tone"), "neutral"),
             "pacing_strategy": self._coerce_text(plan_dict.get("pacing_strategy"), "standard"),
@@ -948,9 +1309,15 @@ class ScenePlanningAgent:
     @staticmethod
     def _build_scene_plan(plan_dict: Dict[str, Any]) -> ScenePlan:
         _SCENE_BEAT_FIELDS = {f.name for f in SceneBeat.__dataclass_fields__.values()}  # type: ignore[attr-defined]
+        _POV_SEGMENT_FIELDS = {f.name for f in POVSegment.__dataclass_fields__.values()}  # type: ignore[attr-defined]
         scenes = [
             SceneBeat(**{k: v for k, v in scene.items() if k in _SCENE_BEAT_FIELDS})
             for scene in plan_dict.get("scenes", [])
+        ]
+        pov_tracking = [
+            POVSegment(**{k: v for k, v in segment.items() if k in _POV_SEGMENT_FIELDS})
+            for segment in plan_dict.get("pov_tracking", [])
+            if isinstance(segment, dict)
         ]
         character_profiles = {
             name: CharacterProfile(**profile)
@@ -959,16 +1326,20 @@ class ScenePlanningAgent:
         return ScenePlan(
             chapter_id=plan_dict.get("chapter_id", "chapter_unknown"),
             scenes=scenes,
+            pov_tracking=pov_tracking,
             character_profiles=character_profiles,
             overall_tone=plan_dict.get("overall_tone", "neutral"),
             pacing_strategy=plan_dict.get("pacing_strategy", "standard"),
         )
 
     @staticmethod
-    def save_plan(plan: ScenePlan, output_path: Path) -> None:
+    def save_plan(plan: ScenePlan, output_path: Path, manifest: Optional[Dict[str, Any]] = None) -> None:
         output_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = plan.to_dict()
+        if isinstance(manifest, dict) and manifest:
+            payload = normalize_payload_names(payload, manifest)
         with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(plan.to_dict(), f, indent=2, ensure_ascii=False)
+            json.dump(payload, f, indent=2, ensure_ascii=False)
         logger.info(f"Saved scene plan: {output_path}")
 
     @staticmethod

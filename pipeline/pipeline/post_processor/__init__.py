@@ -6,6 +6,7 @@ that may leak through translation into any target language output.
 """
 
 from .format_normalizer import FormatNormalizer
+from .copyedit_post_pass import CopyeditPostPass, CopyeditPostPassReport
 from .vn_cjk_cleaner import VietnameseCJKCleaner, format_cleaner_report
 from .truncation_validator import TruncationValidator, TruncationIssue, TruncationReport
 from .pov_validator import POVValidator, POVIssue, POVReport
@@ -21,6 +22,8 @@ except ModuleNotFoundError:  # pragma: no cover - defensive fallback
 
 __all__ = [
     'FormatNormalizer',
+    'CopyeditPostPass',
+    'CopyeditPostPassReport',
     'CJKArtifactCleaner',
     'VietnameseCJKCleaner',
     'format_cleaner_report',
@@ -38,4 +41,16 @@ __all__ = [
     'ValidationReport',
     'ChapterSummarizationAgent',
     'ChapterSummaryResult',
+    'VolumeBibleUpdateAgent',
+    'VolumeBibleUpdateResult',
 ]
+
+
+def __getattr__(name):
+    """Lazy-export heavy/standalone modules to avoid runpy -m re-import warnings."""
+    if name in {"VolumeBibleUpdateAgent", "VolumeBibleUpdateResult"}:
+        from .volume_bible_update_agent import VolumeBibleUpdateAgent, VolumeBibleUpdateResult
+        if name == "VolumeBibleUpdateAgent":
+            return VolumeBibleUpdateAgent
+        return VolumeBibleUpdateResult
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

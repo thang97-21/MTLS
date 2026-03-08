@@ -7,9 +7,11 @@ Detects possessive errors, article issues, subject-verb agreement, etc.
 import json
 import re
 import logging
+import shutil
 from pathlib import Path
 from typing import Dict, List, Tuple, Any, Optional
 from dataclasses import dataclass, field, asdict
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -49,6 +51,25 @@ class GrammarReport:
 
 class GrammarValidator:
     """Validates English grammar using tier-1 validation rules."""
+
+    _DIALOGUE_PREFIXES = ('"', "'", "“", "‘", "—", "- ")
+    _NON_NAME_CAPITALIZED_TOKENS = {
+        'I', 'You', 'He', 'She', 'It', 'We', 'They',
+        'My', 'Your', 'His', 'Her', 'Its', 'Our', 'Their',
+        'A', 'An', 'The', 'One',
+        'What', 'Why', 'How', 'Who', 'Whom', 'Whose', 'Which', 'Where', 'When',
+        'There', 'Here', 'This', 'That', 'These', 'Those',
+        'And', 'But', 'Or', 'So', 'If', 'Then', 'Though', 'Although',
+        'Please', 'Real', 'Safe', 'Beautiful', 'Never', 'Best', 'Loaded',
+        'Pressing', 'Pure', 'Innocent', 'Spiral', 'Guest', 'Girls', 'Eight',
+        'Not', 'Gone', 'Slender', 'Rigid', 'Pale',
+        'Glistening', 'Elegant',
+    }
+    _PREPOSITIONS = {
+        'of', 'to', 'in', 'on', 'at', 'for', 'with', 'from', 'by', 'about',
+        'into', 'over', 'after', 'before', 'under', 'between', 'through',
+        'during', 'without', 'within', 'against',
+    }
 
     def __init__(self, config_path: Optional[Path] = None, auto_fix: bool = False):
         """
@@ -142,17 +163,15 @@ class GrammarValidator:
 
         # Pattern: Name + space + body part/possession (missing 's)
         pattern = re.compile(
-            r'\b([A-Z][a-z]+)\s+(eyes|face|hand|voice|expression|smile|heart|mind|'
-            r'mother|father|brother|sister|friend|family|home|room|book|bag|phone|'
-            r'car|body|hair|skin|lips|arms|legs|feet|words|question|answer|response|'
-            r'reaction|gesture|movement|action|decision|choice|thought|memory|dream|'
-            r'hope|wish|fear|anger|sadness|happiness|joy|pain|suffering|death|life|'
-            r'love|hate|wide)\b'
+            r'\b([A-Z][a-z]+(?:-[A-Za-z]+)?)\s+'
+            r'(eyes?|face|hands?|voice|expression|smile|heart|mind|hair|skin|lips|'
+            r'arms?|legs?|feet|shoulders|gaze|cheeks|jaw|fingers|wrist|posture|breath|'
+            r'mother|father|brother|sister|daughter|son)\b'
         )
 
         for line_num, line in enumerate(lines, start=1):
             # Skip dialogue and italics markers
-            if line.strip().startswith('"') or line.strip().startswith('*'):
+            if self._is_dialogue_line(line) or line.strip().startswith('*'):
                 continue
 
             matches = pattern.finditer(line)
@@ -160,13 +179,11 @@ class GrammarValidator:
                 name, possession = match.groups()
 
                 # Exclude pronouns, articles, and determiners that should NEVER have possessive 's
-                excluded_words = ['Her', 'His', 'My', 'Your', 'Their', 'Our', 'Its', 'The',
-                                  'This', 'That', 'These', 'Those', 'Some', 'Any', 'Each',
-                                  'Every', 'Many', 'Much', 'Few', 'Several', 'All', 'Both',
-                                  'No', 'None', 'Another', 'Other', 'Such', 'What', 'Which',
-                                  'Whose', 'Black', 'White', 'Red', 'Blue', 'Green', 'Golden',
-                                  'Silver', 'To', 'From', 'With', 'Without', 'For', 'Against']
-                if name in excluded_words:
+                if name in self._NON_NAME_CAPITALIZED_TOKENS:
+                    continue
+
+                # Exclude adjectival/participle openers that are capitalized by sentence position
+                if name.endswith('ing') or name.endswith('ed'):
                     continue
 
                 # Avoid false positives: "Maria said" vs "Maria voice"
@@ -200,7 +217,7 @@ class GrammarValidator:
                 word = match.group(1)
 
                 # Exceptions: "a user" (yoo sound), "a one-time" (w sound), "a European" (yoo sound)
-                if word.lower().startswith(('user', 'one', 'europ', 'univers', 'uniform')):
+                if word.lower().startswith(('user', 'one', 'once', 'europ', 'eureka', 'univers', 'uniform')):
                     continue
 
                 violations.append(GrammarViolation(
@@ -229,12 +246,16 @@ class GrammarValidator:
 
         for line_num, line in enumerate(lines, start=1):
             # Skip dialogue (may intentionally use non-standard grammar)
-            if line.strip().startswith('"'):
+            if self._is_dialogue_line(line):
                 continue
 
-            matches1 = pattern1.finditer(line)
+            working_line = self._strip_quoted_spans(line)
+
+            matches1 = pattern1.finditer(working_line)
             for match in matches1:
                 subject, verb = match.groups()
+                if subject in self._NON_NAME_CAPITALIZED_TOKENS:
+                    continue
                 fix_map = {'are': 'is', 'were': 'was', 'have': 'has', 'do': 'does'}
 
                 violations.append(GrammarViolation(
@@ -249,7 +270,7 @@ class GrammarValidator:
                     context=line.strip()[:100]
                 ))
 
-            matches2 = pattern2.finditer(line)
+            matches2 = pattern2.finditer(working_line)
             for match in matches2:
                 subject, verb = match.groups()
                 fix_map = {'is': 'are', 'was': 'were', 'has': 'have', 'does': 'do'}
@@ -273,12 +294,19 @@ class GrammarValidator:
         violations = []
 
         # Object pronoun as subject: "me is" / "him are"
-        pattern = re.compile(r'\b(me|him|her|us|them)\s+(is|are|was|were|am|can|will|would|should|could|have|has|had)\b', re.IGNORECASE)
+        pattern = re.compile(
+            r'(^|[.!?]\s+|["“]\s*|—\s*)(me|him|her|us|them)\s+'
+            r'(is|are|was|were|am|can|will|would|should|could|have|has|had)\b',
+            re.IGNORECASE,
+        )
 
         for line_num, line in enumerate(lines, start=1):
             matches = pattern.finditer(line)
             for match in matches:
-                pronoun, verb = match.groups()
+                _prefix, pronoun, verb = match.groups()
+                prefix_text = line[:match.start(2)].strip().split()
+                if prefix_text and prefix_text[-1].lower() in self._PREPOSITIONS:
+                    continue
                 fix_map = {'me': 'I', 'him': 'he', 'her': 'she', 'us': 'we', 'them': 'they'}
 
                 violations.append(GrammarViolation(
@@ -294,6 +322,17 @@ class GrammarValidator:
                 ))
 
         return violations
+
+    def _is_dialogue_line(self, line: str) -> bool:
+        stripped = line.strip()
+        if not stripped:
+            return False
+        return stripped.startswith(self._DIALOGUE_PREFIXES)
+
+    def _strip_quoted_spans(self, line: str) -> str:
+        """Remove quoted dialogue spans so grammar checks focus on narration text."""
+        without_curly = re.sub(r'“[^”]*”', ' ', line)
+        return re.sub(r'"[^"]*"', ' ', without_curly)
 
     def _check_contraction_errors(self, lines: List[str]) -> List[GrammarViolation]:
         """Check for malformed contractions."""
@@ -368,6 +407,10 @@ class GrammarValidator:
         with open(file_path, 'r', encoding='utf-8') as f:
             lines = f.readlines()
 
+        # Create backup before any modifications are applied
+        backup_path = self._create_backup_file(file_path)
+        logger.info(f"  Backup created: {backup_path}")
+
         fixes_applied = 0
 
         # Group fixes by line number and apply in reverse order to preserve line numbers
@@ -393,6 +436,22 @@ class GrammarValidator:
             logger.info(f"  Applied {fixes_applied} automatic grammar fixes")
 
         return fixes_applied
+
+    def _create_backup_file(self, file_path: Path) -> Path:
+        """
+        Create a timestamped backup of the target translation file.
+
+        Backup location:
+            <chapter_dir>/backups/grammar_autofix/<filename>.YYYYmmdd_HHMMSS.bak
+        """
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_dir = file_path.parent / "backups" / "grammar_autofix"
+        backup_dir.mkdir(parents=True, exist_ok=True)
+
+        backup_name = f"{file_path.name}.{timestamp}.bak"
+        backup_path = backup_dir / backup_name
+        shutil.copy2(file_path, backup_path)
+        return backup_path
 
     def validate_volume(self, work_dir: Path) -> Dict[str, GrammarReport]:
         """

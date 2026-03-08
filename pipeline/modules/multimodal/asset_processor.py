@@ -21,9 +21,11 @@ Usage:
 """
 
 import json
+import sys
 import time
 import logging
 import re
+import hashlib
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Tuple
@@ -34,25 +36,121 @@ from pipeline.common.genai_factory import create_genai_client, resolve_api_key, 
 
 logger = logging.getLogger(__name__)
 
-# Default visual analysis prompt for Gemini 3 Pro Vision
+# Visual analysis prompt — Koji Fox Expansion specs + EPS band grounding
+# Aligns with: KF §2.1 (Visual_Cache), §2.2 (Subtext/Intent), §3.1 (Voice Archetype), §5.1 (POV)
 VISUAL_ANALYSIS_PROMPT = """
-Analyze this light novel illustration for translation assistance.
+You are the Art Director for a professional light novel localization pipeline.
+Analyze this illustration with the precision of a "deep involvement" creative team
+member who understands both the visual and narrative layers of the story.
 
-Provide a structured analysis as JSON:
+Your output feeds three downstream systems:
+ • TRANSLATOR — needs scene grounding: POV, emotional register, subtext cues
+ • ARC TRACKER — needs per-character EPS band assignments from visual evidence
+ • PROMPT ASSEMBLER — builds <Visual_Cache> XML block for SEMANTIC_METADATA injection
 
-1. "composition": Describe the panel layout, framing, focal points (1-2 sentences)
-2. "emotional_delta": What emotions are being conveyed? Any contrasts? (1-2 sentences)
-3. "key_details": Object with character expressions, actions, atmosphere details
-4. "narrative_directives": Array of 3-5 specific instructions for how a translator
-   should use this visual context to enhance the translated prose
-5. "spoiler_prevention": Object with "do_not_reveal_before_text" array listing
-   plot details visible in the image that the text hasn't confirmed yet
-6. "identity_resolution": Object with:
-   - "recognized_characters": array of objects:
-       {"canonical_name": "...", "japanese_name": "...", "confidence": 0.0-1.0, "non_color_evidence": ["..."]}
-   - "unresolved_characters": array of brief descriptors if identity remains uncertain
+─────────────────────────────────────────────────────────────────────────────
+EPS BAND DEFINITIONS  (Emotional Proximity Signal — use to assign visual_eps_band)
+─────────────────────────────────────────────────────────────────────────────
+  COLD    (≤ −0.5)   Avoidance posture · crossed arms · turned away · flat affect ·
+                     maximum physical distance · gaze averted or empty
+  COOL    (−0.5→−0.1) Controlled neutral expression · minimal eye contact ·
+                     formal bearing · slight jaw/shoulder tension
+  NEUTRAL (−0.1→+0.1) Relaxed baseline posture · present but unengaged ·
+                     character's resting default — no strong signal either way
+  WARM    (+0.1→+0.5) Leaning in · sustained eye contact · small smile ·
+                     proximity naturally reduced · open hands/shoulders
+  HOT     (≥ +0.5)   Open body language · direct unwavering gaze ·
+                     visible emotion (relief/joy/tears/flushed/anger) ·
+                     uninhibited physical contact or reaching gesture
 
-Output ONLY the JSON object. No commentary or explanation.
+─────────────────────────────────────────────────────────────────────────────
+ANALYSIS OUTPUT — return a single JSON object with ALL nine fields below
+─────────────────────────────────────────────────────────────────────────────
+
+1. "composition"
+   [1-2 sentences] Panel layout, framing, focal point, implied camera angle.
+   Note any deliberate compositional tension (foreground/background split,
+   asymmetric staging, negative space usage).
+
+2. "emotional_delta"
+   [1-2 sentences] What emotional tension or shift is depicted?
+   Focus on the GAP between surface appearance and underlying emotion.
+   If characters share the frame, describe the emotional CONTRAST between them.
+
+3. "key_details"
+   Object of concrete visual facts:
+   {
+     "expressions":          {"canonical_name": "specific expression descriptor"},
+     "actions":              ["list of visible gestures/physical actions"],
+     "environment":          ["atmospheric/spatial details: lighting, weather, setting clues"],
+     "costume_significance": ["any attire, prop, or accessory with narrative meaning"]
+   }
+
+4. "pov_character"
+   String. The character whose emotional perspective the composition foregrounds
+   (closest to camera, most foregrounded, or whose reaction the framing emphasizes).
+   Use canonical EN name. Use "unknown" if composition is neutral/establishing.
+   This drives POV-lock in translation per KF §5.1.
+
+5. "subtext_inference"
+   Object mapping each RECOGNIZED character to their unspoken emotional state —
+   what they are feeling but NOT showing on the surface:
+   {"canonical_name": "one sentence: what this character is suppressing or hiding"}
+   Focus on tension between visible mask and probable inner state.
+   This drives the double-meaning / authorial intent layer per KF §2.2.
+   Omit characters whose inner state cannot be inferred.
+
+6. "narrative_directives"
+   Array of 4-6 ACTIONABLE translator instructions derived from this illustration.
+   Each directive must be concrete and character-specific. Include:
+   • At least one POV-grounding directive (if pov_character is known):
+     e.g. "Frame [name]'s internal reactions through their POV — do not let
+     other characters' emotions bleed into their internal monologue register."
+   • At least one subtext directive (if emotional masking detected):
+     e.g. "Translate [name]'s line with a surface-level calm but allow
+     word-choice tension to carry their suppressed [emotion]."
+   • At least one EPS-register directive per recognized character:
+     e.g. "[name] is at WARM — loosen formality, allow contractions,
+     shorter sentences signal ease."
+   • One environmental/atmospheric directive for prose tone.
+
+7. "spoiler_prevention"
+   {
+     "do_not_reveal_before_text": [
+       "list of plot-visible details in image that the text hasn't yet confirmed"
+     ]
+   }
+
+8. "identity_resolution"
+   {
+     "recognized_characters": [
+       {
+         "canonical_name":      "...",
+         "japanese_name":       "...",
+         "confidence":          0.0–1.0,
+         "non_color_evidence":  ["hairstyle / silhouette / posture / accessory markers used"]
+       }
+     ],
+     "unresolved_characters": ["brief physical descriptor for each unidentified figure"]
+   }
+
+9. "character_eps_signals"
+   Array — ONLY for recognized characters:
+   [
+     {
+       "canonical_name":     "...",
+       "visual_eps_band":    "COLD|COOL|NEUTRAL|WARM|HOT",
+       "confidence":         0.0–1.0,
+       "visual_evidence":    ["specific cue: posture / gaze direction / proximity / micro-expression / gesture"],
+       "subtext_alignment":  "consistent|contradicts|ambiguous"
+         // consistent  = visible expression matches their EPS band read
+         // contradicts = body language contradicts apparent expression (mask/suppression)
+         // ambiguous   = insufficient visual information for confident band assignment
+     }
+   ]
+   Omit this field entirely if no characters are recognized.
+
+Output ONLY the JSON object. No markdown fences, no commentary, no explanation.
 """
 
 
@@ -73,7 +171,7 @@ class VisualAssetProcessor:
         self.volume_path = volume_path
         self.model = model
         self.thinking_level = str(thinking_level).strip().lower() or "medium"
-        if self.thinking_level not in {"medium", "high"}:
+        if self.thinking_level not in {"low", "medium", "high"}:
             logger.warning(
                 "[PHASE 1.6] Invalid multimodal thinking_level '%s'; coercing to 'medium'.",
                 thinking_level,
@@ -98,6 +196,7 @@ class VisualAssetProcessor:
             "enabled": False,
             "manifest_canon": 0,
             "bible_canon": 0,
+            "reason": "uninitialized",
         }
         self.routing_policy = self._load_thinking_routing_policy()
         self.routing_version = str(self.routing_policy.get("version", "v1")).strip() or "v1"
@@ -109,14 +208,14 @@ class VisualAssetProcessor:
     def _load_thinking_routing_policy(self) -> Dict[str, Any]:
         """Load multimodal thinking routing policy from config.yaml with safe defaults."""
         safe_default_level = str(self.thinking_level).strip().lower()
-        if safe_default_level not in {"medium", "high"}:
+        if safe_default_level not in {"low", "medium", "high"}:
             safe_default_level = "medium"
         defaults: Dict[str, Any] = {
             "enabled": True,
             "default_level": safe_default_level,
-            "version": "v1",
-            "levels": ["medium", "high"],
-            "high_triggers": ["climax", "emotional_peak", "plot_revelation"],
+            "version": "v2",
+            "levels": ["low", "medium", "high"],
+            "high_triggers": ["climax", "emotional_peak", "plot_revelation", "eps_band_shift"],
             "high_confidence_min": 0.75,
             "low_confidence_margin": 0.15,
         }
@@ -131,15 +230,10 @@ class VisualAssetProcessor:
             if not isinstance(levels, list) or not levels:
                 levels = defaults["levels"]
             levels = [str(v).strip().lower() for v in levels if str(v).strip()]
-            if "low" in levels:
-                logger.warning(
-                    "[PHASE 1.6] multimodal.thinking.routing.levels contains 'low'; "
-                    "coercing to medium/high only."
-                )
-            levels = [v for v in levels if v in {"medium", "high"}] or defaults["levels"]
+            levels = [v for v in levels if v in {"low", "medium", "high"}] or defaults["levels"]
 
             default_level = str(thinking_cfg.get("default_level", defaults["default_level"])).strip().lower()
-            if default_level not in {"medium", "high"}:
+            if default_level not in {"low", "medium", "high"}:
                 default_level = str(defaults["default_level"]).strip().lower()
             if default_level not in levels:
                 default_level = "medium" if "medium" in levels else levels[0]
@@ -171,6 +265,14 @@ class VisualAssetProcessor:
         vision model resolves character identity before scene analysis.
         """
         base_prompt = VISUAL_ANALYSIS_PROMPT.strip()
+        self.identity_lock_status = {
+            "enabled": False,
+            "manifest_canon": 0,
+            "bible_canon": 0,
+            "reason": "base_prompt_fallback",
+        }
+        manifest_canon = 0
+        bible_canon = 0
         try:
             from modules.multimodal.prompt_injector import build_multimodal_identity_lock
 
@@ -178,13 +280,12 @@ class VisualAssetProcessor:
             bible_characters = self._load_bible_characters(manifest)
             metadata_en = manifest.get("metadata_en", {}) if isinstance(manifest, dict) else {}
             profiles = metadata_en.get("character_profiles", {}) if isinstance(metadata_en, dict) else {}
-            manifest_canon = 0
+            bible_id = str(manifest.get("bible_id", "")).strip() if isinstance(manifest, dict) else ""
             if isinstance(profiles, dict):
                 manifest_canon = sum(
                     1 for p in profiles.values()
-                    if isinstance(p, dict) and str(p.get("full_name", "")).strip()
+                    if isinstance(p, dict) and self._profile_canonical_name(p)
                 )
-            bible_canon = 0
             if isinstance(bible_characters, dict):
                 bible_canon = sum(
                     1 for p in bible_characters.values()
@@ -198,24 +299,56 @@ class VisualAssetProcessor:
                     "enabled": True,
                     "manifest_canon": manifest_canon,
                     "bible_canon": bible_canon,
+                    "reason": "ok",
                 }
                 return (
                     f"{base_prompt}\n\n"
                     f"{identity_lock}\n\n"
                     "IDENTITY RESOLUTION RULES:\n"
-                    "- Resolve identity with canonical names above before prose directives.\n"
-                    "- Prioritize non-color markers (hairstyle, outfit silhouette, expression, posture, accessories).\n"
+                    "- Resolve identity with canonical names above BEFORE filling any other field.\n"
+                    "- Prioritize non-color markers: hairstyle, silhouette, posture, accessories, scars.\n"
                     "- Do not invent alternate names if a canonical match exists.\n"
                     "- If uncertain, report unresolved descriptors and continue scene analysis.\n"
+                    "- Once identity is confirmed, cross-reference their archetype (if provided in\n"
+                    "  CHARACTER VOICE FINGERPRINTS) to validate your EPS band assignment:\n"
+                    "  a 'wounded_iceberg' archetype at WARM band is a meaningful contradiction —\n"
+                    "  flag it as subtext_alignment='contradicts' in character_eps_signals.\n"
+                    "- pov_character must be one of the recognized canonical names or 'unknown'.\n"
+                    "- subtext_inference should reflect the DELTA between visible affect and\n"
+                    "  expected emotional state given their archetype baseline.\n"
                 )
+            fallback_reason = "empty_identity_registry"
+            if not isinstance(manifest, dict) or not manifest:
+                fallback_reason = "manifest_missing"
+            elif manifest_canon <= 0 and bible_canon <= 0:
+                if not isinstance(profiles, dict) or not profiles:
+                    if bible_id:
+                        fallback_reason = "missing_character_profiles_bible_empty"
+                    else:
+                        fallback_reason = "missing_character_profiles_no_bible"
+                else:
+                    fallback_reason = "character_profiles_without_canonical_names"
+            elif manifest_canon <= 0 and bible_canon > 0:
+                fallback_reason = "manifest_profiles_missing_using_bible_only"
+            elif manifest_canon > 0 and bible_canon <= 0 and bible_id:
+                fallback_reason = "bible_registry_empty"
+            self.identity_lock_status = {
+                "enabled": False,
+                "manifest_canon": manifest_canon,
+                "bible_canon": bible_canon,
+                "reason": fallback_reason,
+            }
+            return base_prompt
         except Exception as e:
-            logger.debug(f"[PHASE 1.6] Identity lock prompt build skipped: {e}")
-        self.identity_lock_status = {
-            "enabled": False,
-            "manifest_canon": 0,
-            "bible_canon": 0,
-        }
-        return base_prompt
+            logger.warning(f"[PHASE 1.6] Identity lock prompt build failed: {e}")
+            self.identity_lock_status = {
+                "enabled": False,
+                "manifest_canon": manifest_canon,
+                "bible_canon": bible_canon,
+                "reason": "prompt_build_error",
+                "error": str(e),
+            }
+            return base_prompt
 
     def _load_bible_characters(self, manifest: Dict[str, Any]) -> Dict[str, Any]:
         """Load character registry from linked series bible (if available)."""
@@ -272,6 +405,17 @@ class VisualAssetProcessor:
         return collapsed.lower().strip()
 
     @staticmethod
+    def _profile_canonical_name(profile: Dict[str, Any]) -> str:
+        """Resolve canonical EN name across profile schema variants."""
+        if not isinstance(profile, dict):
+            return ""
+        for key in ("full_name", "canonical_en", "character_name_en", "name_en", "english_name"):
+            value = str(profile.get(key, "")).strip()
+            if value:
+                return value
+        return ""
+
+    @staticmethod
     def _latin_signature(raw_name: str) -> Tuple[str, ...]:
         """
         Signature for Latin-script name order tolerance.
@@ -305,10 +449,13 @@ class VisualAssetProcessor:
         jp_to_en_map: Dict[str, str],
     ) -> str:
         """Resolve canonical roster name (prefer EN canonical if mapping exists)."""
-        full_name_raw = str(profile.get("full_name", "")).strip()
+        full_name_raw = self._profile_canonical_name(profile)
         ruby_base = str(profile.get("ruby_base", "")).strip()
+        profile_jp_name = str(profile.get("character_name_jp", "")).strip()
         candidates = [
             profile_key,
+            profile_jp_name,
+            self._strip_reading_annotations(profile_jp_name),
             full_name_raw,
             self._strip_reading_annotations(full_name_raw),
             ruby_base,
@@ -531,8 +678,8 @@ class VisualAssetProcessor:
         """
         Determine per-image thinking level with conservative text-first routing.
         """
-        levels = self.routing_policy.get("levels", ["medium", "high"])
-        levels = [lvl for lvl in levels if lvl in {"medium", "high"}]
+        levels = self.routing_policy.get("levels", ["low", "medium", "high"])
+        levels = [lvl for lvl in levels if lvl in {"low", "medium", "high"}]
         if not levels:
             levels = ["medium", "high"]
         default_level = str(self.routing_policy.get("default_level", self.thinking_level)).strip().lower()
@@ -567,6 +714,25 @@ class VisualAssetProcessor:
         high_triggers = set(self.routing_policy.get("high_triggers", []))
         trigger_hit = next((sig for sig in chapter_signals if sig in high_triggers), "")
 
+        # Step 4: query arc tracker for EPS band shifts in this chapter
+        eps_band_shift_hit = ""
+        if chapter_dict:
+            chapter_id = str(chapter_dict.get("id", "")).strip()
+            if chapter_id:
+                try:
+                    from pipeline.translator.arc_tracker import ArcTracker
+
+                    tracker = ArcTracker(self.volume_path)
+                    shifts = tracker.get_chapter_eps_band_shifts(chapter_id)
+                    if shifts:
+                        shift = shifts[0]
+                        eps_band_shift_hit = (
+                            f"eps_band_shift:{shift['character']}:"
+                            f"{shift['from_band']}→{shift['to_band']}"
+                        )
+                except Exception:
+                    pass  # Non-critical; routing falls back to default
+
         score_values = [float(c.get("match_score", 0.0) or 0.0) for c in candidates]
         top_score = score_values[0] if score_values else 0.0
         second_score = score_values[1] if len(score_values) > 1 else 0.0
@@ -581,6 +747,9 @@ class VisualAssetProcessor:
         if trigger_hit and "high" in levels:
             level = "high"
             reason = f"chapter_trigger:{trigger_hit}"
+        elif eps_band_shift_hit and "high" in levels:
+            level = "high"
+            reason = eps_band_shift_hit
         elif candidate_count >= 4 and "high" in levels:
             level = "high"
             reason = "crowded_candidate_set"
@@ -590,12 +759,15 @@ class VisualAssetProcessor:
         elif candidate_count <= 1 and top_score >= high_conf_min and not multi_expected and "medium" in levels:
             level = "medium"
             reason = "single_high_confidence_candidate"
-        elif image_kind == "cover" and candidate_count <= 1 and "medium" in levels:
-            level = "medium"
+        elif image_kind == "cover" and candidate_count <= 1 and "low" in levels:
+            level = "low"
             reason = "cover_low_complexity"
         elif image_kind == "kuchie" and candidate_count >= 3 and "high" in levels:
             level = "high"
             reason = "kuchie_multi_character_density"
+        elif image_kind == "cover" and candidate_count <= 1 and "medium" in levels:
+            level = "medium"
+            reason = "cover_low_complexity"
 
         features = {
             "image_kind": image_kind,
@@ -605,6 +777,7 @@ class VisualAssetProcessor:
             "margin": round(margin, 4),
             "multi_expected": bool(multi_expected),
             "trigger_hit": trigger_hit,
+            "eps_band_shift_hit": eps_band_shift_hit,
             "default_level": default_level,
             "routing_version": self.routing_version,
         }
@@ -780,6 +953,37 @@ class VisualAssetProcessor:
             "=== END HIERARCHICAL IDENTITY LOCK ===",
         ])
         return "\n".join(lines), allowed_names, multi_expected, source_anchor, primary_candidates, policy
+
+    @staticmethod
+    def _build_chapter_context_payload(
+        chapter: Optional[Dict[str, Any]],
+        candidate_rows: List[Dict[str, Any]],
+        allowed_candidates: List[str],
+        source_anchor: Optional[str],
+    ) -> Dict[str, Any]:
+        """Build Chapter Context payload for ADN v2 Gemini pre-analysis grounding."""
+        chapter_dict = chapter if isinstance(chapter, dict) else {}
+        chapter_context: Dict[str, Any] = {
+            "chapter_id": str(chapter_dict.get("id", "") or "").strip(),
+            "pov_character": str(chapter_dict.get("pov_character", "") or "").strip() or "unknown",
+            "placement_chapter": str(chapter_dict.get("id", "") or "").strip(),
+            "scene_type_hint": str(chapter_dict.get("scene_position", "") or "").strip() or "unknown",
+            "source_anchor": str(source_anchor or "").strip(),
+            "allowed_candidates": [str(v).strip() for v in allowed_candidates if str(v).strip()],
+            "characters_in_scene": [],
+        }
+
+        rows = candidate_rows if isinstance(candidate_rows, list) else []
+        for row in rows[:10]:
+            if not isinstance(row, dict):
+                continue
+            chapter_context["characters_in_scene"].append({
+                "canonical_name": str(row.get("canonical_name", "") or "").strip(),
+                "japanese_name": str(row.get("japanese_name", "") or "").strip(),
+                "visual_identity_non_color": row.get("visual_identity_non_color", {}),
+                "match_score": row.get("match_score", 0.0),
+            })
+        return chapter_context
 
     @staticmethod
     def _coerce_identity_resolution(identity_resolution: Any) -> Dict[str, Any]:
@@ -1059,6 +1263,335 @@ class VisualAssetProcessor:
             )
         return self._genai_client
 
+    # ─── Step 3: EPS write-back ───────────────────────────────────────────────
+
+    def _write_eps_signals_to_arc_tracker(
+        self,
+        illust_id: str,
+        chapter: Optional[Dict[str, Any]],
+        character_eps_signals: List[Dict[str, Any]],
+    ) -> None:
+        """
+        Write high-confidence visual EPS band observations from Phase 1.6 back
+        into ArcTracker so arc history reflects visual evidence.
+
+        Only signals with confidence >= 0.70 are stored.
+        """
+        if not character_eps_signals:
+            return
+        chapter_id = str((chapter or {}).get("id", illust_id)).strip() or illust_id
+        try:
+            from pipeline.translator.arc_tracker import ArcTracker
+
+            tracker = ArcTracker(self.volume_path)
+            stored = 0
+            for sig in character_eps_signals:
+                if not isinstance(sig, dict):
+                    continue
+                name = str(sig.get("canonical_name", "")).strip()
+                band = str(sig.get("visual_eps_band", "")).strip().upper()
+                conf = float(sig.get("confidence", 0.0) or 0.0)
+                if not name or band not in {"COLD", "COOL", "NEUTRAL", "WARM", "HOT"}:
+                    continue
+                if tracker.record_visual_signal(
+                    character_name=name,
+                    chapter_id=chapter_id,
+                    visual_eps_band=band,
+                    confidence=conf,
+                    source="visual",
+                ):
+                    stored += 1
+            if stored:
+                logger.info(
+                    f"  [EPS] {illust_id}: wrote {stored} visual EPS signal(s) to arc tracker"
+                )
+        except Exception as e:
+            logger.debug(f"[PHASE 1.6] EPS write-back failed for {illust_id}: {e}")
+
+    # ─── Step 5: Fingerprint prompt block ────────────────────────────────────
+
+    def _build_fingerprint_prompt_block(self, allowed_candidates: List[str]) -> str:
+        """
+        Build a compact CHARACTER VOICE FINGERPRINT prompt block for the Gemini
+        analysis prompt.  Pulls archetype + baseline_eps_band + forbidden_vocabulary
+        from manifest.metadata_en.character_voice_fingerprints for resolved candidates.
+
+        Returns an empty string when fingerprints are unavailable or no candidates match.
+        """
+        if not allowed_candidates:
+            return ""
+        try:
+            manifest = self.cache_manager.get_manifest()
+            if not isinstance(manifest, dict):
+                return ""
+            fingerprints = (
+                manifest.get("metadata_en", {}).get("character_voice_fingerprints")
+                or manifest.get("metadata_vn", {}).get("character_voice_fingerprints")
+                or []
+            )
+            if not isinstance(fingerprints, list) or not fingerprints:
+                return ""
+
+            candidate_lower = {c.lower() for c in allowed_candidates}
+            lines = []
+            for fp in fingerprints:
+                if not isinstance(fp, dict):
+                    continue
+                name = str(fp.get("canonical_name_en", "")).strip()
+                if not name or name.lower() not in candidate_lower:
+                    continue
+                archetype = str(fp.get("archetype", "unknown")).strip()
+                baseline = str(fp.get("baseline_eps_band", "NEUTRAL")).strip()
+                forbidden = fp.get("forbidden_vocabulary", [])
+                if isinstance(forbidden, list):
+                    forbidden_sample = forbidden[:3]
+                else:
+                    forbidden_sample = []
+                lines.append(
+                    f"  {name}: archetype={archetype}, baseline_eps={baseline}"
+                    + (f", avoid=[{', '.join(forbidden_sample)}]" if forbidden_sample else "")
+                )
+
+            if not lines:
+                return ""
+            return "CHARACTER VOICE FINGERPRINTS (for EPS band cross-reference):\n" + "\n".join(lines)
+        except Exception as e:
+            logger.debug(f"[PHASE 1.6] Fingerprint prompt block build failed: {e}")
+            return ""
+
+    # ─── Step 6: Visual context XML block ────────────────────────────────────
+
+    def _build_visual_context_block(
+        self,
+        visual_ground_truth: Dict[str, Any],
+        identity_resolution: Dict[str, Any],
+        character_eps_signals: List[Dict[str, Any]],
+        pov_character: str = "unknown",
+        subtext_inference: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """
+        Pre-render the <Visual_Cache> XML block for injection into
+        SEMANTIC_METADATA_PLACEHOLDER by downstream prompt_loader.
+
+        Structure follows KF Expansion Plan §2.1:
+          <Visual_Cache>
+            <Scene>…</Scene>
+            <Environment>…</Environment>
+            <POV_character>…</POV_character>
+            <Character_states>…</Character_states>
+            <Subtext>…</Subtext>
+            <Confirmed_identities>…</Confirmed_identities>
+            <Directive>…</Directive>
+          </Visual_Cache>
+        """
+        try:
+            scene = str(visual_ground_truth.get("emotional_delta", "")).strip()
+            environment = str(visual_ground_truth.get("composition", "")).strip()
+
+            # Character states: EPS band per recognized character
+            char_state_parts = []
+            for sig in (character_eps_signals or []):
+                if not isinstance(sig, dict):
+                    continue
+                name = str(sig.get("canonical_name", "")).strip()
+                band = str(sig.get("visual_eps_band", "")).strip()
+                alignment = str(sig.get("subtext_alignment", "")).strip()
+                if name and band:
+                    state_str = f"{name}: {band}"
+                    if alignment == "contradicts":
+                        state_str += " [masked]"
+                    char_state_parts.append(state_str)
+            character_states = ", ".join(char_state_parts) if char_state_parts else "unresolved"
+
+            # Subtext block: one line per character from subtext_inference
+            subtext_parts = []
+            if isinstance(subtext_inference, dict):
+                for name, note in subtext_inference.items():
+                    note_str = str(note).strip()
+                    if name and note_str:
+                        subtext_parts.append(f"{name}: {note_str}")
+            subtext_text = " | ".join(subtext_parts) if subtext_parts else ""
+
+            # Confirmed identities from identity_resolution
+            recognized = (identity_resolution or {}).get("recognized_characters", [])
+            identity_parts = []
+            for rc in (recognized or []):
+                if isinstance(rc, dict):
+                    cname = str(rc.get("canonical_name", "")).strip()
+                    conf = float(rc.get("confidence", 0.0) or 0.0)
+                    if cname:
+                        identity_parts.append(f"{cname} ({conf:.0%})")
+            confirmed_identities = ", ".join(identity_parts) if identity_parts else "none"
+
+            # Primary translator directive
+            directives = visual_ground_truth.get("narrative_directives", [])
+            directive_text = ""
+            if isinstance(directives, list) and directives:
+                directive_text = str(directives[0]).strip()
+
+            lines = [
+                "<Visual_Cache>",
+                f"  <Scene>{scene}</Scene>",
+                f"  <Environment>{environment}</Environment>",
+                f"  <POV_character>{pov_character or 'unknown'}</POV_character>",
+                f"  <Character_states>{character_states}</Character_states>",
+            ]
+            if subtext_text:
+                lines.append(f"  <Subtext>{subtext_text}</Subtext>")
+            lines.append(f"  <Confirmed_identities>{confirmed_identities}</Confirmed_identities>")
+            if directive_text:
+                lines.append(f"  <Directive>{directive_text}</Directive>")
+            lines.append("</Visual_Cache>")
+            return "\n".join(lines)
+        except Exception as e:
+            logger.debug(f"[PHASE 1.6] Visual context block build failed: {e}")
+            return ""
+
+    @staticmethod
+    def _infer_directive_type(text: str) -> str:
+        """Infer ADN v2 directive type from legacy free-text directive."""
+        probe = str(text or "").strip().lower()
+        if not probe:
+            return "atmospheric_frame"
+        if any(k in probe for k in ("eps", "band", "register", "dialogue", "hesitation")):
+            return "register_constraint"
+        if any(k in probe for k in ("appearance", "sensory", "frame", "internal reactions", "pov")):
+            return "bridge_prose"
+        if any(k in probe for k in ("atmosphere", "tone", "heat", "air", "metaphor", "narration")):
+            return "atmospheric_frame"
+        return "atmospheric_frame"
+
+    @staticmethod
+    def _derive_scene_type(routing_reason: str, multi_expected: bool) -> str:
+        reason = str(routing_reason or "").strip().lower()
+        if "kuchie" in reason or "crowded" in reason or multi_expected:
+            return "ensemble_rapid_dialogue"
+        if "cover" in reason:
+            return "intimate_static_low_energy"
+        if "eps_band_shift" in reason:
+            return "heavy_silence_contrast"
+        return "intimate_dyad_escalating"
+
+    @staticmethod
+    def _build_placement_hint(scene_type: str, illust_id: str) -> Dict[str, Any]:
+        """Build ADN v2 marker placement hint directive from scene type."""
+        anchor_map = {
+            "ensemble_rapid_dialogue": "first_multi_speaker_exchange_after_transition",
+            "intimate_dyad_escalating": "first_line_after_characters_achieve_isolation",
+            "heavy_silence_contrast": "first_cool_cold_response_after_emotional_beat",
+            "high_energy_kinetic": "first_action_or_sfx_line",
+            "intimate_static_low_energy": "first_post_transition_moment_of_stillness",
+            "retrospective_internal": "first_interior_monologue_after_scene_break",
+        }
+        anchor_pattern = anchor_map.get(scene_type, "first_post_transition_scene_anchor")
+        return {
+            "id": f"{illust_id}-placement",
+            "type": "placement_hint",
+            "priority": "required",
+            "scope": "marker_position",
+            "instruction": (
+                f"Place illustration marker before anchor '{anchor_pattern}' "
+                f"for scene type '{scene_type}'."
+            ),
+            "justification": "Scene-start marker placement hint for ADN v2 anchor search",
+            "canon_fidelity_override": False,
+            "word_budget": None,
+            "placement_scene_type": scene_type,
+            "placement_rule": "before",
+            "anchor_pattern": anchor_pattern,
+            "marker_offset": "before_anchor",
+            "character": "",
+        }
+
+    def _build_typed_directives(
+        self,
+        directives: Any,
+        illust_id: str,
+        scene_type: str,
+        pov_character: str,
+    ) -> List[Dict[str, Any]]:
+        """Convert legacy narrative_directives string list to ADN v2 typed directives."""
+        if not isinstance(directives, list):
+            return []
+
+        typed: List[Dict[str, Any]] = []
+        for index, item in enumerate(directives, start=1):
+            instruction = str(item or "").strip()
+            if not instruction:
+                continue
+            dtype = self._infer_directive_type(instruction)
+            did = f"{illust_id}-d{index}"
+            priority = "required" if index <= 2 else "recommended"
+            scope = "post_marker_scene"
+            if dtype == "bridge_prose":
+                scope = "post_marker_first_paragraph"
+            elif dtype == "register_constraint":
+                scope = "post_marker_dialogue"
+            elif dtype == "atmospheric_frame":
+                scope = "post_marker_narration"
+
+            typed.append({
+                "id": did,
+                "type": dtype,
+                "priority": priority,
+                "scope": scope,
+                "instruction": instruction,
+                "justification": f"Auto-typed from Phase 1.6 analysis ({scene_type})",
+                "word_budget": 60 if dtype == "bridge_prose" else None,
+                "canon_fidelity_override": True if dtype == "bridge_prose" else False,
+                "placement_scene_type": scene_type,
+                "character": pov_character if dtype in {"register_constraint", "eps_enforcement"} and pov_character and pov_character != "unknown" else "",
+            })
+
+        typed.append(self._build_placement_hint(scene_type, illust_id))
+        return typed
+
+    def prompt_kuchie_processing_mode(
+        self,
+        kuchie_files: List[Path],
+        inline_illustrations: List[Path],
+    ) -> bool:
+        """
+        Ask whether to process Kuchie when inline illustrations are also available.
+
+        Returns:
+            True to include Kuchie in Phase 1.6 processing.
+            False to skip Kuchie and cover, running inline-illustration-only mode.
+        """
+        if not kuchie_files:
+            return False
+        if not inline_illustrations:
+            logger.info(
+                "[PHASE 1.6] No inline illustrations detected; processing Kuchie by default."
+            )
+            return True
+        if not sys.stdin or not sys.stdin.isatty():
+            logger.info(
+                "[PHASE 1.6] Interactive Kuchie prompt unavailable; processing Kuchie by default."
+            )
+            return True
+
+        while True:
+            print()
+            print("Phase 1.6 visual selection")
+            print(f"  Kuchie color plates detected: {len(kuchie_files)}")
+            print(f"  Inline illustrations detected: {len(inline_illustrations)}")
+            print()
+            print("Options:")
+            print("  [1] Process all visuals (Kuchie + inline + cover)")
+            print("  [2] Inline illustrations only (skip Kuchie + cover)")
+            choice = input("Select option [1/2]: ").strip().lower()
+            if choice in {"", "1", "y", "yes"}:
+                logger.info("[PHASE 1.6] User selected full visual processing (Kuchie enabled).")
+                return True
+            if choice in {"2", "n", "no", "skip"}:
+                logger.info(
+                    "[PHASE 1.6] User selected inline-only visual processing "
+                    "(Kuchie and cover skipped)."
+                )
+                return False
+            print("Invalid selection. Choose 1 or 2.")
+
     def process_volume(self) -> Dict[str, Any]:
         """
         Analyze all illustrations in the volume and cache results.
@@ -1157,13 +1690,24 @@ class VisualAssetProcessor:
                 cover_files.append(cover_path)
                 break
 
+        process_kuchie = self.prompt_kuchie_processing_mode(
+            kuchie_files=kuchie_files,
+            inline_illustrations=inline_illustrations,
+        )
+        selected_kuchie_files = kuchie_files if process_kuchie else []
+        selected_cover_files = cover_files if process_kuchie or not kuchie_files else []
+        if kuchie_files and not process_kuchie:
+            logger.info(
+                "[PHASE 1.6] Kuchie skipped; Phase 1.6 will build visual_cache.json from inline illustrations only."
+            )
+
         # Processing priority:
         # 1) Kuchie (color plates) first for strongest identity grounding
         # 2) Inline illustrations
         # 3) Cover art
         illustrations: List[Path] = []
         seen_paths = set()
-        for img_path in kuchie_files + inline_illustrations + cover_files:
+        for img_path in selected_kuchie_files + inline_illustrations + selected_cover_files:
             resolved = str(img_path.resolve())
             if resolved in seen_paths:
                 continue
@@ -1178,6 +1722,11 @@ class VisualAssetProcessor:
         logger.info(
             "[PHASE 1.6] Processing priority: kuchie (color) -> inline illustrations -> cover"
         )
+        if kuchie_files and not process_kuchie:
+            logger.info(
+                "[PHASE 1.6] Effective priority: inline illustrations only "
+                "(Kuchie and cover omitted by user choice)"
+            )
         logger.info(
             "[PHASE 1.6] Thinking routing: "
             f"enabled={self.routing_policy.get('enabled', True)} "
@@ -1191,16 +1740,78 @@ class VisualAssetProcessor:
                 f"bible canon={self.identity_lock_status.get('bible_canon', 0)}"
             )
         else:
-            logger.warning("[PHASE 1.6] Identity lock unavailable before analysis (base prompt fallback)")
+            reason = str(self.identity_lock_status.get("reason", "unknown")).strip() or "unknown"
+            if reason == "missing_character_profiles_no_bible":
+                logger.warning(
+                    "[PHASE 1.6] Identity lock unavailable before analysis: no metadata_en.character_profiles and no bible_id. "
+                    "Run Phase 1.5 (metadata) or link a series bible for canonical identities."
+                )
+            elif reason == "missing_character_profiles_bible_empty":
+                logger.warning(
+                    "[PHASE 1.6] Identity lock unavailable before analysis: no metadata_en.character_profiles and linked bible has no canonical identities."
+                )
+            elif reason == "character_profiles_without_canonical_names":
+                logger.warning(
+                    "[PHASE 1.6] Identity lock unavailable before analysis: character_profiles exist but canonical names are empty."
+                )
+            elif reason == "manifest_missing":
+                logger.warning(
+                    "[PHASE 1.6] Identity lock unavailable before analysis: manifest unavailable in visual cache manager (base prompt fallback)."
+                )
+            elif reason == "prompt_build_error":
+                error_detail = str(self.identity_lock_status.get("error", "")).strip()
+                if error_detail:
+                    logger.warning(
+                        "[PHASE 1.6] Identity lock unavailable before analysis (base prompt fallback). "
+                        f"reason=prompt_build_error error={error_detail}"
+                    )
+                else:
+                    logger.warning(
+                        "[PHASE 1.6] Identity lock unavailable before analysis (base prompt fallback). "
+                        "reason=prompt_build_error"
+                    )
+            else:
+                logger.warning(
+                    "[PHASE 1.6] Identity lock unavailable before analysis (base prompt fallback). "
+                    f"reason={reason}"
+                )
 
         # Reclassify legacy strict conflicts to graceful fallback warnings.
         self._normalize_legacy_identity_conflicts()
-        stats = {"total": len(illustrations), "cached": 0, "generated": 0, "blocked": 0}
+        stats = {
+            "total": len(illustrations),
+            "cached": 0,
+            "generated": 0,
+            "blocked": 0,
+            "inline_total": len(inline_illustrations),
+            "kuchie_total": len(kuchie_files),
+            "kuchie_processed": len(selected_kuchie_files),
+            "kuchie_skipped": len(kuchie_files) - len(selected_kuchie_files),
+            "cover_total": len(cover_files),
+        }
 
         for img_path in illustrations:
             illust_id = img_path.stem
             chapter = self._chapter_for_illustration(img_path.name)
             scene_prompt, allowed_candidates, scene_multi_expected, source_anchor, candidate_rows, candidate_policy = self._build_scene_candidate_prompt(img_path)
+            chapter_context = self._build_chapter_context_payload(
+                chapter,
+                candidate_rows,
+                allowed_candidates,
+                source_anchor,
+            )
+            chapter_context_block = (
+                "CHARACTER IDENTIFICATION CONSTRAINT:\n"
+                "Use only chapter_context.allowed_candidates for identity resolution.\n"
+                "If identity is uncertain, set unresolved_characters instead of inventing names.\n"
+                "Do NOT override chapter_context.pov_character based on visual prominence.\n"
+                "chapter_context=\n"
+                f"{json.dumps(chapter_context, ensure_ascii=False, indent=2)}"
+            )
+            if scene_prompt:
+                scene_prompt = f"{scene_prompt}\n\n{chapter_context_block}"
+            else:
+                scene_prompt = chapter_context_block
             thinking_level_used, routing_reason, routing_features = self._determine_thinking_level(
                 img_path,
                 chapter=chapter,
@@ -1210,6 +1821,10 @@ class VisualAssetProcessor:
             effective_prompt = self.analysis_prompt
             if scene_prompt:
                 effective_prompt = f"{effective_prompt}\n\n{scene_prompt}"
+            # Step 5: inject voice fingerprint context for resolved candidates
+            fingerprint_block = self._build_fingerprint_prompt_block(allowed_candidates)
+            if fingerprint_block:
+                effective_prompt = f"{effective_prompt}\n\n{fingerprint_block}"
             current_key = VisualCacheManager.compute_cache_key(
                 img_path,
                 effective_prompt,
@@ -1290,9 +1905,31 @@ class VisualAssetProcessor:
                 else:
                     stats["generated"] += 1
                     logger.info(f"  [DONE] {illust_id}: Analysis complete ({elapsed:.1f}s, status={final_status})")
+                    # Step 3: write-back visual EPS signals to arc tracker
+                    self._write_eps_signals_to_arc_tracker(
+                        illust_id, chapter, analysis.get("character_eps_signals", [])
+                    )
+
+                # Step 6: pre-render Visual_Cache XML block for translator injection
+                scene_type = self._derive_scene_type(routing_reason, multi_expected)
+                typed_directives = self._build_typed_directives(
+                    visual_ground_truth.get("narrative_directives", []),
+                    illust_id,
+                    scene_type,
+                    analysis.get("pov_character", "unknown"),
+                )
+
+                visual_context_block = self._build_visual_context_block(
+                    visual_ground_truth,
+                    identity_resolution,
+                    analysis.get("character_eps_signals", []),
+                    pov_character=analysis.get("pov_character", "unknown"),
+                    subtext_inference=analysis.get("subtext_inference", {}),
+                )
 
                 # Save to cache
                 self.cache_manager.set_entry(illust_id, {
+                    "schema_version": "2.0",
                     "status": final_status,
                     "cache_key": current_key,
                     "cache_version": "1.0",
@@ -1304,9 +1941,23 @@ class VisualAssetProcessor:
                     "routing_features": routing_features,
                     "routing_version": self.routing_version,
                     "visual_ground_truth": visual_ground_truth,
+                    "pov_character": analysis.get("pov_character", "unknown"),
+                    "subtext_inference": analysis.get("subtext_inference", {}),
                     "spoiler_prevention": analysis.get("spoiler_prevention", {}),
                     "identity_resolution": identity_resolution,
+                    "character_eps_signals": analysis.get("character_eps_signals", []),
+                    "visual_context_for_translator": visual_context_block,
+                    "narrative_directives": typed_directives,
+                    "pov_source": "manifest" if allowed_candidates else "gemini_inference",
+                    "character_verification_status": (
+                        "verified" if validation.get("identity_consistency", {}).get("status") == "pass"
+                        else "inferred" if validation.get("identity_consistency", {}).get("status") == "warn"
+                        else "failed"
+                    ),
+                    "placement_chapter": str((chapter or {}).get("id", "") or "").strip(),
+                    "placement_scene_type": scene_type,
                     "scene_local_candidates": allowed_candidates,
+                    "chapter_context": chapter_context,
                     "identity_lock_policy": candidate_policy.get("strategy"),
                     "identity_lock_primary_candidates": candidate_policy.get("primary_allowed", []),
                     "identity_lock_secondary_candidates": candidate_policy.get("secondary_allowed", []),
@@ -1361,6 +2012,13 @@ class VisualAssetProcessor:
         logger.info(f"  Cached (skipped): {stats['cached']}")
         logger.info(f"  Generated (new): {stats['generated']}")
         logger.info(f"  Blocked/Error: {stats['blocked']}")
+        logger.info(
+            "  Asset mix: inline=%s, kuchie=%s processed/%s total, cover=%s",
+            stats["inline_total"],
+            stats["kuchie_processed"],
+            stats["kuchie_total"],
+            stats["cover_total"],
+        )
 
         return stats
 
@@ -1472,7 +2130,14 @@ class VisualAssetProcessor:
         if img_path.suffix.lower() == ".png":
             mime_type = "image/png"
 
-        image_part = types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
+        # Construct payload with media_resolution for Gemini 3
+        image_part = types.Part(
+            inline_data=types.Blob(
+                mime_type=mime_type,
+                data=image_bytes,
+            ),
+            media_resolution={"level": "media_resolution_high"}
+        )
 
         last_error = None
         for attempt in range(1, self.max_retries + 1):
@@ -1534,7 +2199,7 @@ class VisualAssetProcessor:
             if prompt_override:
                 prompt_text = f"{prompt_text}\n\n{prompt_override}"
             thinking_level = str(thinking_level_override or self.thinking_level).strip().lower() or "medium"
-            if thinking_level not in {"medium", "high"}:
+            if thinking_level not in {"low", "medium", "high"}:
                 thinking_level = "medium"
 
             response = self.genai_client.models.generate_content(
@@ -1575,12 +2240,20 @@ class VisualAssetProcessor:
             thoughts = []
             response_text = ""
 
-            if response.candidates and response.candidates[0].content:
-                for part in response.candidates[0].content.parts:
+            if response.candidates:
+                candidate = response.candidates[0]
+                content = getattr(candidate, "content", None)
+                parts = getattr(content, "parts", None) or []
+                for part in parts:
                     if hasattr(part, 'thought') and part.thought:
                         thoughts.append(part.text)
                     elif part.text:
                         response_text += part.text
+
+            # Some Gemini responses have candidate/content present but parts=None.
+            # Fall back to response.text so Phase 1.6 does not hard-fail one image.
+            if not response_text and getattr(response, "text", None):
+                response_text = str(response.text)
 
             # Parse JSON response (with one strict retry when output is malformed)
             analysis = self._parse_analysis_json(response_text)
@@ -1589,8 +2262,9 @@ class VisualAssetProcessor:
                     f"{prompt_text}\n\n"
                     "STRICT JSON RETRY:\n"
                     "Return exactly one valid JSON object (no markdown, no prose).\n"
-                    "Required keys: composition, emotional_delta, key_details, "
-                    "narrative_directives, spoiler_prevention, identity_resolution.\n"
+                    "Required keys: composition, emotional_delta, key_details, pov_character,\n"
+                    "subtext_inference, narrative_directives, spoiler_prevention,\n"
+                    "identity_resolution, character_eps_signals.\n"
                 )
                 retry_response = self.genai_client.models.generate_content(
                     model=self.model,
@@ -1605,10 +2279,15 @@ class VisualAssetProcessor:
                     )
                 )
                 retry_text = ""
-                if retry_response.candidates and retry_response.candidates[0].content:
-                    for part in retry_response.candidates[0].content.parts:
+                if retry_response.candidates:
+                    retry_candidate = retry_response.candidates[0]
+                    retry_content = getattr(retry_candidate, "content", None)
+                    retry_parts = getattr(retry_content, "parts", None) or []
+                    for part in retry_parts:
                         if part.text and not (hasattr(part, "thought") and part.thought):
                             retry_text += part.text
+                if not retry_text and getattr(retry_response, "text", None):
+                    retry_text = str(retry_response.text)
                 analysis_retry = self._parse_analysis_json(retry_text)
                 if not analysis_retry.get("_parse_failed"):
                     analysis = analysis_retry
@@ -1621,8 +2300,11 @@ class VisualAssetProcessor:
                     "key_details": analysis.get("key_details", {}),
                     "narrative_directives": analysis.get("narrative_directives", []),
                 },
+                "pov_character": analysis.get("pov_character", "unknown"),
+                "subtext_inference": analysis.get("subtext_inference", {}),
                 "spoiler_prevention": analysis.get("spoiler_prevention", {}),
                 "identity_resolution": analysis.get("identity_resolution", {}),
+                "character_eps_signals": analysis.get("character_eps_signals", []),
                 "thoughts": thoughts,
             }
 
@@ -1851,8 +2533,11 @@ class VisualAssetProcessor:
             "composition": cleaned[:200] if cleaned else "Parse error",
             "emotional_delta": "Analysis produced non-JSON output",
             "key_details": {},
+            "pov_character": "unknown",
+            "subtext_inference": {},
             "narrative_directives": ["Raw analysis available in thought logs"],
             "spoiler_prevention": {},
             "identity_resolution": {"recognized_characters": [], "unresolved_characters": []},
+            "character_eps_signals": [],
             "_parse_failed": True,
         }

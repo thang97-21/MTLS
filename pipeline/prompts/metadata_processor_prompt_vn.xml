@@ -386,6 +386,18 @@
 <!-- PHẦN 6: QUY TẮC XỬ LÝ TÊN TÁC GIẢ/HỌA SĨ                                   -->
 <!-- ═══════════════════════════════════════════════════════════════════════════ -->
 <name_romanization_rules>
+    <rule id="0" priority="TUYỆT_ĐỐI">
+        FURIGANA LÀ CÁCH ĐỌC CÓ THẨM QUYỀN TUYỆT ĐỐI. Khi văn bản nguồn chứa chú thích ruby/furigana,
+        cách đọc furigana LUÔN ghi đè cách đọc kanji tiêu chuẩn, từ điển, hoặc nguồn bên ngoài.
+        Ba kiểu ruby được dùng trong light novel Nhật — tất cả phải được tôn trọng:
+        1. Kiểu NAROU:       名前《なまえ》→ Namae  (guillemets, phổ biến nhất)
+        2. Kiểu INTERWEAVE:  名前《な》ま《え》→ Na-may  (ruby tách cho từ ghép)
+        3. Kiểu LN/KIRA-KIRA: 名前《ナマエ》→ Namae  (katakana cho nhân vật phong cách)
+        Ví dụ cách đọc phi tiêu chuẩn PHẢI được bảo tồn:
+        - 藤崎{とうざき} → Touzaki  (KHÔNG phải Fujisaki — cách đọc tiêu chuẩn)
+        - 伊達{いだち}   → Idachi   (KHÔNG phải Date — cách đọc tiêu chuẩn)
+        KHÔNG bịa đặt hoặc đoán cách đọc. Nếu không có furigana, dùng romanization Hepburn.
+    </rule>
     <rule id="1" priority="quan_trọng_nhất">
         Sử dụng ROMANIZATION HEPBURN CHUẨN. Không sáng tạo tự do.
     </rule>

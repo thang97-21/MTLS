@@ -42,7 +42,7 @@ Sections marked **[GLOBAL]** apply to all languages. Language-specific sections 
 **[VN]**
 - Family pronouns violated (using tao/may or to/cau for siblings)
 - OJOU archetype using GYARU particles (nha, ne instead of thua, a)
-- Pronoun pair inconsistency within same scene (To-Cau suddenly becomes Em-Anh without RTAS trigger)
+- Pronoun pair inconsistency within same scene (To-Cau suddenly becomes Em-Anh without EPS trigger)
 
 ### MAJOR ISSUE
 
@@ -119,17 +119,17 @@ Sections marked **[GLOBAL]** apply to all languages. Language-specific sections 
 - Family pronouns violated (tao/may for siblings)
 - Archetype pair ignored (OJOU using To-Cau instead of Ta-Nguoi/Em-Anh)
 - Hierarchy assumed without explicit Japanese markers
-- **Pronoun pairing not semantically justified or inconsistent based on RTAS Pronouns Pairing table**
+- **Pronoun pairing not semantically justified or inconsistent based on EPS Pronouns Pairing table**
 
 ### MAJOR ISSUE
-- RTAS threshold ignored (still using -san at RTAS 4.5)
+- EPS threshold ignored (still using -san at EPS 4.5)
 - First-person lock violated (mixing toi/minh without narrative override)
 - Unknown hierarchy using wrong default (adult context with To-Cau)
 
 ### Validation Checklist
 - [ ] Family relationships use correct Vietnamese pronouns
 - [ ] Archetype pairs match character profile
-- [ ] RTAS thresholds respected (4.0 for honorific switch)
+- [ ] EPS thresholds respected (4.0 for honorific switch)
 - [ ] First-person consistent throughout chapter
 - [ ] Unknown hierarchy uses formal neutral
 

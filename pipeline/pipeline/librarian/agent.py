@@ -15,6 +15,7 @@ import re
 
 from .epub_extractor import EPUBExtractor, ExtractionResult
 from .metadata_parser import MetadataParser, BookMetadata
+from .epub_extractor import EPUBExtractor, extract_opf_metadata
 from .toc_parser import TOCParser, TableOfContents
 from .spine_parser import SpineParser, Spine, SpineItem
 from .xhtml_to_markdown import XHTMLToMarkdownConverter, ConvertedChapter
@@ -85,6 +86,7 @@ class Manifest:
     toc: Dict[str, Any] = field(default_factory=dict)
     ruby_names: List[Dict[str, Any]] = field(default_factory=list)  # Ruby-extracted character names
     volume_structure: Dict[str, Any] = field(default_factory=dict)  # Multi-act/merged volume structure
+    opf_metadata: Dict[str, Any] = field(default_factory=dict)  # Component 0: Rich OPF metadata fields
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -123,6 +125,57 @@ class LibrarianAgent:
         "info-top",        # external link notices
         "colophon-page",   # publication/legal page
     }
+
+    @staticmethod
+    def _use_overlap_kuchie_format(publisher_profile: Optional[PublisherProfile]) -> bool:
+        """
+        Overlap Bunko kuchie naming convention:
+        keep normalized front-matter color plates as k001/k002/... for
+        downstream traceability with source EPUB image IDs.
+        """
+        if publisher_profile is None:
+            return False
+        canonical = str(getattr(publisher_profile, "canonical_name", "") or "").strip().lower()
+        aliases = [str(a).strip().lower() for a in (getattr(publisher_profile, "aliases", []) or [])]
+        if canonical == "overlap":
+            return True
+        return any(a in {"overlap", "オーバーラップ", "株式会社オーバーラップ"} for a in aliases)
+
+    @classmethod
+    def _format_kuchie_filename(
+        cls,
+        index: int,
+        extension: str,
+        publisher_profile: Optional[PublisherProfile],
+    ) -> str:
+        """Build normalized kuchie filename using publisher-specific convention."""
+        ext = extension if extension else ".jpg"
+        if cls._use_overlap_kuchie_format(publisher_profile):
+            return f"k{index:03d}{ext}"
+        return f"kuchie-{index:03d}{ext}"
+
+    @staticmethod
+    def _is_frontmatter_spine_page(spine_item: SpineItem) -> bool:
+        """
+        Return True for spine entries that belong to front/back matter wrappers.
+
+        These entries may include TOC/title pages between color plates and should
+        not be treated as chapter-content boundaries.
+        """
+        idref_lower = str(getattr(spine_item, "idref", "") or "").lower()
+        href_lower = str(getattr(spine_item, "href", "") or "").lower()
+        markers = (
+            "cover",
+            "fmatter",
+            "frontmatter",
+            "toc",
+            "nav",
+            "caution",
+            "insert",
+            "notice",
+            "colophon",
+        )
+        return any(token in idref_lower or token in href_lower for token in markers)
     NON_CONTENT_TEXT_PAIRS: Tuple[Tuple[str, str], ...] = (
         ("本作品は、縦書き表示での閲覧を推奨", "表示が一部くずれる恐れがあります"),
         ("口絵・本文イラスト", "デザイン／"),
@@ -548,6 +601,15 @@ class LibrarianAgent:
                 heading_split_config.get("heading_patterns", [])
             )
             print(f"     [KODANSHA] Re-split into {len(chapters)} chapters using heading markers")
+
+        chapters, inline_afterword_splits = self._split_inline_afterword_chapters(
+            chapters,
+            source_dir,
+        )
+        if inline_afterword_splits > 0:
+            print(
+                f"     [AFTERWORD] Inline afterword split applied: +{inline_afterword_splits} chapter(s)"
+            )
         
         # Collect all inline illustrations referenced in chapters
         chapter_illustrations = set()
@@ -570,22 +632,30 @@ class LibrarianAgent:
         if spine_kuchie:
             print(f"     Spine order: {' → '.join([k['original'] for k in spine_kuchie])}")
 
-        # Step 5: Catalog images (cover + illustrations, kuchie already extracted)
+        # Step 5: Catalog/copy images (spine-driven kuchie + spine-driven illustrations)
         print("\n[STEP 5/6] Cataloging images...")
         image_extractor = ImageExtractor(extraction.content_dir, publisher=publisher_name)
         
-        # Get kuchie filenames to exclude from pattern-based detection
+        # Get kuchie filenames to exclude from illustration extraction
         spine_kuchie_originals = {k['original'] for k in spine_kuchie}
         
-        # Catalog remaining images (excluding spine-extracted kuchie)
+        # Catalog images for cover detection only.
         image_catalog = image_extractor.catalog_all()
-        
-        # Filter out spine-extracted kuchie from pattern-based results
-        if spine_kuchie_originals:
-            image_catalog["kuchie"] = [
-                img for img in image_catalog["kuchie"]
-                if img.filename not in spine_kuchie_originals
-            ]
+        image_catalog["kuchie"] = []
+
+        # Authoritative illustration extraction from spine reading order.
+        spine_illustrations = self._extract_illustrations_from_spine(
+            spine=spine,
+            content_dir=extraction.content_dir,
+            excluded_originals=spine_kuchie_originals,
+            publisher_name=publisher_name,
+        )
+        from types import SimpleNamespace
+        image_catalog["illustrations"] = [
+            SimpleNamespace(filename=meta["file"]) for meta in spine_illustrations
+        ]
+        if spine_illustrations:
+            print(f"     Found {len(spine_illustrations)} spine-derived illustrations")
 
         # Copy images to assets
         assets_dir = work_dir / structure["assets"]
@@ -609,11 +679,13 @@ class LibrarianAgent:
                 kuchie_output_paths.append(dst_image)
                 kuchie_filename_mapping[kuchie_meta['original']] = kuchie_meta['file']
         
-        # Then copy remaining images (cover + illustrations)
-        # Exclude spine-extracted kuchie from being copied again
+        # Then copy cover only from pattern catalog.
+        # Kuchie + illustrations are copied from spine metadata below.
         output_paths, filename_mapping = image_extractor.copy_to_assets(
             assets_dir, 
-            exclude_files=spine_kuchie_originals
+            exclude_files=spine_kuchie_originals,
+            copy_kuchie=False,
+            copy_illustrations=False,
         )
 
         # Guardrail: if cover copy succeeded but first-pass catalog missed it,
@@ -627,15 +699,28 @@ class LibrarianAgent:
         # Merge filename mappings
         filename_mapping.update(kuchie_filename_mapping)
         
-        # Copy chapter-referenced inline illustrations (gaiji + illustrations from content)
-        # that were not discovered by pattern-based cataloging.
-        # Keep original filenames to match markdown placeholders.
+        # Copy spine-derived inline illustrations (authoritative order).
         import shutil
         illust_dir = assets_dir / "illustrations"
         illust_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Exclude kuchie images from inline illustrations
-        chapter_illustrations_to_copy = chapter_illustrations - spine_kuchie_originals
+
+        copied_spine_illustrations = []
+        spine_illustration_originals = {meta["original"] for meta in spine_illustrations}
+        for meta in spine_illustrations:
+            src_path = extraction.content_dir / meta["image_path"]
+            if not src_path.exists():
+                continue
+            dst_path = illust_dir / meta["file"]
+            if not dst_path.exists():
+                shutil.copy2(src_path, dst_path)
+                copied_spine_illustrations.append(meta["file"])
+            # Identity mapping keeps chapter placeholders stable.
+            filename_mapping[meta["original"]] = meta["file"]
+
+        # Fallback: copy chapter-referenced images that were not found in spine walk.
+        chapter_illustrations_to_copy = (
+            chapter_illustrations - spine_kuchie_originals - spine_illustration_originals
+        )
         copied_illustrations = []
         filtered_illustrations = 0
         existing_illustrations = {img.filename for img in image_catalog["illustrations"]}
@@ -663,6 +748,10 @@ class LibrarianAgent:
                         existing_illustrations.add(img_filename)
                     break
         
+        if copied_spine_illustrations:
+            print(
+                f"     Copied {len(copied_spine_illustrations)} spine-derived illustrations to assets"
+            )
         if copied_illustrations:
             print(f"     Copied {len(copied_illustrations)} inline illustrations to assets")
         if filtered_illustrations:
@@ -717,7 +806,8 @@ class LibrarianAgent:
                 "toc_alignment": toc_alignment,
                 "missing_from_toc": sorted(list(missing_files)) if missing_files else []
             },
-            volume_acts=volume_acts
+            volume_acts=volume_acts,
+            opf_path=extraction.opf_path,
         )
 
         # Sync manifest filenames with mapped output names
@@ -1800,6 +1890,101 @@ class LibrarianAgent:
         
         return new_chapters
 
+    def _split_inline_afterword_chapters(
+        self,
+        chapters: List[ConvertedChapter],
+        output_dir: Path,
+    ) -> Tuple[List[ConvertedChapter], int]:
+        """Split inline afterword sections into standalone chapters when detected."""
+        heading_pattern = re.compile(
+            r'^\s*#{1,6}\s*(あとがき|後書き|後書|後記|Afterword|AFTERWORD)\s*$',
+            re.IGNORECASE,
+        )
+        illustration_pattern = re.compile(r'!\[illustration\]\(([^)]+)\)')
+
+        def _extract_illustrations(markdown_text: str) -> List[str]:
+            return [m.group(1) for m in illustration_pattern.finditer(markdown_text or "")]
+
+        split_count = 0
+        rewritten: List[ConvertedChapter] = []
+
+        for chapter in chapters:
+            title = str(getattr(chapter, "title", "") or "")
+            chapter_id = self._generate_chapter_id(title, 1, getattr(chapter, "filename", ""))
+            if chapter_id == "afterword":
+                rewritten.append(chapter)
+                continue
+
+            chapter_path = output_dir / chapter.filename
+            if not chapter_path.exists():
+                rewritten.append(chapter)
+                continue
+
+            content = chapter_path.read_text(encoding='utf-8')
+            lines = content.splitlines()
+
+            split_line_index = None
+            for idx, line in enumerate(lines):
+                if idx == 0:
+                    continue
+                if heading_pattern.match(line):
+                    split_line_index = idx
+                    break
+
+            if split_line_index is None:
+                rewritten.append(chapter)
+                continue
+
+            before_text = "\n".join(lines[:split_line_index]).strip()
+            after_text = "\n".join(lines[split_line_index:]).strip()
+            if not before_text or not after_text:
+                rewritten.append(chapter)
+                continue
+
+            # Rewrite current chapter as pre-afterword section.
+            with open(chapter_path, 'w', encoding='utf-8') as f:
+                f.write(before_text + "\n")
+
+            chapter.content = before_text
+            chapter.word_count = len(re.findall(r'\S+', before_text))
+            chapter.paragraph_count = len([p for p in before_text.split('\n\n') if p.strip() and not p.startswith('#')])
+            chapter.illustrations = _extract_illustrations(before_text)
+            rewritten.append(chapter)
+
+            # Create standalone afterword chapter from inline heading onward.
+            afterword_filename = chapter.filename.replace('.md', '_AFTERWORD.md')
+            afterword_path = output_dir / afterword_filename
+            dedupe_idx = 2
+            while afterword_path.exists():
+                afterword_filename = chapter.filename.replace('.md', f'_AFTERWORD_{dedupe_idx}.md')
+                afterword_path = output_dir / afterword_filename
+                dedupe_idx += 1
+
+            with open(afterword_path, 'w', encoding='utf-8') as f:
+                f.write(after_text + "\n")
+
+            marker_match = heading_pattern.match(lines[split_line_index] or "")
+            marker_title = marker_match.group(1) if marker_match else "Afterword"
+
+            rewritten.append(
+                ConvertedChapter(
+                    filename=afterword_filename,
+                    title=marker_title,
+                    content=after_text,
+                    illustrations=_extract_illustrations(after_text),
+                    word_count=len(re.findall(r'\S+', after_text)),
+                    paragraph_count=len([p for p in after_text.split('\n\n') if p.strip() and not p.startswith('#')]),
+                    is_pre_toc_content=getattr(chapter, 'is_pre_toc_content', False),
+                    source_files=list(getattr(chapter, 'source_files', []) or []),
+                    raw_group_index=getattr(chapter, 'raw_group_index', None),
+                    raw_group_title=getattr(chapter, 'raw_group_title', None),
+                    split_strategy=getattr(chapter, 'split_strategy', None),
+                )
+            )
+            split_count += 1
+
+        return rewritten, split_count
+
     def _detect_pre_toc_content(
         self,
         spine_order: List[str],
@@ -2052,7 +2237,14 @@ class LibrarianAgent:
             return "prologue"
         
         # Detect afterword
-        if 'afterword' in title_lower or 'あとがき' in title or '後書き' in title:
+        if (
+            'afterword' in title_lower
+            or 'あとがき' in title
+            or '後書き' in title
+            or '後書' in title
+            or '後記' in title
+            or '跋' in title
+        ):
             return "afterword"
         
         # Detect colophon
@@ -2152,7 +2344,7 @@ class LibrarianAgent:
             return
 
         # Update cover filename if mapped.
-        # Guardrail: keep explicit cover.* names from being remapped to kuchie-*.
+        # Guardrail: keep explicit cover.* names from being remapped to kuchie/k###.
         # Spine kuchie extraction can include original cover assets for traceability,
         # but that must not overwrite canonical manifest cover when cover.jpg exists.
         if "cover" in manifest.assets and manifest.assets["cover"]:
@@ -2160,7 +2352,7 @@ class LibrarianAgent:
             mapped_cover = filename_mapping.get(current_cover, current_cover)
             if (
                 re.search(r"cover", str(current_cover), re.IGNORECASE)
-                and re.match(r"^kuchie-\d{3}", str(mapped_cover), re.IGNORECASE)
+                and re.match(r"^(?:kuchie-\d{3}|k\d{3})", str(mapped_cover), re.IGNORECASE)
             ):
                 mapped_cover = current_cover
             manifest.assets["cover"] = mapped_cover
@@ -2228,7 +2420,12 @@ class LibrarianAgent:
         """
         # Multi-act dispatch: extract kuchie for each act's front matter region
         if volume_acts:
-            return self._extract_kuchie_multi_act(spine, content_dir, volume_acts)
+            return self._extract_kuchie_multi_act(
+                spine,
+                content_dir,
+                volume_acts,
+                publisher_profile=publisher_profile,
+            )
         
         from lxml import etree
         
@@ -2255,11 +2452,13 @@ class LibrarianAgent:
             xhtml_path = content_dir / spine_item.href
             if not xhtml_path.exists():
                 continue
+
+            is_frontmatter_page = self._is_frontmatter_spine_page(spine_item)
             
             # Quick size check: kuchie pages are typically small (< 5KB XHTML wrapper)
             # Chapter content files are much larger (10KB+)
             file_size = xhtml_path.stat().st_size
-            if file_size > 10000:  # 10KB threshold
+            if file_size > 10000 and not is_frontmatter_page:  # 10KB threshold
                 # This is likely chapter content - stop extracting kuchie
                 chapter_started = True
                 break
@@ -2297,7 +2496,7 @@ class LibrarianAgent:
                 
                 # Check if this is substantial chapter content (not kuchie)
                 # If we encounter a page with >200 chars of text, chapters have started
-                if len(text_content) > 200:
+                if len(text_content) > 200 and not is_frontmatter_page:
                     chapter_started = True
                     break
                 
@@ -2335,6 +2534,13 @@ class LibrarianAgent:
                             break
                     
                     if img_src:
+                        # Title-page images are usually chapter-opening/branding art,
+                        # not frontmatter color-plate kuchie.
+                        idref_lower = str(getattr(spine_item, "idref", "") or "").lower()
+                        href_lower = str(getattr(spine_item, "href", "") or "").lower()
+                        if "titlepage" in idref_lower or "titlepage" in href_lower:
+                            continue
+
                         # Extract original image filename (without path)
                         original_filename = Path(img_src).name
                         
@@ -2342,7 +2548,7 @@ class LibrarianAgent:
                         # - white.jpg: blank separator pages
                         # - logo.png/publisher logo: title page logos
                         # - Small images (< 20KB): likely icons/logos, not color plates
-                        skip_patterns = ['white', 'logo', 'blank', 'separator']
+                        skip_patterns = ['white', 'logo', 'blank', 'separator', 'allcover']
                         if any(pattern in original_filename.lower() for pattern in skip_patterns):
                             continue
                         
@@ -2360,7 +2566,11 @@ class LibrarianAgent:
                         # Generate sequential kuchie filename
                         kuchie_number = len(kuchie_list) + 1
                         extension = Path(original_filename).suffix
-                        normalized_filename = f"kuchie-{kuchie_number:03d}{extension}"
+                        normalized_filename = self._format_kuchie_filename(
+                            kuchie_number,
+                            extension,
+                            publisher_profile,
+                        )
                         
                         # KUCHIE SCHEMA (v3.5) - CANONICAL FIELDS
                         # ========================================
@@ -2384,18 +2594,123 @@ class LibrarianAgent:
                 # Silently continue on parse errors
                 continue
         
-        return self._normalize_kuchie_japanese_order(spine, kuchie_list)
+        return self._normalize_kuchie_japanese_order(
+            spine,
+            kuchie_list,
+            publisher_profile=publisher_profile,
+        )
+
+    def _extract_illustrations_from_spine(
+        self,
+        spine: Spine,
+        content_dir: Path,
+        excluded_originals: Set[str],
+        publisher_name: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Extract illustration image references directly from spine XHTML pages.
+
+        This is the authoritative path for illustration copy ordering and avoids
+        filename-pattern regex classification for illustration assets.
+        """
+        from lxml import etree
+
+        profile_manager = get_profile_manager()
+        excluded_lower = {str(name).lower() for name in excluded_originals}
+        valid_exts = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+        cover_name_pattern = re.compile(
+            r"^(?:all)?cover(?:[-_].*)?\.(?:jpe?g|png|webp|gif)$",
+            re.IGNORECASE,
+        )
+        seen = set()
+        illustrations: List[Dict[str, Any]] = []
+
+        for idx, spine_item in enumerate(spine.items):
+            if not spine_item.linear:
+                continue
+            if not str(spine_item.href).lower().endswith((".xhtml", ".html", ".htm")):
+                continue
+            if self._is_frontmatter_spine_page(spine_item):
+                continue
+
+            xhtml_path = content_dir / spine_item.href
+            if not xhtml_path.exists():
+                continue
+
+            try:
+                tree = etree.parse(str(xhtml_path))
+                root = tree.getroot()
+
+                body = root.find(".//{http://www.w3.org/1999/xhtml}body")
+                if body is None:
+                    body = root.find(".//body")
+                if body is None:
+                    continue
+
+                refs: List[str] = []
+                for img in body.findall(".//{http://www.w3.org/1999/xhtml}img"):
+                    src = img.get("src")
+                    if src:
+                        refs.append(src)
+                for img in body.findall(".//img"):
+                    src = img.get("src")
+                    if src:
+                        refs.append(src)
+                for img in body.findall(".//{http://www.w3.org/2000/svg}image"):
+                    src = img.get("{http://www.w3.org/1999/xlink}href") or img.get("href")
+                    if src:
+                        refs.append(src)
+
+                for src in refs:
+                    resolved = self._resolve_image_path(spine_item.href, src)
+                    original = Path(resolved).name.strip()
+                    if not original:
+                        continue
+
+                    lower_name = original.lower()
+                    if lower_name in excluded_lower:
+                        continue
+                    if lower_name in seen:
+                        continue
+                    if "allcover" in lower_name:
+                        continue
+                    if cover_name_pattern.match(original) or "hyoushi" in lower_name:
+                        continue
+                    if Path(original).suffix.lower() not in valid_exts:
+                        continue
+                    if profile_manager.is_excluded_image(original, publisher_name):
+                        continue
+
+                    seen.add(lower_name)
+                    illustrations.append(
+                        {
+                            "file": original,
+                            "original": original,
+                            "spine_index": idx,
+                            "spine_href": spine_item.href,
+                            "image_path": resolved,
+                        }
+                    )
+            except Exception:
+                continue
+
+        return illustrations
 
     def _normalize_kuchie_japanese_order(
         self,
         spine: Spine,
         kuchie_list: List[Dict[str, Any]],
+        publisher_profile: Optional[PublisherProfile] = None,
     ) -> List[Dict[str, Any]]:
         """
         Normalize kuchie ordering to original Japanese reading order.
 
         The Librarian is the single source of truth for kuchie ordering. Builder
         should consume this order as-is and never re-interpret by output direction.
+
+        For RTL EPUBs, prompts the user to choose between:
+        - Spine order (standard.opf): kuchie-001 = first in spine (last illustration in LTR reading)
+        - Flipped order: kuchie-001 = last in list (first illustration in LTR reading)
         """
         if not kuchie_list:
             return []
@@ -2403,17 +2718,42 @@ class LibrarianAgent:
         ordered = [dict(item) for item in kuchie_list]
         page_progression = (spine.page_progression or "ltr").lower()
 
-        # For RTL source EPUBs, preserve Japanese right-to-left page order.
-        # For LTR source EPUBs, keep natural spine order.
         if page_progression == "rtl":
-            ordered.reverse()
-            print("     [INFO] page-progression-direction=rtl → preserving Japanese kuchie order")
+            # Warn the user and let them choose the kuchie order.
+            print()
+            print("  ┌─────────────────────────────────────────────────────────────────┐")
+            print("  │  [WARNING] RTL kuchie order detected                            │")
+            print("  └─────────────────────────────────────────────────────────────────┘")
+            print("  This EPUB uses page-progression-direction=rtl (Japanese right-to-left).")
+            print("  In RTL EPUBs the spine lists kuchie in REVERSE reading order:")
+            print("  kuchie-001 (first in spine) = LAST illustration in LTR reading order.")
+            print()
+            print("  Spine order (standard.opf):")
+            for k in ordered:
+                print(f"    [spine {k.get('spine_index', '?'):>2}] {k.get('original', '?')}")
+            print()
+            print("  [1] Keep spine order  — kuchie-001 first (as in standard.opf)")
+            print("  [2] Flip to LTR order — kuchie-001 last  (first illustration in reading order)  ← recommended")
+            print()
+            try:
+                choice = input("  Choose [1/2] (default: 2): ").strip()
+            except EOFError:
+                choice = "2"
+            if choice == "1":
+                print("     [INFO] Keeping original spine order (kuchie-001 first)")
+            else:
+                ordered.reverse()
+                print("     [INFO] Flipped to LTR display order (kuchie-001 last)")
 
         # Renumber normalized filenames to match final manifest order.
         for idx, item in enumerate(ordered, 1):
             current_file = str(item.get("file", "") or "")
             ext = Path(current_file).suffix or Path(str(item.get("original", ""))).suffix or ".jpg"
-            item["file"] = f"kuchie-{idx:03d}{ext}"
+            item["file"] = self._format_kuchie_filename(
+                idx,
+                ext,
+                publisher_profile,
+            )
 
         return ordered
 
@@ -2649,7 +2989,8 @@ class LibrarianAgent:
         self,
         spine: Spine,
         content_dir: Path,
-        volume_acts: List[Dict[str, Any]]
+        volume_acts: List[Dict[str, Any]],
+        publisher_profile: Optional[PublisherProfile] = None,
     ) -> List[Dict[str, Any]]:
         """
         Extract normalized frontmatter kuchie for ACT 1 only in a multi-act EPUB.
@@ -2745,7 +3086,7 @@ class LibrarianAgent:
                     original_filename = Path(img_src).name
                     
                     # Skip known non-kuchie patterns
-                    skip_patterns = ['white', 'logo', 'blank', 'separator']
+                    skip_patterns = ['white', 'logo', 'blank', 'separator', 'allcover']
                     if any(p in original_filename.lower() for p in skip_patterns):
                         continue
                     
@@ -2757,7 +3098,11 @@ class LibrarianAgent:
                     # Generate sequential kuchie filename
                     kuchie_number = len(kuchie_list) + 1
                     extension = Path(original_filename).suffix
-                    normalized_filename = f"kuchie-{kuchie_number:03d}{extension}"
+                    normalized_filename = self._format_kuchie_filename(
+                        kuchie_number,
+                        extension,
+                        publisher_profile,
+                    )
                     
                     # Determine type based on spine idref
                     is_tobira = spine_idx in act['tobira_spine_indices']
@@ -2776,7 +3121,11 @@ class LibrarianAgent:
                 except Exception:
                     continue
         
-        return self._normalize_kuchie_japanese_order(spine, kuchie_list)
+        return self._normalize_kuchie_japanese_order(
+            spine,
+            kuchie_list,
+            publisher_profile=publisher_profile,
+        )
 
     def _resolve_image_path(self, xhtml_href: str, img_src: str) -> str:
         """Resolve relative image path from XHTML location to content-dir-relative path."""
@@ -2978,10 +3327,14 @@ class LibrarianAgent:
         source_lang: str,
         target_lang: str,
         recovery_info: Optional[Dict[str, Any]] = None,
-        volume_acts: Optional[List[Dict[str, Any]]] = None
+        volume_acts: Optional[List[Dict[str, Any]]] = None,
+        opf_path: Optional[Path] = None,
     ) -> Manifest:
         """Build complete manifest from extraction results."""
         now = datetime.now().isoformat()
+
+        # Component 0: Extract rich OPF metadata for schema grounding
+        opf_meta = extract_opf_metadata(opf_path) if opf_path else {}
 
         # Get TOC entries for metadata
         toc_entries = toc.get_flat_list()
@@ -3145,6 +3498,7 @@ class LibrarianAgent:
             toc=toc.to_dict(),
             ruby_names=ruby_data["names"],  # Character names from ruby annotations
             volume_structure=volume_structure_data,
+            opf_metadata=opf_meta,
         )
 
 

@@ -314,13 +314,21 @@ class ImageExtractor:
 
         return None
 
-    def copy_to_assets(self, output_dir: Path, exclude_files: set = None) -> Tuple[Dict[str, Path], Dict[str, str]]:
+    def copy_to_assets(
+        self,
+        output_dir: Path,
+        exclude_files: set = None,
+        copy_kuchie: bool = True,
+        copy_illustrations: bool = True,
+    ) -> Tuple[Dict[str, Path], Dict[str, str]]:
         """
         Copy cataloged images to assets directory.
 
         Args:
             output_dir: Base assets directory
             exclude_files: Set of filenames to exclude from copying (e.g., spine-extracted kuchie)
+            copy_kuchie: Whether to copy kuchie from pattern catalog
+            copy_illustrations: Whether to copy illustrations from pattern catalog
 
         Returns:
             Tuple of:
@@ -380,9 +388,13 @@ class ImageExtractor:
                 if kuchie_fallback is None:
                     kuchie_dir = output_dir / "kuchie"
                     if kuchie_dir.exists():
-                        for f in sorted(kuchie_dir.glob("kuchie-*")):
-                            if f.is_file() and not self._is_allcover_filename(f.name):
-                                kuchie_fallback = f
+                        fallback_patterns = ("kuchie-*", "k[0-9][0-9][0-9]*")
+                        for pattern in fallback_patterns:
+                            for f in sorted(kuchie_dir.glob(pattern)):
+                                if f.is_file() and not self._is_allcover_filename(f.name):
+                                    kuchie_fallback = f
+                                    break
+                            if kuchie_fallback is not None:
                                 break
 
                 if kuchie_fallback is not None:
@@ -396,9 +408,9 @@ class ImageExtractor:
                         "Cover will be omitted."
                     )
 
-        # Copy kuchie - SKIP if spine-based extraction is being used (exclude_files provided)
-        # The spine-based system handles kuchie extraction and copying directly
-        if catalog["kuchie"] and not exclude_files:
+        # Copy kuchie (optional): when spine-based extraction is active, caller can
+        # disable this path to avoid regex-driven kuchie copying.
+        if copy_kuchie and catalog["kuchie"] and not exclude_files:
             kuchie_dir = output_dir / "kuchie"
             kuchie_dir.mkdir(parents=True, exist_ok=True)
             for i, img in enumerate(catalog["kuchie"]):
@@ -406,9 +418,15 @@ class ImageExtractor:
                 original_filename = img.filename
                 original_ext = Path(img.filename).suffix
                 
-                # Check if filename already matches our naming pattern (kuchie-NNN.jpg or kuchie-NNN-NNN.jpg)
-                # Pattern: kuchie-001.jpg, kuchie-002-003.jpg, etc.
-                if re.match(r'^kuchie-\d{3}(?:-\d{3})?\.jpe?g$', original_filename, re.IGNORECASE):
+                # Preserve publisher-native kuchie filenames when they already
+                # match accepted conventions:
+                # - kuchie-001.jpg / kuchie-002-003.jpg
+                # - k001.jpg / k002-003.jpg (Overlap Bunko)
+                if re.match(
+                    r'^(?:kuchie-\d{3}(?:-\d{3})?|k\d{3}(?:[-_]\d{3})?)\.jpe?g$',
+                    original_filename,
+                    re.IGNORECASE,
+                ):
                     # Already matches our convention - preserve as-is
                     normalized_name = original_filename
                 else:
@@ -424,10 +442,9 @@ class ImageExtractor:
                 print(f"[OK] Copied kuchie: {original_filename} -> {normalized_name}")
             output_paths["kuchie"] = kuchie_dir
 
-        # Copy illustrations with ORIGINAL filenames.
-        # Markdown placeholders now use original filenames, so do not normalize
-        # to illust-XXX anymore.
-        if catalog["illustrations"]:
+        # Copy illustrations with ORIGINAL filenames (optional). Caller can disable
+        # this when using spine-driven illustration extraction/copying.
+        if copy_illustrations and catalog["illustrations"]:
             illust_dir = output_dir / "illustrations"
             illust_dir.mkdir(parents=True, exist_ok=True)
             print(f"[INFO] Processing {len(catalog['illustrations'])} illustrations...")

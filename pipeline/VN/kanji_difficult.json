@@ -33,7 +33,7 @@
           "usage": "Describing heroines, scenery. Most common compound. Translate as single word, not character-by-character."
         }
       ],
-      "translation_notes": "Often appears in 綺麗{きれい}. High RTAS context (4.5+) requires careful tone. Furigana indicates single-word reading.",
+      "translation_notes": "Often appears in 綺麗{きれい}. PAIR_3 (romantic) context requires careful tone. Furigana indicates single-word reading.",
       "priority": "TOP"
     },
     {
@@ -81,7 +81,7 @@
           "usage": "Emotional descriptions - eyes glistening, intense gaze"
         }
       ],
-      "translation_notes": "瞳 (hitomi) vs 目 (me) - 瞳 more poetic/emotional, emphasizes pupil/inner eye. Han-Viet 'đồng tử' too clinical. Use 'đôi mắt', 'ánh mắt' for RTAS 4.0+ scenes.",
+      "translation_notes": "瞳 (hitomi) vs 目 (me) - 瞳 more poetic/emotional, emphasizes pupil/inner eye. Han-Viet 'đồng tử' too clinical. Use 'đôi mắt', 'ánh mắt' for PAIR_2+ (intimate) scenes.",
       "priority": "HIGH"
     },
     {
@@ -171,7 +171,7 @@
           "usage": "Describing seductive expressions/behavior in romantic tension"
         }
       ],
-      "translation_notes": "蠱惑 (kowaku) is literary term. Han-Viet 'cổ hoặc' archaic. Use 'quyến rũ', 'mê hoặc' for RTAS 4.5+ scenes. Must convey allure without vulgarity.",
+      "translation_notes": "蠱惑 (kowaku) is literary term. Han-Viet 'cổ hoặc' archaic. Use 'quyến rũ', 'mê hoặc' for PAIR_3 (romantic) scenes. Must convey allure without vulgarity.",
       "priority": "HIGH"
     },
     {
@@ -330,7 +330,7 @@
           "usage": "Blushing from embarrassment/affection"
         }
       ],
-      "translation_notes": "頬 (hoo) for cheek. Han-Viet 'giáp' not common. Use 'má' (Vietnamese). Common in RTAS 4.0+ intimate scenes.",
+      "translation_notes": "頬 (hoo) for cheek. Han-Viet 'giáp' not common. Use 'má' (Vietnamese). Common in PAIR_2+ intimate scenes.",
       "priority": "MEDIUM"
     },
     {

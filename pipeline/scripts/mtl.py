@@ -3,40 +3,41 @@
 MT Publishing Pipeline - Unified Controller
 Multi-language Japanese EPUB translation pipeline (EN/VN supported)
 
-Phases:
+Sections:
   1. Librarian      - Extract Japanese EPUB to markdown
-  1.5 Metadata      - Schema autoupdate + title/author/chapter translation
-  1.55 Rich Cache   - Full-LN JP cache + rich metadata enrichment (Gemini 2.5 Flash)
-  1.6 Multimodal    - Pre-bake illustration analysis (Gemini 3 Pro Vision)
-  1.7 Scene Planner - Narrative beat + rhythm scaffold (v1.6 Stage 1)
-  1.7 Co-Processor - Standalone context offload pack refresh (cache-only)
-  2. Translator     - Gemini-powered translation with RAG + visual context
-  3. Critics        - Manual/Agentic quality review (Gemini CLI + IDE Agent)
-  4. Builder        - Package final translated EPUB
+  3. Metadata       - Schema autoupdate + title/author/chapter translation
+  6. Rich Cache     - Full-LN JP cache + rich metadata enrichment (Gemini 2.5 Flash)
+  8. Multimodal     - Pre-bake illustration analysis (Gemini 3 Pro Vision)
+  9. Scene Planner  - Narrative beat + rhythm scaffold (v1.6 Stage 1)
+  9. Co-Processor   - Standalone context offload pack refresh (cache-only)
+  10. Translator    - Gemini-powered translation with RAG + visual context
+  11. Review Gate   - Manual/Agentic quality review (Gemini CLI + IDE Agent)
+  12. Builder       - Package final translated EPUB
 
 Usage:
   mtl.py run <epub_path>                 # Full pipeline (auto-generates volume ID)
   mtl.py run <epub_path> --id <id>       # Full pipeline with custom ID
   mtl.py run <epub_path> --verbose       # Full pipeline with interactive prompts
-  mtl.py run <epub_path> --skip-multimodal  # Skip Phase 1.6 (faster, no visual context)
-  mtl.py phase1 <epub_path>              # Run Phase 1 only
-  mtl.py phase1.5 [volume_id]            # Run Phase 1.5 (metadata processing)
-  mtl.py phase1.55 [volume_id]           # Run Phase 1.55 (full-LN cache metadata enrichment)
-  mtl.py phase1.6 [volume_id]            # Run Phase 1.6 (multimodal pre-bake)
+  mtl.py run <epub_path> --skip-multimodal  # Skip Section 8 (faster, no visual context)
+  mtl.py phase1 <epub_path>              # Run Section 1 only
+  mtl.py phase1.5 [volume_id]            # Run Section 3 (metadata processing)
+    mtl.py pronoun-shift [volume_id]       # Run standalone deterministic JP pronoun-shift detector
+  mtl.py phase1.55 [volume_id]           # Run Section 6 (full-LN cache metadata enrichment)
+  mtl.py phase1.6 [volume_id]            # Run Section 8 (multimodal pre-bake)
   mtl.py phase1.6 [volume_id] --full-ln-cache off  # Skip full-LN cache prep
-  mtl.py phase1.7 [volume_id]            # Run Phase 1.7 (scene planning scaffold)
-  mtl.py phase1.7-cp [volume_id]         # Run Phase 1.7 Co-Processor (standalone context pack)
-  mtl.py phase2 [volume_id]              # Run Phase 2 (interactive if no ID)
-  mtl.py phase2 [volume_id] --enable-multimodal  # Phase 2 with visual context
+  mtl.py phase1.7 [volume_id]            # Run Section 9 (scene planning scaffold)
+  mtl.py phase1.7-cp [volume_id]         # Run Section 9 Co-Processor (standalone context pack)
+  mtl.py phase2 [volume_id]              # Run Section 10 (interactive if no ID)
+  mtl.py phase2 [volume_id] --enable-multimodal  # Section 10 with visual context
   mtl.py phase2 [volume_id] --full-ln-cache off  # Run without full-LN cache prep
   mtl.py phase2 [volume_id] --phase1-55-mode skip|overwrite|auto|ask
   mtl.py phase2 [volume_id] --batch     # Anthropic Batch API (50% cost, ~1h latency)
-  mtl.py phase1.56 [volume_id]          # Phase 1.56: Translator's Guidance Brief (Anthropic batch pre-analysis)
-  mtl.py batch [volume_id]              # OPTION 1 (Anthropic): Full batch pipeline — 1.5→1.55→1.56→1.6→1.7→Phase 2 batch
-  mtl.py batch [volume_id] --skip-multimodal  # Skip Phase 1.6 (no illustrations)
+  mtl.py phase1.56 [volume_id]          # Section 7: Translator's Guidance Brief (Anthropic batch pre-analysis)
+  mtl.py batch [volume_id]              # OPTION 1 (Anthropic): Full batch pipeline — 1.5→1.55→1.56→1.6→1.7→Section 10 batch
+  mtl.py batch [volume_id] --skip-multimodal  # Skip Section 8 (no illustrations)
   mtl.py batch [volume_id] --force-brief      # Re-generate brief even if cached
-  mtl.py multimodal [volume_id]          # Run Phase 1.6 + Phase 2 with multimodal (visual translation)
-  mtl.py phase4 [volume_id]              # Run Phase 4 (interactive if no ID)
+  mtl.py multimodal [volume_id]          # Run Section 8 + Section 10 with multimodal (visual translation)
+  mtl.py phase4 [volume_id]              # Run Section 12 (interactive if no ID)
   mtl.py status <volume_id>              # Check pipeline status
   mtl.py list                            # List all volumes
   mtl.py metadata <volume_id>            # Inspect metadata and schema
@@ -48,7 +49,7 @@ Usage:
   mtl.py visual-thinking [volume_id] --with-cache   # Include Art Director's Notes
 
 Interactive Mode:
-  - Phase 2, 4: Can be run without volume_id to see selection menu
+    - Section 10, 12: Can be run without volume_id to see selection menu
   - Partial IDs: Use last 4 chars (e.g., "1b2e" instead of full name)
   - Ambiguous IDs: Automatically shows selection menu
 
@@ -79,18 +80,18 @@ Metadata Schemas (Auto-Detected):
   The translator auto-transforms all schemas to a unified internal format.
   Use 'mtl.py metadata <volume_id> --validate' to check schema compatibility.
 
-Phase 1.5 (Metadata Processor):
+Section 3 (Metadata Processor):
   - Auto-updates metadata_en schema via Gemini (Schema Agent autoupdate)
   - Translates: title, author, chapter titles, character names
   - PRESERVES: v3 enhanced schema (character_profiles, localization_notes, keigo_switch)
   - Safe to re-run on volumes with existing schema configurations
 
-Phase 1.55 (Rich Metadata Cache):
+Section 6 (Rich Metadata Cache):
   - Loads bible continuity context (when linked)
   - Caches full JP volume text and calls Gemini 2.5 Flash (temp 0.5)
-  - Enriches rich metadata fields for stronger Phase 2 continuity
+  - Enriches rich metadata fields for stronger Section 10 continuity
 
-Phase 1.6 (Multimodal Processor):
+Section 8 (Multimodal Processor):
   - Analyzes illustrations using Gemini 3 Pro Vision
   - Generates Art Director's Notes for translation context
   - Canon Event Fidelity: Visual guidance enhances vocabulary, not content
@@ -101,11 +102,11 @@ Phase 1.6 (Multimodal Processor):
     mtl.py cache-inspect <volume_id> --detail     # Full analysis details
 
 Modes:
-  Default (Minimal):  Clean output, auto-proceed through phases, no interactive prompts
+  Default (Minimal):  Clean output, auto-proceed through sections, no interactive prompts
   --verbose:          Full details, interactive menus, metadata review options
                       - Sequel detection: Asks whether to inherit metadata
-                      - Post-Phase 1.5: Option to review metadata before translation
-                      - Post-Phase 2: Interactive menu before building EPUB
+                      - Post-Section 3: Option to review metadata before translation
+                      - Post-Section 10: Interactive menu before building EPUB
 """
 
 import sys
@@ -172,7 +173,7 @@ class PipelineController:
 
     def _phase2_runtime_profile_lines(self, enable_multimodal: bool) -> List[str]:
         """
-        Build concise advanced runtime lines for Phase 2.
+        Build concise advanced runtime lines for Section 10.
         """
         try:
             from pipeline.config import (
@@ -308,7 +309,7 @@ class PipelineController:
             return lines
         except Exception as e:
             if self.verbose:
-                logger.debug(f"[Phase2 Profile] Fallback profile due to config read issue: {e}")
+                logger.debug(f"[S10 Profile] Fallback profile due to config read issue: {e}")
             return [
                 "Runtime profile: Tiered RAG + Vector Search + Context Cache + Multimodal",
             ]
@@ -327,7 +328,7 @@ class PipelineController:
         return value[:4].upper()
 
     def _visual_phase_badge(self, volume_id: str) -> str:
-        """Return Phase 1.6 visual cache badge."""
+        """Return Section 8 visual cache badge."""
         cache_path = self.work_dir / volume_id / "visual_cache.json"
         if not cache_path.exists():
             return "TODO"
@@ -351,10 +352,10 @@ class PipelineController:
         digest = hashlib.sha1(volume_id.encode("utf-8")).hexdigest()[:8]
         return f"id_{digest}"
         
-    # ── Verbose Phase Confirmation Logs ───────────────────────────────
+    # ── Verbose Section Confirmation Logs ───────────────────────────────
 
     def _log_phase1_confirmation(self, volume_id: str) -> None:
-        """Log verbose confirmation for Phase 1 (Librarian) results."""
+        """Log verbose confirmation for Section 1 (Librarian) results."""
         manifest = self.load_manifest(volume_id)
         if not manifest:
             return
@@ -404,7 +405,7 @@ class PipelineController:
 
         logger.info("")
         logger.info("┌─────────────────────────────────────────────────────────────┐")
-        logger.info("│  PHASE 1 CONFIRMATION — Librarian Output                   │")
+        logger.info("│  SECTION 1 CONFIRMATION — Librarian Output                   │")
         logger.info("├─────────────────────────────────────────────────────────────┤")
         logger.info(f"│  Title:     {title[:50]:<50}│")
         logger.info(f"│  Author:    {author[:50]:<50}│")
@@ -424,7 +425,7 @@ class PipelineController:
         logger.info("└─────────────────────────────────────────────────────────────┘")
 
     def _log_phase1_5_confirmation(self, volume_id: str) -> None:
-        """Log verbose confirmation for Phase 1.5 (Metadata Processor) results."""
+        """Log verbose confirmation for Section 3 (Metadata Processor) results."""
         manifest = self.load_manifest(volume_id)
         if not manifest:
             return
@@ -516,7 +517,7 @@ class PipelineController:
 
         logger.info("")
         logger.info("┌─────────────────────────────────────────────────────────────┐")
-        logger.info("│  PHASE 1.5 CONFIRMATION — Metadata Processor               │")
+        logger.info("│  SECTION 3 CONFIRMATION — Metadata Processor                 │")
         logger.info("├─────────────────────────────────────────────────────────────┤")
         logger.info(f"│  Title ({target_lang.upper()}):  {title_en[:48]:<48} │")
         logger.info(f"│  Series ({target_lang.upper()}): {series_en[:48]:<48} │")
@@ -545,7 +546,7 @@ class PipelineController:
                 logger.info(f"    ... and {len(char_names) - 5} more")
 
     def _log_phase1_55_confirmation(self, volume_id: str) -> None:
-        """Log verbose confirmation for Phase 1.55 rich metadata cache results."""
+        """Log verbose confirmation for Section 6 rich metadata cache results."""
         manifest = self.load_manifest(volume_id)
         if not manifest:
             return
@@ -574,7 +575,7 @@ class PipelineController:
 
         logger.info("")
         logger.info("┌─────────────────────────────────────────────────────────────┐")
-        logger.info("│  PHASE 1.55 CONFIRMATION — Rich Metadata Cache             │")
+        logger.info("│  SECTION 6 CONFIRMATION — Rich Metadata Cache               │")
         logger.info("├─────────────────────────────────────────────────────────────┤")
         logger.info(f"│  Status:            {status[:46]:<46}│")
         logger.info(f"│  Model:             gemini-2.5-flash (temp=0.5)            │")
@@ -604,7 +605,7 @@ class PipelineController:
             logger.info(f"  Patch keys: {shown}")
 
     def _log_phase1_6_confirmation(self, volume_id: str) -> None:
-        """Log verbose confirmation for Phase 1.6 (Multimodal) results."""
+        """Log verbose confirmation for Section 8 (Multimodal) results."""
         manifest = self.load_manifest(volume_id)
         if not manifest:
             return
@@ -672,7 +673,7 @@ class PipelineController:
 
         logger.info("")
         logger.info("┌─────────────────────────────────────────────────────────────┐")
-        logger.info("│  PHASE 1.6 CONFIRMATION — Art Director (Multimodal)        │")
+        logger.info("│  SECTION 8 CONFIRMATION — Art Director (Multimodal)          │")
         logger.info("├─────────────────────────────────────────────────────────────┤")
         logger.info(f"│  Vision Model:      {vision_model[:40]:<40} │")
         logger.info(f"│  Illustrations:     {illust_count:<5}  total in volume                  │")
@@ -690,7 +691,7 @@ class PipelineController:
         logger.info("└─────────────────────────────────────────────────────────────┘")
 
     def _log_phase1_7_confirmation(self, volume_id: str) -> None:
-        """Log verbose confirmation for Phase 1.7 (Scene Planner) results."""
+        """Log verbose confirmation for Section 9 (Scene Planner) results."""
         manifest = self.load_manifest(volume_id)
         if not manifest:
             return
@@ -708,7 +709,7 @@ class PipelineController:
 
         logger.info("")
         logger.info("┌─────────────────────────────────────────────────────────────┐")
-        logger.info("│  PHASE 1.7 CONFIRMATION — Stage 1 Scene Planner            │")
+        logger.info("│  SECTION 9 CONFIRMATION — Stage 1 Scene Planner              │")
         logger.info("├─────────────────────────────────────────────────────────────┤")
         logger.info(f"│  Status:            {status[:46]:<46}│")
         logger.info(f"│  Model:             {model[:46]:<46}│")
@@ -778,7 +779,7 @@ class PipelineController:
     def _run_phase2_command_with_progress(self, cmd: list, expected_total: int = 1) -> bool:
         """Run translator command with live chapter progress in rich mode."""
         if self.verbose or not self.ui.rich_enabled:
-            return self._run_command(cmd, "Phase 2 (Translator)")
+            return self._run_command(cmd, "Section 10 (Translator)")
 
         target_re = re.compile(r"Targeting\s+(\d+)\s+chapters")
         start_re = re.compile(r"Translating\s+\[(\d+)/(\d+)\]\s+(\S+)\s+to")
@@ -799,7 +800,7 @@ class PipelineController:
             env=self._get_env(),
         )
 
-        with self.ui.chapter_progress("Phase 2 Chapters", total=max(expected_total, 1)) as tracker:
+        with self.ui.chapter_progress("Section 10 Chapters", total=max(expected_total, 1)) as tracker:
             for raw_line in iter(process.stdout.readline, ''):
                 line = raw_line.rstrip("\n")
                 if not line:
@@ -847,10 +848,10 @@ class PipelineController:
 
         elapsed = time.monotonic() - started
         if return_code == 0:
-            self.ui.print_success(f"Phase 2 (Translator) completed ({elapsed:.1f}s)")
+            self.ui.print_success(f"Section 10 (Translator) completed ({elapsed:.1f}s)")
             return True
 
-        self.ui.print_error(f"Phase 2 (Translator) failed ({elapsed:.1f}s)")
+        self.ui.print_error(f"Section 10 (Translator) failed ({elapsed:.1f}s)")
         if line_tail:
             logger.error("Last translator output lines:")
             for tail_line in list(line_tail)[-20:]:
@@ -911,13 +912,13 @@ class PipelineController:
         volumes.sort(key=lambda x: (self.work_dir / x['id']).stat().st_mtime, reverse=True)
         return volumes
     
-    def interactive_volume_selection(self, candidates: list = None, phase_name: str = "Phase") -> Optional[str]:
+    def interactive_volume_selection(self, candidates: list = None, phase_name: str = "Section") -> Optional[str]:
         """
         Interactive menu to select a volume.
         
         Args:
             candidates: List of volume IDs to choose from (None = all volumes with manifest)
-            phase_name: Name of the phase for display
+            phase_name: Name of the section for display
             
         Returns:
             Selected volume ID or None if cancelled
@@ -1026,7 +1027,7 @@ class PipelineController:
                 logger.info("\nSelection cancelled")
                 return None
     
-    def resolve_volume_id(self, partial_id: str, allow_interactive: bool = False, phase_name: str = "Phase") -> Optional[str]:
+    def resolve_volume_id(self, partial_id: str, allow_interactive: bool = False, phase_name: str = "Section") -> Optional[str]:
         """
         Smartly resolve a partial volume ID to the full directory name.
         Strategies:
@@ -1038,7 +1039,7 @@ class PipelineController:
         Args:
             partial_id: Partial or full volume ID
             allow_interactive: If True, offer interactive selection on ambiguity
-            phase_name: Name of the phase for display in interactive mode
+            phase_name: Name of the section for display in interactive mode
         """
         if not partial_id:
             # No ID provided - offer interactive selection
@@ -1169,7 +1170,7 @@ class PipelineController:
 
     def _check_full_ln_cache_state(self, manifest: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Validate Phase 1.55 full-LN cache readiness from manifest pipeline state.
+        Validate Section 6 full-LN cache readiness from manifest pipeline state.
 
         Returns:
             Dict with keys:
@@ -1240,14 +1241,14 @@ class PipelineController:
         manifest: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """
-        Ensure Phase 1.55 full-LN cache exists for downstream phases.
+        Ensure Section 6 full-LN cache exists for downstream sections.
 
-        Auto-runs Phase 1.55 when cache is missing/incomplete.
+        Auto-runs Section 6 when cache is missing/incomplete.
         """
         manifest_data = manifest if manifest is not None else self.load_manifest(volume_id)
         if not manifest_data:
             logger.error(f"No manifest.json found for volume: {volume_id}")
-            logger.error("  Please run Phase 1 first to extract the EPUB")
+            logger.error("  Please run Section 1 first to extract the EPUB")
             return False
 
         cache_state = self._check_full_ln_cache_state(manifest_data)
@@ -1263,21 +1264,21 @@ class PipelineController:
             f"(reason={cache_state['reason']}, "
             f"coverage={cache_state['cached']}/{cache_state['expected']})."
         )
-        logger.info("Auto-running Phase 1.55 to build/update full-LN cache...")
+        logger.info("Auto-running Section 6 to build/update full-LN cache...")
 
         if not self.run_phase1_55(volume_id):
-            logger.error(f"Phase 1.55 failed; cannot continue {for_phase}.")
+            logger.error(f"Section 6 failed; cannot continue {for_phase}.")
             return False
 
         refreshed_manifest = self.load_manifest(volume_id)
         if not refreshed_manifest:
-            logger.error("Manifest reload failed after Phase 1.55.")
+            logger.error("Manifest reload failed after Section 6.")
             return False
 
         refreshed_state = self._check_full_ln_cache_state(refreshed_manifest)
         if not refreshed_state["ready"]:
             logger.error(
-                "Full-LN cache validation still failed after Phase 1.55 "
+                "Full-LN cache validation still failed after Section 6 "
                 f"(reason={refreshed_state['reason']}, "
                 f"coverage={refreshed_state['cached']}/{refreshed_state['expected']})."
             )
@@ -1290,7 +1291,7 @@ class PipelineController:
         return True
     
     def get_pipeline_status(self, volume_id: str) -> Dict[str, str]:
-        """Get status of all pipeline phases."""
+        """Get status of all pipeline sections."""
         manifest = self.load_manifest(volume_id)
         if not manifest:
             return {}
@@ -1298,10 +1299,10 @@ class PipelineController:
         return manifest.get('pipeline_state', {})
     
     def run_phase1(self, epub_path: Path, volume_id: str, ref_validate: bool = False) -> bool:
-        """Run Phase 1: Librarian (EPUB Extraction)."""
+        """Run Section 1: Librarian (EPUB Extraction)."""
         from pipeline.config import get_target_language
 
-        self._ui_header("Phase 1 - Librarian", "Extract EPUB, chapters, assets, and manifest state")
+        self._ui_header("Section 1 - Librarian", "Extract EPUB, chapters, assets, and manifest state")
 
         # Get target language from config
         target_lang = get_target_language()
@@ -1322,21 +1323,21 @@ class PipelineController:
         
         logger.info(f"Target Language: {target_lang.upper()}")
         
-        if self._run_command(cmd, "Phase 1 (Librarian)"):
-            logger.info("✓ Phase 1 completed successfully")
+        if self._run_command(cmd, "Section 1 (Librarian)"):
+            logger.info("✓ Section 1 completed successfully")
             self._log_phase1_confirmation(volume_id)
             return True
         return False
     
     def run_phase1_5(self, volume_id: str) -> bool:
-        """Run Phase 1.5: Metadata Processor (Schema autoupdate + metadata translation).
+        """Run Section 3: Metadata Processor (Schema autoupdate + metadata translation).
         
         Runs schema autoupdate then translates metadata fields while PRESERVING v3 enhanced schema:
         - Updates: title_en, author_en, chapter titles, character_names
         - Preserves: character_profiles, localization_notes, keigo_switch configs
         """
         self._ui_header(
-            "Phase 1.5 - Metadata Processor",
+            "Section 3 - Metadata Processor",
             "Schema autoupdate + metadata translation with schema-safe preservation",
         )
         
@@ -1392,7 +1393,7 @@ class PipelineController:
                     else:
                         logger.info("User selected SEQUEL MODE (metadata inheritance).")
                         print()
-                        print("   ⚠️  IMPORTANT: Update your character database before Phase 2")
+                        print("   ⚠️  IMPORTANT: Update your character database before Section 10")
                         print(f"   • Review character_names in: {volume_id}/metadata_en.json")
                         print(f"   • Add any new characters to your reference database")
                         print(f"   • Update character relationships/profiles if needed")
@@ -1402,7 +1403,7 @@ class PipelineController:
                     # Minimal mode - auto-inherit (recommended default)
                     logger.info(f"✨ Sequel detected, enabling SEQUEL MODE")
                     logger.info(f"   Inheriting from: {parent_candidate}")
-                    logger.warning("⚠️  Remember to update character database before Phase 2")
+                    logger.warning("⚠️  Remember to update character database before Section 10")
                     ignore_sequel = False
 
         cmd = [
@@ -1417,23 +1418,480 @@ class PipelineController:
             if parent_candidate and not ignore_sequel:
                 cmd.append("--sequel-mode")
         
-        if self._run_command(cmd, "Phase 1.5 (Metadata)"):
-            logger.info("✓ Phase 1.5 completed successfully")
+        if self._run_command(cmd, "Section 3 (Metadata)"):
+            logger.info("✓ Section 3 completed successfully")
             self._log_phase1_5_confirmation(volume_id)
             return True
         return False
 
-    def run_phase1_55(self, volume_id: str) -> bool:
-        """Run Phase 1.55: Full-LN cache enrichment for rich metadata."""
+    def run_phase1_51(self, volume_id: str) -> bool:
+        """Run Section 3.1: Koji Fox Voice RAG backfill only."""
         self._ui_header(
-            "Phase 1.55 - Rich Metadata Cache",
+            "Section 3.1 - Voice RAG Backfill",
+            "Backfill character_voice_fingerprints + scene_intent_map only",
+        )
+
+        manifest = self.load_manifest(volume_id)
+        if not manifest:
+            logger.error(f"No manifest.json found for volume: {volume_id}")
+            logger.error("  Please run Section 1 and Section 3 first")
+            return False
+
+        cmd = [
+            sys.executable,
+            "-m",
+            "pipeline.metadata_processor.agent",
+            "--volume",
+            volume_id,
+            "--voice-rag-only",
+        ]
+
+        if self._run_command(cmd, "Section 3.1 (Voice RAG)"):
+            logger.info("✓ Section 3.1 completed successfully")
+            return True
+        return False
+
+    def run_phase1_52(self, volume_id: str) -> bool:
+        """Run Section 3.2: EPS backfill only."""
+        self._ui_header(
+            "Section 3.2 - EPS Backfill",
+            "Backfill chapter emotional_proximity_signals + scene_intents only",
+        )
+
+        manifest = self.load_manifest(volume_id)
+        if not manifest:
+            logger.error(f"No manifest.json found for volume: {volume_id}")
+            logger.error("  Please run Section 1 and Section 3 first")
+            return False
+
+        cmd = [
+            sys.executable,
+            "-m",
+            "pipeline.metadata_processor.agent",
+            "--volume",
+            volume_id,
+            "--eps-only",
+        ]
+
+        if self._run_command(cmd, "Section 3.2 (EPS Backfill)"):
+            logger.info("✓ Section 3.2 completed successfully")
+            return True
+        return False
+
+    @staticmethod
+    def _normalize_target_language_code(value: Optional[str]) -> str:
+        raw = str(value or "").strip().lower()
+        if raw in {"vi", "vietnamese"}:
+            return "vn"
+        if raw in {"en", "english"}:
+            return "en"
+        return raw if raw in {"en", "vn"} else "en"
+
+    @staticmethod
+    def _normalize_chapter_key_for_pronoun_shift(value: Any) -> str:
+        raw = str(value or "").strip()
+        if not raw:
+            return ""
+        match = re.search(r"chapter[_\-\s]*0*(\d+)", raw, re.IGNORECASE)
+        if not match:
+            match = re.search(r"\bch[_\-\s]*0*(\d+)\b", raw, re.IGNORECASE)
+        if not match:
+            match = re.search(r"\b0*(\d{1,3})\b", raw)
+        if not match:
+            return ""
+        return f"chapter_{int(match.group(1)):02d}"
+
+    def _load_scene_plan_index_for_pronoun_shift(
+        self,
+        volume_path: Path,
+        manifest: Dict[str, Any],
+    ) -> Dict[str, Dict[str, Any]]:
+        index: Dict[str, Dict[str, Any]] = {}
+
+        chapters = manifest.get("chapters", [])
+        if isinstance(chapters, list):
+            for chapter in chapters:
+                if not isinstance(chapter, dict):
+                    continue
+                chapter_key = self._normalize_chapter_key_for_pronoun_shift(chapter.get("id"))
+                scene_ref = chapter.get("scene_plan_file")
+                if not chapter_key or not isinstance(scene_ref, str) or not scene_ref.strip():
+                    continue
+                scene_path = Path(scene_ref)
+                if not scene_path.is_absolute():
+                    scene_path = volume_path / scene_path
+                if not scene_path.exists():
+                    continue
+                try:
+                    payload = json.loads(scene_path.read_text(encoding="utf-8"))
+                except Exception:
+                    continue
+                if not isinstance(payload, dict):
+                    continue
+                scenes = payload.get("scenes", [])
+                if not isinstance(scenes, list):
+                    scenes = []
+                index[chapter_key] = {
+                    "chapter_id": chapter_key,
+                    "scenes": [scene for scene in scenes if isinstance(scene, dict)],
+                }
+
+        plans_dir = volume_path / "PLANS"
+        if plans_dir.exists():
+            for scene_path in sorted(plans_dir.glob("*_scene_plan.json")):
+                try:
+                    payload = json.loads(scene_path.read_text(encoding="utf-8"))
+                except Exception:
+                    continue
+                if not isinstance(payload, dict):
+                    continue
+                chapter_key = self._normalize_chapter_key_for_pronoun_shift(payload.get("chapter_id") or scene_path.stem)
+                if not chapter_key or chapter_key in index:
+                    continue
+                scenes = payload.get("scenes", [])
+                if not isinstance(scenes, list):
+                    scenes = []
+                index[chapter_key] = {
+                    "chapter_id": chapter_key,
+                    "scenes": [scene for scene in scenes if isinstance(scene, dict)],
+                }
+        return index
+
+    @staticmethod
+    def _infer_scene_for_pronoun_shift(
+        chapter_key: str,
+        line_number: int,
+        scene_plan_index: Dict[str, Dict[str, Any]],
+    ) -> str:
+        plan = scene_plan_index.get(chapter_key, {})
+        scenes = plan.get("scenes", []) if isinstance(plan, dict) else []
+        if isinstance(scenes, list):
+            for scene in scenes:
+                if not isinstance(scene, dict):
+                    continue
+                start = scene.get("start_paragraph")
+                end = scene.get("end_paragraph")
+                if isinstance(start, int) and isinstance(end, int) and start <= line_number <= end:
+                    sid = str(scene.get("id") or "").strip()
+                    if sid:
+                        return sid
+        if isinstance(scenes, list):
+            for scene in scenes:
+                if isinstance(scene, dict):
+                    sid = str(scene.get("id") or "").strip()
+                    if sid:
+                        return sid
+        return f"{chapter_key.upper()}_SC01"
+
+    @staticmethod
+    def _build_pronoun_shift_directives(archetype: str, target_language: str) -> List[str]:
+        if target_language == "vn":
+            if archetype == "armor_drop":
+                return [
+                    "PRONOUN_SHIFT_DETECTED: Atashi -> Watashi (armor drop).",
+                    "VN_PRONOUN_OVERRIDE: Shift from guarded peer pronoun to softer vulnerable pronoun according to relationship matrix.",
+                    "VN_GRAMMAR_SYNC: Adjust sentence-ending particles (nhé/nha/ạ) to match the new emotional pronoun weight.",
+                ]
+            if archetype == "ego_collapse":
+                return [
+                    "PRONOUN_SHIFT_DETECTED: Ore -> Boku/Watashi (ego collapse).",
+                    "VN_PRONOUN_OVERRIDE: De-escalate dominant pronouns toward softer/politer forms in context.",
+                    "VN_GRAMMAR_SYNC: Increase hedging and respectful sentence particles for deflated emotional state.",
+                ]
+            if archetype == "aggression_spike":
+                return [
+                    "PRONOUN_SHIFT_DETECTED: Boku/Watashi -> Ore (aggression spike).",
+                    "VN_PRONOUN_OVERRIDE: Escalate pronoun stance to hostile/dominant forms when source register snaps.",
+                    "VN_GRAMMAR_SYNC: Use short direct syntax with reduced softening particles.",
+                ]
+            return [
+                "PRONOUN_SHIFT_DETECTED: JP first-person register shift.",
+                "VN_PRONOUN_OVERRIDE: Mirror the exact emotional register change using relationship-aware pronouns.",
+                "VN_GRAMMAR_SYNC: Align sentence-ending particles with the shifted pronoun stance.",
+            ]
+
+        if archetype == "armor_drop":
+            return [
+                "PRONOUN_SHIFT_DETECTED: Atashi -> Watashi (armor drop).",
+                "APPLY_ARMOR_DROP_FRAMEWORK: Reduce contractions sharply and allow passive/receptive phrasing at the shift point.",
+                "STYLE_SHIFT: Remove slang and move toward fragile formality until scene or pronoun state resets.",
+            ]
+        if archetype == "ego_collapse":
+            return [
+                "PRONOUN_SHIFT_DETECTED: Ore -> Boku/Watashi (ego collapse).",
+                "APPLY_EGO_COLLAPSE_FRAMEWORK: Increase hedging, soften verb force, and avoid blunt declaratives.",
+                "STYLE_SHIFT: Add hesitant rhythm (pauses/ellipses) to signal regression and fear.",
+            ]
+        if archetype == "aggression_spike":
+            return [
+                "PRONOUN_SHIFT_DETECTED: Boku/Watashi -> Ore (aggression spike).",
+                "APPLY_AGGRESSION_SPIKE_FRAMEWORK: Strip hedging and switch to short direct declaratives.",
+                "STYLE_SHIFT: Increase contraction density and hard-edged lexical choices for dominance snap.",
+            ]
+        if archetype == "professional_boundary_drop":
+            return [
+                "PRONOUN_SHIFT_DETECTED: Watakushi -> Watashi/Atashi (professional boundary drop).",
+                "APPLY_BOUNDARY_DROP_FRAMEWORK: Transition from formal/clinical diction to personal conversational English.",
+                "STYLE_SHIFT: Introduce emotional framing and intimacy cues immediately after the shift point.",
+            ]
+        if archetype == "tomboy_reversal":
+            return [
+                "PRONOUN_SHIFT_DETECTED: Boku -> Watashi/Atashi (tomboy reversal).",
+                "APPLY_TOMBOY_REVERSAL_FRAMEWORK: Reduce blunt slang and increase hesitant introspective syntax.",
+                "STYLE_SHIFT: Soften sentence endings and expose vulnerable emotional subtext.",
+            ]
+        return [
+            "PRONOUN_SHIFT_DETECTED: JP first-person register shift.",
+            "APPLY_PRONOUN_SHIFT_FRAMEWORK: Preserve shift via prose rhythm, contraction density, and agency changes.",
+        ]
+
+    def run_pronoun_shift_detector(self, volume_id: str, target_language: Optional[str] = None) -> bool:
+        """Run standalone deterministic JP pronoun-shift detection and persist context artifact."""
+        from pipeline.config import get_target_language
+
+        self._ui_header(
+            "Standalone JP Pronoun-Shift Detector",
+            "Deterministic chapter-level PRONOUN_SHIFT_EVENT extraction",
+        )
+
+        manifest = self.load_manifest(volume_id)
+        if not manifest:
+            logger.error(f"No manifest.json found for volume: {volume_id}")
+            logger.error("  Please run Section 1 first")
+            return False
+
+        lang = self._normalize_target_language_code(target_language or get_target_language())
+        volume_path = self.work_dir / volume_id
+        context_dir = volume_path / ".context"
+        context_dir.mkdir(parents=True, exist_ok=True)
+
+        jp_pronoun_tokens = {
+            "atashi": ("あたし", "アタシ"),
+            "watashi": ("わたし", "ワタシ", "私"),
+            "watakushi": ("わたくし", "ワタクシ"),
+            "ore": ("俺", "おれ", "オレ"),
+            "boku": ("僕", "ぼく", "ボク"),
+        }
+        archetype_map = {
+            ("atashi", "watashi"): "armor_drop",
+            ("ore", "boku"): "ego_collapse",
+            ("ore", "watashi"): "ego_collapse",
+            ("boku", "ore"): "aggression_spike",
+            ("watashi", "ore"): "aggression_spike",
+            ("watakushi", "watashi"): "professional_boundary_drop",
+            ("watakushi", "atashi"): "professional_boundary_drop",
+            ("boku", "watashi"): "tomboy_reversal",
+            ("boku", "atashi"): "tomboy_reversal",
+        }
+        archetype_label = {
+            "armor_drop": "Armor Drop",
+            "ego_collapse": "Ego Collapse / Regression",
+            "aggression_spike": "Aggression Spike",
+            "professional_boundary_drop": "Professional Boundary Drop",
+            "tomboy_reversal": "Tomboy Reversal",
+            "pronoun_register_shift": "Pronoun Register Shift",
+        }
+
+        chapter_map: Dict[str, List[str]] = {}
+        chapters = manifest.get("chapters", [])
+        if isinstance(chapters, list):
+            for chapter in chapters:
+                if not isinstance(chapter, dict):
+                    continue
+                chapter_key = self._normalize_chapter_key_for_pronoun_shift(chapter.get("id", ""))
+                jp_file = chapter.get("jp_file") or chapter.get("source_file")
+                if not chapter_key or not jp_file:
+                    continue
+                source_path = volume_path / "JP" / str(jp_file)
+                if not source_path.exists():
+                    continue
+                try:
+                    chapter_map[chapter_key] = source_path.read_text(encoding="utf-8").splitlines()
+                except Exception:
+                    continue
+
+        scene_plan_index = self._load_scene_plan_index_for_pronoun_shift(volume_path, manifest)
+        events_by_chapter: Dict[str, List[Dict[str, Any]]] = {}
+
+        for chapter_key, lines in chapter_map.items():
+            if not isinstance(lines, list) or not lines:
+                continue
+
+            occurrences: List[Dict[str, Any]] = []
+            for line_number, raw_line in enumerate(lines, start=1):
+                line = str(raw_line or "")
+                if not line.strip():
+                    continue
+                for family, tokens in jp_pronoun_tokens.items():
+                    for token in tokens:
+                        start = 0
+                        while True:
+                            idx = line.find(token, start)
+                            if idx < 0:
+                                break
+                            occurrences.append(
+                                {
+                                    "family": family,
+                                    "token": token,
+                                    "line": line_number,
+                                    "char_index": idx,
+                                    "line_excerpt": line.strip()[:180],
+                                }
+                            )
+                            start = idx + len(token)
+
+            occurrences.sort(key=lambda item: (int(item.get("line", 0)), int(item.get("char_index", 0))))
+            if len(occurrences) < 4:
+                continue
+
+            family_counts: Dict[str, int] = {}
+            for item in occurrences:
+                family = str(item.get("family") or "").strip()
+                if family:
+                    family_counts[family] = family_counts.get(family, 0) + 1
+            significant = {k: v for k, v in family_counts.items() if v >= 2}
+            if len(significant) < 2:
+                continue
+
+            baseline = str(occurrences[0].get("family") or "").strip()
+            if not baseline:
+                continue
+            baseline_seen = 0
+            transition_item: Optional[Dict[str, Any]] = None
+            for item in occurrences:
+                family = str(item.get("family") or "").strip()
+                if not family:
+                    continue
+                if family == baseline:
+                    baseline_seen += 1
+                    continue
+                if baseline_seen < 2:
+                    continue
+                if family_counts.get(family, 0) < 2:
+                    continue
+                transition_item = item
+                break
+
+            if not transition_item:
+                continue
+
+            shift_to = str(transition_item.get("family") or "").strip()
+            if not shift_to:
+                continue
+
+            archetype = archetype_map.get((baseline, shift_to), "pronoun_register_shift")
+            line_hint = int(transition_item.get("line") or 0)
+            scene_id = self._infer_scene_for_pronoun_shift(chapter_key, line_hint, scene_plan_index)
+            confidence = 0.58 + min(0.34, (family_counts.get(baseline, 0) + family_counts.get(shift_to, 0)) / 24.0)
+            if archetype != "pronoun_register_shift":
+                confidence = min(0.95, confidence + 0.05)
+
+            event = {
+                "event_id": f"PRONOUN_SHIFT_EVENT_{chapter_key.upper()}_01",
+                "chapter_id": chapter_key,
+                "scene_id": scene_id,
+                "shift_from": baseline,
+                "shift_to": shift_to,
+                "shift_label": archetype_label.get(archetype, "Pronoun Register Shift"),
+                "shift_archetype": archetype,
+                "detected_at_line": line_hint,
+                "evidence_excerpt": str(transition_item.get("line_excerpt") or ""),
+                "confidence": round(confidence, 3),
+                "active_directives": self._build_pronoun_shift_directives(archetype, lang),
+            }
+            events_by_chapter.setdefault(chapter_key, []).append(event)
+
+        active_directives_by_chapter: Dict[str, List[str]] = {}
+        for chapter_key, events in events_by_chapter.items():
+            directives: List[str] = []
+            for event in events:
+                for directive in event.get("active_directives", []):
+                    text = str(directive or "").strip()
+                    if text and text not in directives:
+                        directives.append(text)
+            active_directives_by_chapter[chapter_key] = directives
+
+        payload = {
+            "volume_id": volume_id,
+            "target_language": lang,
+            "generated_at": datetime.now().isoformat(),
+            "processor_version": "1.0",
+            "events_by_chapter": events_by_chapter,
+            "active_directives_by_chapter": active_directives_by_chapter,
+            "summary": {
+                "event_chapters": len(events_by_chapter),
+                "event_count": sum(len(v) for v in events_by_chapter.values()),
+            },
+        }
+
+        artifact_path = context_dir / f"pronoun_shift_events_{lang}.json"
+        artifact_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        metadata_key = f"metadata_{lang}"
+        metadata_block = manifest.get(metadata_key, {})
+        if not isinstance(metadata_block, dict):
+            metadata_block = {}
+
+        emotional = metadata_block.get("emotional_pronoun_shifts", {})
+        if not isinstance(emotional, dict):
+            emotional = {}
+        emotional["events_by_chapter"] = events_by_chapter
+        emotional["summary"] = payload["summary"]
+        metadata_block["emotional_pronoun_shifts"] = emotional
+
+        chapters_block = metadata_block.get("chapters", {})
+        if isinstance(chapters_block, dict):
+            for chapter_key, events in events_by_chapter.items():
+                chapter_payload = chapters_block.get(chapter_key)
+                if not isinstance(chapter_payload, dict):
+                    continue
+                chapter_payload["pronoun_shift_events"] = events
+                directives = chapter_payload.get("active_directives", [])
+                if not isinstance(directives, list):
+                    directives = []
+                seen = {str(item).strip() for item in directives if str(item).strip()}
+                for event in events:
+                    for directive in event.get("active_directives", []):
+                        text = str(directive or "").strip()
+                        if text and text not in seen:
+                            directives.append(text)
+                            seen.add(text)
+                chapter_payload["active_directives"] = directives
+
+        manifest[metadata_key] = metadata_block
+        manifest.setdefault("pipeline_state", {})["pronoun_shift_detector"] = {
+            "status": "completed",
+            "timestamp": datetime.now().isoformat(),
+            "target_language": lang,
+            "event_chapters": payload["summary"]["event_chapters"],
+            "event_count": payload["summary"]["event_count"],
+            "artifact": str(artifact_path.relative_to(volume_path)),
+        }
+
+        manifest_path = volume_path / "manifest.json"
+        manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
+        metadata_file = volume_path / f"metadata_{lang}.json"
+        metadata_file.write_text(json.dumps(metadata_block, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        logger.info(
+            "✓ Standalone pronoun-shift detection completed: "
+            f"chapters={payload['summary']['event_chapters']}, "
+            f"events={payload['summary']['event_count']}"
+        )
+        logger.info(f"  Artifact: {artifact_path}")
+        return True
+
+    def run_phase1_55(self, volume_id: str) -> bool:
+        """Run Section 6: Full-LN cache enrichment for rich metadata."""
+        self._ui_header(
+            "Section 6 - Rich Metadata Cache",
             "Cache full JP LN + Gemini 2.5 Flash rich-metadata enrichment",
         )
 
         manifest = self.load_manifest(volume_id)
         if not manifest:
             logger.error(f"No manifest.json found for volume: {volume_id}")
-            logger.error("  Please run Phase 1 and Phase 1.5 first")
+            logger.error("  Please run Section 1 and Section 3 first")
             return False
 
         cmd = [
@@ -1441,8 +1899,8 @@ class PipelineController:
             "--volume", volume_id
         ]
 
-        if self._run_command(cmd, "Phase 1.55 (Rich Metadata Cache)"):
-            logger.info("✓ Phase 1.55 completed successfully")
+        if self._run_command(cmd, "Section 6 (Rich Metadata Cache)"):
+            logger.info("✓ Section 6 completed successfully")
             self._log_phase1_55_confirmation(volume_id)
             return True
         return False
@@ -1451,18 +1909,18 @@ class PipelineController:
         """
         Build/verify full-LN cache path without applying rich metadata patches.
 
-        Used by standalone Phase 2 when user skips Phase 1.55 overwrite but still
+        Used by standalone Section 10 when user skips Section 6 overwrite but still
         wants full-LN cache preparation.
         """
         self._ui_header(
-            "Phase 1.55 - Cache-Only Prep",
+            "Section 6 - Cache-Only Prep",
             "Build full JP LN cache path without metadata overwrite",
         )
 
         manifest = self.load_manifest(volume_id)
         if not manifest:
             logger.error(f"No manifest.json found for volume: {volume_id}")
-            logger.error("  Please run Phase 1 and Phase 1.5 first")
+            logger.error("  Please run Section 1 and Section 3 first")
             return False
 
         cmd = [
@@ -1471,25 +1929,30 @@ class PipelineController:
             "--cache-only",
         ]
 
-        if self._run_command(cmd, "Phase 1.55 (Cache-Only)"):
-            logger.info("✓ Phase 1.55 cache-only prep completed successfully")
+        if self._run_command(cmd, "Section 6 (Cache-Only)"):
+            logger.info("✓ Section 6 cache-only prep completed successfully")
             self._log_phase1_55_confirmation(volume_id)
             return True
         return False
     
-    # ── Phase 1.56 ────────────────────────────────────────────────────────────
+    # ── Section 7 ────────────────────────────────────────────────────────────
 
-    def run_phase1_56(self, volume_id: str, force: bool = False) -> bool:
-        """Run Phase 1.56: Translator's Guidance Brief (Anthropic batch pre-analysis)."""
+    def run_phase1_56(
+        self,
+        volume_id: str,
+        force: bool = False,
+        enable_prequel_brief_injection: Optional[bool] = None,
+    ) -> bool:
+        """Run Section 7: Translator's Guidance Brief (Anthropic batch pre-analysis)."""
         self._ui_header(
-            "Phase 1.56 - Translator's Guidance Brief",
+            "Section 7 - Translator's Guidance Brief",
             "Full-corpus Gemini Flash pass → single reference doc injected into every batch prompt",
         )
 
         manifest = self.load_manifest(volume_id)
         if not manifest:
             logger.error(f"No manifest.json found for volume: {volume_id}")
-            logger.error("  Please run Phase 1 and Phase 1.5 first")
+            logger.error("  Please run Section 1 and Section 3 first")
             return False
 
         cmd = [
@@ -1498,9 +1961,11 @@ class PipelineController:
         ]
         if force:
             cmd.append("--force")
+        if enable_prequel_brief_injection is True:
+            cmd.append("--enable-prequel-brief-injection")
 
-        if self._run_command(cmd, "Phase 1.56 (Translation Brief)"):
-            logger.info("✓ Phase 1.56 completed successfully")
+        if self._run_command(cmd, "Section 7 (Translation Brief)"):
+            logger.info("✓ Section 7 completed successfully")
             return True
         return False
 
@@ -1512,23 +1977,24 @@ class PipelineController:
         force: bool = False,
         skip_multimodal: bool = False,
         force_brief: bool = False,
+        enable_prequel_brief_injection: Optional[bool] = None,
         chapters: Optional[list] = None,
     ) -> bool:
         """
         Option 1: Full Anthropic Batch Pipeline.
 
-        Runs all preparation phases in sequence, then submits the entire
+        Runs all preparation sections in sequence, then submits the entire
         volume to the Anthropic Batch API in a single job.
 
-          Phase 1.5  — Metadata extraction & character roster
-          Phase 1.55 — Gemini full-LN rich metadata enrichment
-          Phase 1.56 — Translator's Guidance Brief (full-corpus pre-analysis)
-          Phase 1.6  — Multimodal visual analysis (skippable)
-          Phase 1.7  — Stage 1 Scene Planner (narrative scaffold)
-          Phase 2    — Anthropic Batch API translation (50% cost, ~1h latency)
+          Section 3  — Metadata extraction & character roster
+          Section 6 — Gemini full-LN rich metadata enrichment
+          Section 7 — Translator's Guidance Brief (full-corpus pre-analysis)
+          Section 8  — Multimodal visual analysis (skippable)
+          Section 9  — Stage 1 Scene Planner (narrative scaffold)
+          Section 10    — Anthropic Batch API translation (50% cost, ~1h latency)
 
         Requires:
-          - Phase 1 (EPUB extraction) already completed.
+          - Section 1 (EPUB extraction) already completed.
           - translator_provider: anthropic in config.yaml.
         """
         from pipeline.translator.config import get_translator_provider
@@ -1541,39 +2007,43 @@ class PipelineController:
 
         self._ui_header(
             "Full Anthropic Batch Pipeline",
-            "Phase 1.5 → 1.55 → 1.56 → 1.6 → 1.7 → Phase 2 (Batch API)",
+            "Section 3 → 6 → 7 → 8 → 9 → Section 10 (Batch API)",
         )
 
-        # ── Phase 1.5: Metadata ────────────────────────────────────────
-        logger.info("[BATCH-PIPELINE] Step 1/6 — Phase 1.5: Metadata Processor")
+        # ── Section 3: Metadata ────────────────────────────────────────
+        logger.info("[BATCH-PIPELINE] Step 1/6 — Section 3: Metadata Processor")
         if not self.run_phase1_5(volume_id):
-            logger.error("[BATCH-PIPELINE] Phase 1.5 failed. Aborting.")
+            logger.error("[BATCH-PIPELINE] Section 3 failed. Aborting.")
             return False
 
-        # ── Phase 1.55: Rich Metadata Cache ───────────────────────────
-        # Generates Gemini CachedContent + rich JSON.  Phase 2 will purge the
+        # ── Section 6: Rich Metadata Cache ───────────────────────────
+        # Generates Gemini CachedContent + rich JSON.  Section 10 will purge the
         # Gemini cache resource (Anthropic path) but the metadata JSON is kept.
-        logger.info("[BATCH-PIPELINE] Step 2/6 — Phase 1.55: Rich Metadata Cache")
+        logger.info("[BATCH-PIPELINE] Step 2/6 — Section 6: Rich Metadata Cache")
         if not self.run_phase1_55(volume_id):
             logger.warning(
-                "[BATCH-PIPELINE] Phase 1.55 failed or skipped — continuing. "
+                "[BATCH-PIPELINE] Section 6 failed or skipped — continuing. "
                 "(Gemini cache is not used by Anthropic path; metadata JSON may be incomplete.)"
             )
 
-        # ── Phase 1.56: Translator's Guidance Brief ───────────────────
-        logger.info("[BATCH-PIPELINE] Step 3/6 — Phase 1.56: Translator's Guidance Brief")
-        if not self.run_phase1_56(volume_id, force=force_brief):
+        # ── Section 7: Translator's Guidance Brief ───────────────────
+        logger.info("[BATCH-PIPELINE] Step 3/6 — Section 7: Translator's Guidance Brief")
+        if not self.run_phase1_56(
+            volume_id,
+            force=force_brief,
+            enable_prequel_brief_injection=enable_prequel_brief_injection,
+        ):
             logger.warning(
-                "[BATCH-PIPELINE] Phase 1.56 brief generation failed — continuing. "
+                "[BATCH-PIPELINE] Section 7 brief generation failed — continuing. "
                 "Batch will proceed without the volume-wide guidance brief."
             )
 
-        # ── Phase 1.6: Multimodal Visual Analysis ─────────────────────
+        # ── Section 8: Multimodal Visual Analysis ─────────────────────
         if skip_multimodal:
-            logger.info("[BATCH-PIPELINE] Step 4/6 — Phase 1.6: Skipped (--skip-multimodal)")
+            logger.info("[BATCH-PIPELINE] Step 4/6 — Section 8: Skipped (--skip-multimodal)")
             enable_multimodal = False
         else:
-            logger.info("[BATCH-PIPELINE] Step 4/6 — Phase 1.6: Multimodal Visual Analysis")
+            logger.info("[BATCH-PIPELINE] Step 4/6 — Section 8: Multimodal Visual Analysis")
             enable_multimodal = self.run_phase1_6(
                 volume_id,
                 standalone=False,
@@ -1581,18 +2051,18 @@ class PipelineController:
             )
             if not enable_multimodal:
                 logger.warning(
-                    "[BATCH-PIPELINE] Phase 1.6 failed or skipped — "
+                    "[BATCH-PIPELINE] Section 8 failed or skipped — "
                     "continuing without visual context."
                 )
 
-        # ── Phase 1.7: Scene Planner ───────────────────────────────────
-        logger.info("[BATCH-PIPELINE] Step 5/6 — Phase 1.7: Scene Planner")
+        # ── Section 9: Scene Planner ───────────────────────────────────
+        logger.info("[BATCH-PIPELINE] Step 5/6 — Section 9: Scene Planner")
         if not self.run_phase1_7(volume_id):
-            logger.error("[BATCH-PIPELINE] Phase 1.7 failed. Aborting.")
+            logger.error("[BATCH-PIPELINE] Section 9 failed. Aborting.")
             return False
 
-        # ── Phase 2: Anthropic Batch Translation ──────────────────────
-        logger.info("[BATCH-PIPELINE] Step 6/6 — Phase 2: Anthropic Batch Translation")
+        # ── Section 10: Anthropic Batch Translation ──────────────────────
+        logger.info("[BATCH-PIPELINE] Step 6/6 — Section 10: Anthropic Batch Translation")
         success = self.run_phase2(
             volume_id,
             chapters=chapters,
@@ -1607,7 +2077,7 @@ class PipelineController:
             logger.info("")
             logger.info("✓ Full Anthropic Batch Pipeline completed successfully.")
         else:
-            logger.error("✗ Phase 2 batch translation failed.")
+            logger.error("✗ Section 10 batch translation failed.")
 
         return success
 
@@ -1732,10 +2202,10 @@ class PipelineController:
         force_override: bool = False,
     ) -> bool:
         """
-        Run Phase 1.6: Multimodal Processor (Visual Asset Pre-bake).
+        Run Section 8: Multimodal Processor (Visual Asset Pre-bake).
         
         Analyzes illustrations using Gemini 3 Pro Vision and caches
-        Art Director's Notes for use during Phase 2 translation.
+        Art Director's Notes for use during Section 10 translation.
         
         Args:
             volume_id: Volume identifier
@@ -1744,13 +2214,13 @@ class PipelineController:
         Returns:
             True if successful, False otherwise
         """
-        self._ui_header("Phase 1.6 - Art Director (Multimodal)", "Gemini 3 Pro Vision -> visual_cache.json")
+        self._ui_header("Section 8 - Art Director (Multimodal)", "Gemini 3 Pro Vision -> visual_cache.json")
 
         # Verify manifest exists
         manifest = self.load_manifest(volume_id)
         if not manifest:
             logger.error(f"No manifest.json found for volume: {volume_id}")
-            logger.error("  Please run Phase 1 first to extract the EPUB")
+            logger.error("  Please run Section 1 first to extract the EPUB")
             return False
 
         use_full_ln_cache = self._resolve_full_ln_cache_mode(
@@ -1758,14 +2228,14 @@ class PipelineController:
             full_ln_cache_mode=full_ln_cache_mode,
             volume_id=volume_id,
             manifest=manifest,
-            phase_label="Phase 1.6 (Multimodal)",
+            phase_label="Section 8 (Multimodal)",
         )
         if use_full_ln_cache:
-            if not self.ensure_full_ln_cache(volume_id, for_phase="Phase 1.6 (Multimodal)", manifest=manifest):
+            if not self.ensure_full_ln_cache(volume_id, for_phase="Section 8 (Multimodal)", manifest=manifest):
                 return False
             manifest = self.load_manifest(volume_id) or manifest
         else:
-            logger.warning("Skipping full-LN cache preparation for Phase 1.6 by user request.")
+            logger.warning("Skipping full-LN cache preparation for Section 8 by user request.")
 
         logger.info(f"Volume: {manifest.get('metadata', {}).get('title', volume_id)}")
 
@@ -1786,7 +2256,7 @@ class PipelineController:
             if not integrity.passed:
                 logger.error("")
                 logger.error("ILLUSTRATION INTEGRITY CHECK FAILED")
-                logger.error("The following issues must be resolved before Phase 1.6 can run:")
+                logger.error("The following issues must be resolved before Section 8 can run:")
                 for err in integrity.errors:
                     logger.error(f"  ✗ {err}")
                 logger.error("")
@@ -1802,11 +2272,11 @@ class PipelineController:
             stats = processor.process_volume()
 
             if stats.get("error"):
-                logger.error(f"Phase 1.6 failed: {stats['error']}")
+                logger.error(f"Section 8 failed: {stats['error']}")
                 return False
 
             logger.info("")
-            logger.info("Phase 1.6 Summary:")
+            logger.info("Section 8 Summary:")
             logger.info(f"  Total illustrations: {stats.get('total', 0)}")
             logger.info(f"  Already cached:      {stats.get('cached', 0)}")
             logger.info(f"  Newly analyzed:      {stats.get('generated', 0)}")
@@ -1816,7 +2286,7 @@ class PipelineController:
             
             if standalone:
                 logger.info("")
-                logger.info("Next: Run Phase 2 to translate with visual context")
+                logger.info("Next: Run Section 10 to translate with visual context")
                 logger.info(f"  mtl.py phase2 {volume_id} --enable-multimodal")
             
             return True
@@ -1826,7 +2296,7 @@ class PipelineController:
             logger.error("Ensure modules/multimodal/ package is installed")
             return False
         except Exception as e:
-            logger.error(f"Phase 1.6 failed: {e}")
+            logger.error(f"Section 8 failed: {e}")
             import traceback
             traceback.print_exc()
             return False
@@ -1839,16 +2309,16 @@ class PipelineController:
         temperature: float = 0.3,
         max_output_tokens: int = 65535,
     ) -> bool:
-        """Run Phase 1.7: Stage 1 Scene Planner (v1.6 architecture)."""
+        """Run Section 9: Stage 1 Scene Planner (v1.6 architecture)."""
         self._ui_header(
-            "Phase 1.7 - Stage 1 Scene Planner",
+            "Section 9 - Stage 1 Scene Planner",
             "Narrative beat + character rhythm scaffold before translation",
         )
 
         manifest = self.load_manifest(volume_id)
         if not manifest:
             logger.error(f"No manifest.json found for volume: {volume_id}")
-            logger.error("  Please run Phase 1 first to extract the EPUB")
+            logger.error("  Please run Section 1 first to extract the EPUB")
             return False
 
         cmd = [
@@ -1862,37 +2332,37 @@ class PipelineController:
         if force:
             cmd.append("--force")
 
-        if self._run_command(cmd, "Phase 1.7 (Scene Planner)"):
+        if self._run_command(cmd, "Section 9 (Scene Planner)"):
             latest_manifest = self.load_manifest(volume_id) or {}
             planner_state = latest_manifest.get("pipeline_state", {}).get("scene_planner", {})
             if planner_state.get("status") == "partial":
-                logger.warning("⚠️  Phase 1.7 completed with partial failures (continuing)")
+                logger.warning("⚠️  Section 9 completed with partial failures (continuing)")
             else:
-                logger.info("✓ Phase 1.7 completed successfully")
+                logger.info("✓ Section 9 completed successfully")
             self._log_phase1_7_confirmation(volume_id)
             return True
         return False
 
     def run_phase1_7_coprocessor(self, volume_id: str) -> bool:
         """
-        Run Phase 1.7 Co-Processor (standalone context-offload pack refresh).
+        Run Section 9 Co-Processor (standalone context-offload pack refresh).
 
         This is a standalone menu command that executes the four co-processors
-        via Phase 1.55 cache-only mode:
+        via Section 6 cache-only mode:
           - character_registry.json
           - cultural_glossary.json
           - timeline_map.json
           - idiom_transcreation_cache.json
         """
         self._ui_header(
-            "Phase 1.7 - Co-Processor Pack",
+            "Section 9 - Co-Processor Pack",
             "Standalone context offload refresh (cache-only, no metadata overwrite)",
         )
 
         manifest = self.load_manifest(volume_id)
         if not manifest:
             logger.error(f"No manifest.json found for volume: {volume_id}")
-            logger.error("  Please run Phase 1 and Phase 1.5 first")
+            logger.error("  Please run Section 1 and Section 3 first")
             return False
 
         cmd = [
@@ -1901,8 +2371,8 @@ class PipelineController:
             "--cache-only",
         ]
 
-        if self._run_command(cmd, "Phase 1.7 Co-Processor (Cache-Only)"):
-            logger.info("✓ Phase 1.7 Co-Processor completed successfully")
+        if self._run_command(cmd, "Section 9 Co-Processor (Cache-Only)"):
+            logger.info("✓ Section 9 Co-Processor completed successfully")
             self._log_phase1_55_confirmation(volume_id)
             return True
         return False
@@ -1922,12 +2392,12 @@ class PipelineController:
         manifest: Dict[str, Any],
     ) -> str:
         """
-        Resolve Phase 1.55 behavior for Phase 2 runs.
+        Resolve Section 6 behavior for Section 10 runs.
 
         Modes:
-          - auto: run Phase 1.55 only if cache is missing/incomplete (legacy behavior)
-          - skip: skip rich-metadata overwrite, but run cache-only prep before Phase 2
-          - overwrite: always run Phase 1.55 before Phase 2
+          - auto: run Section 6 only if cache is missing/incomplete (legacy behavior)
+          - skip: skip rich-metadata overwrite, but run cache-only prep before Section 10
+          - overwrite: always run Section 6 before Section 10
           - ask: standalone-only interactive prompt (skip vs overwrite)
         """
         normalized_mode = (phase155_mode or "auto").strip().lower()
@@ -1944,15 +2414,15 @@ class PipelineController:
 
         if not sys.stdin.isatty():
             logger.info(
-                "Phase 2 standalone: non-interactive shell detected; "
-                "using auto Phase 1.55 policy."
+                "Section 10 standalone: non-interactive shell detected; "
+                "using auto Section 6 policy."
             )
             return "auto"
 
         cache_state = self._check_full_ln_cache_state(manifest)
         title = manifest.get("metadata", {}).get("title", volume_id)
         print("")
-        print("Phase 2 Standalone - Phase 1.55 Gate")
+        print("Section 10 Standalone - Section 6 Gate")
         print(f"  Volume: {title}")
         print(
             "  Current cache state: "
@@ -1962,7 +2432,7 @@ class PipelineController:
         print("")
         print("Options:")
         print("  [1] Skip metadata overwrite (run cache-only prep)")
-        print("  [2] Continue with Phase 1.55 (overwrite/update rich metadata)")
+        print("  [2] Continue with Section 6 (overwrite/update rich metadata)")
         print("")
 
         while True:
@@ -1980,9 +2450,9 @@ class PipelineController:
                    full_ln_cache_mode: str = "ask",
                    standalone: bool = False,
                    batch: bool = False) -> bool:
-        """Run Phase 2: Translator (Gemini MT / Anthropic Batch)."""
+        """Run Section 10: Translator (Gemini MT / Anthropic Batch)."""
         self._ui_header(
-            "Phase 2 - Translator",
+            "Section 10 - Translator",
             "Advanced stack: Bible continuity + Tiered RAG + Vector Search + Multimodal (optional)"
         )
         runtime_lines = self._phase2_runtime_profile_lines(enable_multimodal)
@@ -1994,11 +2464,11 @@ class PipelineController:
         manifest = self.load_manifest(volume_id)
         if not manifest:
             logger.error(f"✗ No manifest.json found for volume: {volume_id}")
-            logger.error("  Please run Phase 1 first to extract the EPUB")
+            logger.error("  Please run Section 1 first to extract the EPUB")
             return False
 
         # ── Anthropic provider: bypass Gemini-exclusive cache infrastructure ──
-        # Phase 1.55 (rich_metadata_cache) runs Gemini 2.5 Flash to create a
+        # Section 6 (rich_metadata_cache) runs Gemini 2.5 Flash to create a
         # named CachedContent resource on Google's servers. This resource is
         # meaningless when the translator is Anthropic — skip it entirely and
         # purge any stale Gemini cache state so the gate never blocks startup.
@@ -2017,7 +2487,7 @@ class PipelineController:
                     "[ANTHROPIC] No Gemini full-LN cache state found — nothing to purge."
                 )
             logger.info(
-                "[ANTHROPIC] Skipping Phase 1.55 and Full-LN Cache Gate "
+                "[ANTHROPIC] Skipping Section 6 and Full-LN Cache Gate "
                 "(Gemini-exclusive; Anthropic builds its own inline cache at translation time)."
             )
             use_full_ln_cache = False
@@ -2027,7 +2497,7 @@ class PipelineController:
                 full_ln_cache_mode=full_ln_cache_mode,
                 volume_id=volume_id,
                 manifest=manifest,
-                phase_label="Phase 2 (Translator)",
+                phase_label="Section 10 (Translator)",
             )
         # ── end Anthropic bypass ──────────────────────────────────────────────
 
@@ -2040,11 +2510,11 @@ class PipelineController:
             )
             if resolved_phase155_mode == "overwrite":
                 logger.info(
-                    "Phase 2 standalone: running Phase 1.55 before translation "
+                    "Section 10 standalone: running Section 6 before translation "
                     "(overwrite/update requested)."
                 )
                 if not self.run_phase1_55(volume_id):
-                    logger.error("Phase 1.55 failed; cannot continue Phase 2.")
+                    logger.error("Section 6 failed; cannot continue Section 10.")
                     return False
                 manifest = self.load_manifest(volume_id) or manifest
                 refreshed_state = self._check_full_ln_cache_state(manifest)
@@ -2055,18 +2525,18 @@ class PipelineController:
                 )
             elif resolved_phase155_mode == "skip":
                 logger.info(
-                    "Skipping Phase 1.55 — translator will build the full-LN cache directly."
+                    "Skipping Section 6 — translator will build the full-LN cache directly."
                 )
             else:
                 if not self.ensure_full_ln_cache(
                     volume_id,
-                    for_phase="Phase 2 (Translator)",
+                    for_phase="Section 10 (Translator)",
                     manifest=manifest,
                 ):
                     return False
                 manifest = self.load_manifest(volume_id) or manifest
         else:
-            logger.warning("Skipping full-LN cache preparation for Phase 2 by user request.")
+            logger.warning("Skipping full-LN cache preparation for Section 10 by user request.")
             if phase155_mode and str(phase155_mode).lower() != "ask":
                 logger.info("Ignoring --phase1-55-mode because full-LN cache mode is off.")
 
@@ -2089,17 +2559,17 @@ class PipelineController:
                 if str(c.get("id", "")).strip() in target_ids
             ]
 
-        # Standalone Phase 2 should self-heal Stage 1.7 prerequisites.
-        # Full run already executes 1.7 explicitly before Phase 2.
+        # Standalone Section 10 should self-heal Stage 1.7 prerequisites.
+        # Full run already executes 1.7 explicitly before Section 10.
         if standalone and target_chapters:
             missing_plan_ids = self._missing_scene_plan_chapter_ids(volume_id, target_chapters)
             if missing_plan_ids:
                 logger.info(
-                    "Phase 2 standalone: Stage 1.7 plans missing for "
+                    "Section 10 standalone: Stage 1.7 plans missing for "
                     f"{len(missing_plan_ids)} chapter(s); auto-running planner."
                 )
                 if not self.run_phase1_7(volume_id, chapters=missing_plan_ids):
-                    logger.error("Phase 1.7 auto-run failed; cannot continue Phase 2.")
+                    logger.error("Section 9 auto-run failed; cannot continue Section 10.")
                     return False
 
                 # Reload manifest to pick up newly written scene_plan_file paths.
@@ -2113,7 +2583,7 @@ class PipelineController:
                         if str(c.get("id", "")).strip() in target_ids
                     ]
             else:
-                logger.info("Phase 2 standalone: Stage 1.7 plans already available.")
+                logger.info("Section 10 standalone: Stage 1.7 plans already available.")
 
         expected_total = len(target_chapters) if target_chapters else 1
         
@@ -2142,7 +2612,7 @@ class PipelineController:
             logger.info("[ANTHROPIC] Batch API enabled — chapters will be submitted as a single batch job (50% cost, ~1h latency).")
 
         if self._run_phase2_command_with_progress(cmd, expected_total=expected_total):
-            logger.info("✓ Phase 2 completed successfully")
+            logger.info("✓ Section 10 completed successfully")
             
             # Run CJK validation automatically after translation
             self._validate_cjk_leaks(volume_id)
@@ -2165,28 +2635,28 @@ class PipelineController:
                 total_issues = sum(len(issues) for issues in results.values())
                 logger.warning(f"⚠ Found {total_issues} CJK character leak(s)")
                 logger.warning("  Run 'python scripts/cjk_validator.py --scan-volume <volume_id>' for detailed report")
-                logger.warning("  These should be fixed in Phase 3 (Critics)")
+                logger.warning("  These should be fixed in Section 11 (Critics)")
         except Exception as e:
             logger.warning(f"CJK validation failed: {e}")
             logger.warning("Continuing anyway...")
     
     def run_phase3_instructions(self, volume_id: str) -> None:
-        """Display Phase 3 instructions (Manual/Agentic Workflow)."""
+        """Display Section 11 instructions (Manual/Agentic Workflow)."""
         from pipeline.config import get_target_language
         
         target_lang = get_target_language()
         lang_dir = target_lang.upper()
         
-        self._ui_header("Phase 3 - Critics", "Audit, fix, verify, and approve for build")
+        self._ui_header("Section 11 - Critics", "Audit, fix, verify, and approve for build")
         logger.info("")
-        logger.info("Phase 3 uses an AGENTIC WORKFLOW with Gemini CLI.")
+        logger.info("Section 11 uses an AGENTIC WORKFLOW with Gemini CLI.")
         logger.info("Required Tool: AUDIT_AGENT.md (Agent Core Definition)")
         logger.info("")
         logger.info("WORKFLOW:")
         logger.info("  0. CJK Character Validation (Automated)")
         logger.info(f"     → Command: python scripts/cjk_validator.py --scan-volume {volume_id}")
         logger.info("     → Detects untranslated Chinese/Japanese/Korean characters")
-        logger.info("     → Auto-run after Phase 2, manual check recommended")
+        logger.info("     → Auto-run after Section 10, manual check recommended")
         logger.info("")
         logger.info("  1. Translation Audit (Module 1)")
         logger.info(f"     → Command: gemini -s AUDIT_AGENT.md 'Audit WORK/{volume_id}/{lang_dir}/CHAPTER_XX.md'")
@@ -2222,14 +2692,14 @@ class PipelineController:
         logger.info("")
         logger.info("  3. Manual Integration")
         logger.info("     → Copy Web Gemini output to EN/CHAPTER_XX.md")
-        logger.info("     → Re-run Phase 3 audit on the manual translation")
+        logger.info("     → Re-run Section 11 audit on the manual translation")
         logger.info("")
-        logger.info("When Phase 3 is complete, proceed to Phase 4.")
+        logger.info("When Section 11 review is complete, proceed to Section 12.")
         logger.info("="*60)
     
     def run_phase4(self, volume_id: str, output_name: Optional[str] = None) -> bool:
-        """Run Phase 4: Builder (EPUB Packaging)."""
-        self._ui_header("Phase 4 - Builder", "Package translated resources into EPUB output")
+        """Run Section 12: Builder (EPUB Packaging)."""
+        self._ui_header("Section 12 - Builder", "Package translated resources into EPUB output")
         
         cmd = [
             sys.executable, "-m", "pipeline.builder.agent",
@@ -2239,20 +2709,20 @@ class PipelineController:
         if output_name:
             cmd.extend(["--output", output_name])
         
-        if self._run_command(cmd, "Phase 4 (Builder)"):
-            logger.info("✓ Phase 4 completed successfully")
+        if self._run_command(cmd, "Section 12 (Builder)"):
+            logger.info("✓ Section 12 completed successfully")
             return True
         return False
     
     def run_full_pipeline(self, epub_path: Path, volume_id: Optional[str] = None,
                           skip_multimodal: bool = False) -> bool:
         """
-        Run the complete pipeline (Phases 1, 1.5, 1.55, 1.6, 1.7, 2, and 4).
+        Run the complete pipeline (Sections 1, 3, 6, 8, 9, 10, and 12).
 
         Args:
             epub_path: Path to source EPUB file
             volume_id: Optional volume identifier (auto-generated if not provided)
-            skip_multimodal: Skip Phase 1.6 (visual analysis) for faster processing
+            skip_multimodal: Skip Section 8 (visual analysis) for faster processing
         
         Returns:
             True if successful, False otherwise
@@ -2283,7 +2753,7 @@ class PipelineController:
             volume_id = self.generate_volume_id(epub_path)
             logger.info(f"Generated volume ID: {volume_id}")
 
-        self._ui_header("Full Pipeline Run (v5.2)", "1 -> 1.5 -> 1.55 -> 1.6 -> 1.7 -> 2 -> 4")
+        self._ui_header("Full Pipeline Run (v5.2)", "S1 -> S3 -> S6 -> S8 -> S9 -> S10 -> S12")
         logger.info(f"Target Language: {language_name} ({target_lang.upper()})")
         logger.info(f"Source: {epub_path}")
         logger.info(f"Volume ID: {volume_id}")
@@ -2302,37 +2772,37 @@ class PipelineController:
                 else:
                     logger.info(f"  -> {label} complete ({phase_done}/{phase_total})")
 
-            # Phase 1: Librarian
+            # Section 1: Librarian
             if not self.run_phase1(epub_path, volume_id):
-                pipeline_tracker.fail("P1 Librarian")
+                pipeline_tracker.fail("S1 Librarian")
                 return False
-            _advance_pipeline("P1 Librarian")
+            _advance_pipeline("S1 Librarian")
 
             logger.info("")
 
-            # Phase 1.5: Metadata Processor
+            # Section 3: Metadata Processor
             if not self.run_phase1_5(volume_id):
-                pipeline_tracker.fail("P1.5 Metadata")
+                pipeline_tracker.fail("S3 Metadata")
                 return False
-            _advance_pipeline("P1.5 Metadata")
+            _advance_pipeline("S3 Metadata")
 
             logger.info("")
 
-            # Phase 1.55: Rich Metadata Cache Enrichment
+            # Section 6: Rich Metadata Cache Enrichment
             if not self.run_phase1_55(volume_id):
-                pipeline_tracker.fail("P1.55 Rich Metadata")
+                pipeline_tracker.fail("S6 Rich Metadata")
                 return False
-            _advance_pipeline("P1.55 Rich Metadata")
+            _advance_pipeline("S6 Rich Metadata")
 
             logger.info("")
 
             # Interactive pause after metadata enrichment (only in verbose mode)
             if self.verbose:
                 while True:
-                    self._ui_header("Checkpoint: Metadata Complete", "Review metadata or continue to translation")
+                    self._ui_header("Checkpoint: Prep Complete", "Review metadata or continue to Section 10 translation")
                     logger.info("")
                     print("OPTIONS:")
-                    print("  [1] Proceed to Phase 2 - Translator")
+                    print("  [1] Proceed to Section 10 - Translator")
                     print("  [2] Review Metadata (Title, Author, Characters, Terms)")
                     print("  [B] Back to previous menu")
                     print("  [Q] Quit Pipeline")
@@ -2341,19 +2811,19 @@ class PipelineController:
                     choice = input("Select option: ").strip().lower()
 
                     if choice == '1':
-                        logger.info("Proceeding to Phase 2...")
+                        logger.info("Proceeding to Section 10...")
                         break
                     elif choice == '2':
                         print("")
                         self.show_metadata(volume_id)
                         print("")
                         print("OPTIONS:")
-                        print("  [1] Proceed to Phase 2 - Translator")
+                        print("  [1] Proceed to Section 10 - Translator")
                         print("  [B] Back to previous menu")
                         print("")
                         sub_choice = input("Select option: ").strip().lower()
                         if sub_choice == '1':
-                            logger.info("Proceeding to Phase 2...")
+                            logger.info("Proceeding to Section 10...")
                             break
                         elif sub_choice == 'b':
                             continue
@@ -2373,40 +2843,40 @@ class PipelineController:
 
             logger.info("")
 
-            # Phase 1.6: Multimodal Processor (Visual Analysis)
+            # Section 8: Multimodal Processor (Visual Analysis)
             multimodal_success = False
             if not skip_multimodal:
                 multimodal_success = self.run_phase1_6(volume_id, standalone=False)
                 if not multimodal_success:
-                    logger.warning("⚠️  Phase 1.6 (Multimodal) failed or skipped")
+                    logger.warning("⚠️  Section 8 (Multimodal) failed or skipped")
                     logger.warning("   Continuing without visual context...")
-                _advance_pipeline("P1.6 Art Director")
+                _advance_pipeline("S8 Art Director")
                 logger.info("")
             else:
-                logger.info("ℹ️  Skipping Phase 1.6 (Multimodal) - --skip-multimodal flag set")
+                logger.info("ℹ️  Skipping Section 8 (Multimodal) - --skip-multimodal flag set")
                 logger.info("")
 
-            # Phase 1.7: Stage 1 Scene Planner (required before Stage 2 translation)
+            # Section 9: Stage 1 Scene Planner (required before Stage 2 translation)
             if not self.run_phase1_7(volume_id):
-                pipeline_tracker.fail("P1.7 Scene Planner")
+                pipeline_tracker.fail("S9 Scene Planner")
                 return False
-            _advance_pipeline("P1.7 Scene Planner")
+            _advance_pipeline("S9 Scene Planner")
 
             logger.info("")
 
-            # Phase 2: Translator (with multimodal if Phase 1.6 succeeded)
+            # Section 10: Translator (with multimodal if Section 8 succeeded)
             enable_multimodal = multimodal_success and not skip_multimodal
             if enable_multimodal:
                 logger.info("✓ Visual context enabled for translation")
 
             if not self.run_phase2(volume_id, enable_multimodal=enable_multimodal):
-                pipeline_tracker.fail("P2 Translator")
+                pipeline_tracker.fail("S10 Translator")
                 return False
-            _advance_pipeline("P2 Translator")
+            _advance_pipeline("S10 Translator")
 
             logger.info("")
 
-            # Phase 3: Manual/Agentic Workflow (Instructions only - verbose mode)
+            # Section 11: Manual/Agentic Workflow (Instructions only - verbose mode)
             if self.verbose:
                 self.run_phase3_instructions(volume_id)
 
@@ -2417,13 +2887,13 @@ class PipelineController:
                     print("\033[H\033[J", end="")
 
                     # Re-print Menu Header
-                    self._ui_header("Interactive Menu", "Phase 3 review complete; choose next action")
+                    self._ui_header("Interactive Menu", "Section 11 review complete; choose next action")
                     logger.info(f"Volume ID: {volume_id}")
                     logger.info("")
 
                     # Options
                     print("OPTIONS:")
-                    print("  [1] Proceed to Phase 4 - Builder (Packaging)")
+                    print("  [1] Proceed to Section 12 - Builder (Packaging)")
                     print("  [2] Return to Menu / Exit")
 
                     # Toggle Status
@@ -2437,9 +2907,9 @@ class PipelineController:
                         print("")
                         phase4_success = self.run_phase4(volume_id)
                         if phase4_success:
-                            _advance_pipeline("P4 Builder")
+                            _advance_pipeline("S12 Builder")
                         else:
-                            pipeline_tracker.fail("P4 Builder")
+                            pipeline_tracker.fail("S12 Builder")
                         return phase4_success
                     elif choice == '2':
                         return True
@@ -2450,13 +2920,13 @@ class PipelineController:
                     else:
                         input("Invalid selection. Press Enter to try again...")
             else:
-                # Minimal mode - auto-proceed to Phase 4
+                # Minimal mode - auto-proceed to Section 12
                 logger.info("")
                 phase4_success = self.run_phase4(volume_id)
                 if phase4_success:
-                    _advance_pipeline("P4 Builder")
+                    _advance_pipeline("S12 Builder")
                 else:
-                    pipeline_tracker.fail("P4 Builder")
+                    pipeline_tracker.fail("S12 Builder")
                 return phase4_success
     
     def show_metadata(self, volume_id: str) -> None:
@@ -2502,13 +2972,13 @@ class PipelineController:
         logger.info(f"  Author:      {metadata_translated.get(author_key, 'N/A')}")
         logger.info(f"  Volume:      {metadata_translated.get('volume', 'N/A')}")
         
-        # Show ruby-extracted names from Phase 1 (if available)
+        # Show ruby-extracted names from Section 1 (if available)
         ruby_names = manifest.get('ruby_names', [])
         ruby_terms = manifest.get('ruby_terms', [])
         
         logger.info("")
         if ruby_names:
-            logger.info(f"RUBY-EXTRACTED NAMES (Phase 1): {len(ruby_names)} entries")
+            logger.info(f"RUBY-EXTRACTED NAMES (Section 1): {len(ruby_names)} entries")
             for entry in ruby_names[:10]:
                 kanji = entry.get('kanji', '?')
                 ruby = entry.get('ruby', '?')
@@ -2517,9 +2987,9 @@ class PipelineController:
             if len(ruby_names) > 10:
                 logger.info(f"  ... and {len(ruby_names) - 10} more names")
         else:
-            logger.info("RUBY-EXTRACTED NAMES (Phase 1): Not extracted (re-run Phase 1 to extract)")
+            logger.info("RUBY-EXTRACTED NAMES (Section 1): Not extracted (re-run Section 1 to extract)")
         
-        # Show character names from Phase 1.5 translation (if available)
+        # Show character names from Section 3 translation (if available)
         logger.info("")
         
         # First check language-specific metadata file for character names (preferred)
@@ -2540,18 +3010,18 @@ class PipelineController:
                 character_names = json.load(f)
         
         if character_names:
-            logger.info(f"CHARACTER NAMES (Phase 1.5 Translated): {len(character_names)} entries")
+            logger.info(f"CHARACTER NAMES (Section 3 Translated): {len(character_names)} entries")
             for jp, en in list(character_names.items())[:15]:  # Show first 15
                 logger.info(f"  {jp} → {en}")
             if len(character_names) > 15:
                 logger.info(f"  ... and {len(character_names) - 15} more names")
         else:
-            logger.info("CHARACTER NAMES (Phase 1.5): Not yet translated (run Phase 1.5 to translate)")
+            logger.info("CHARACTER NAMES (Section 3): Not yet translated (run Section 3 to translate)")
         
-        # Show ruby-extracted terms from Phase 1 (if available)
+        # Show ruby-extracted terms from Section 1 (if available)
         logger.info("")
         if ruby_terms:
-            logger.info(f"RUBY-EXTRACTED TERMS (Phase 1): {len(ruby_terms)} entries")
+            logger.info(f"RUBY-EXTRACTED TERMS (Section 1): {len(ruby_terms)} entries")
             for entry in ruby_terms[:10]:
                 kanji = entry.get('kanji', '?')
                 ruby = entry.get('ruby', '?')
@@ -2559,7 +3029,7 @@ class PipelineController:
             if len(ruby_terms) > 10:
                 logger.info(f"  ... and {len(ruby_terms) - 10} more terms")
         else:
-            logger.info("RUBY-EXTRACTED TERMS (Phase 1): Not extracted (re-run Phase 1 to extract)")
+            logger.info("RUBY-EXTRACTED TERMS (Section 1): Not extracted (re-run Section 1 to extract)")
         
         # Show glossary/terms (always display section)
         logger.info("")
@@ -2576,13 +3046,13 @@ class PipelineController:
             glossary = metadata_translated.get('glossary', {})
         
         if glossary:
-            logger.info(f"TERMS/GLOSSARY (Phase 1.5 Translated): {len(glossary)} entries")
+            logger.info(f"TERMS/GLOSSARY (Section 3 Translated): {len(glossary)} entries")
             for jp, en in list(glossary.items())[:15]:  # Show first 15
                 logger.info(f"  {jp} → {en}")
             if len(glossary) > 15:
                 logger.info(f"  ... and {len(glossary) - 15} more terms")
         else:
-            logger.info("TERMS/GLOSSARY (Phase 1.5): 0 entries (Phase 1.5 not yet run)")
+            logger.info("TERMS/GLOSSARY (Section 3): 0 entries (Section 3 not yet run)")
         
         # Show chapter info
         chapters = manifest.get('chapters', [])
@@ -2639,12 +3109,12 @@ class PipelineController:
         p3_raw = pipeline_state.get('critics', {}).get('status', 'manual review')
         p4_raw = pipeline_state.get('builder', {}).get('status', 'not started')
 
-        logger.info("Phase Overview:")
-        logger.info(f"  P1   Librarian: {self._status_badge(p1_raw):<5} ({p1_raw})")
-        logger.info(f"  P1.5 Metadata:  {self._status_badge(p15_raw):<5} ({p15_raw})")
-        logger.info(f"  P1.55 Rich:     {self._status_badge(p155_raw):<5} ({p155_raw})")
+        logger.info("Section Overview:")
+        logger.info(f"  S1   Librarian: {self._status_badge(p1_raw):<5} ({p1_raw})")
+        logger.info(f"  S3   Metadata:  {self._status_badge(p15_raw):<5} ({p15_raw})")
+        logger.info(f"  S6   Rich:      {self._status_badge(p155_raw):<5} ({p155_raw})")
 
-        # Phase 1.6 (Multimodal) - check for visual_cache.json
+        # Section 8 (Multimodal) - check for visual_cache.json
         volume_path = self.work_dir / volume_id
         visual_cache_path = volume_path / "visual_cache.json"
         if visual_cache_path.exists():
@@ -2654,26 +3124,26 @@ class PipelineController:
                     cache_data = _json.load(_f)
                 cache_count = len(cache_data)
                 p16_raw = f"cached ({cache_count})"
-                logger.info(f"  P1.6 Visual:    DONE  ({p16_raw})")
+                logger.info(f"  S8   Visual:    DONE  ({p16_raw})")
             except Exception:
                 p16_raw = "cache unreadable"
-                logger.info(f"  P1.6 Visual:    WARN  ({p16_raw})")
+                logger.info(f"  S8   Visual:    WARN  ({p16_raw})")
         else:
             p16_raw = "not run"
-            logger.info(f"  P1.6 Visual:    TODO  ({p16_raw})")
+            logger.info(f"  S8   Visual:    TODO  ({p16_raw})")
 
-        logger.info(f"  P2   Translator: {self._status_badge(p2_raw):<5} ({p2_raw})")
-        logger.info(f"  P3   Critics:    {self._status_badge(p3_raw):<5} ({p3_raw})")
-        logger.info(f"  P4   Builder:    {self._status_badge(p4_raw):<5} ({p4_raw})")
+        logger.info(f"  S10  Translator: {self._status_badge(p2_raw):<5} ({p2_raw})")
+        logger.info(f"  S11  Review:     {self._status_badge(p3_raw):<5} ({p3_raw})")
+        logger.info(f"  S12  Builder:    {self._status_badge(p4_raw):<5} ({p4_raw})")
 
-        completed_phases = 0
-        completed_phases += int(self._status_badge(p1_raw) == "DONE")
-        completed_phases += int(self._status_badge(p15_raw) == "DONE")
-        completed_phases += int(self._status_badge(p155_raw) == "DONE")
-        completed_phases += int(p16_raw.startswith("cached"))
-        completed_phases += int(self._status_badge(p2_raw) == "DONE")
-        completed_phases += int(self._status_badge(p4_raw) == "DONE")
-        self.ui.render_status_bar("Phase Completion", completed_phases, 6)
+        completed_sections = 0
+        completed_sections += int(self._status_badge(p1_raw) == "DONE")
+        completed_sections += int(self._status_badge(p15_raw) == "DONE")
+        completed_sections += int(self._status_badge(p155_raw) == "DONE")
+        completed_sections += int(p16_raw.startswith("cached"))
+        completed_sections += int(self._status_badge(p2_raw) == "DONE")
+        completed_sections += int(self._status_badge(p4_raw) == "DONE")
+        self.ui.render_status_bar("Section Completion", completed_sections, 6)
         logger.info("")
         
         # Chapters
@@ -2698,11 +3168,11 @@ class PipelineController:
         # Suggested next action
         if p4_raw != "completed":
             if p2_raw != "completed":
-                logger.info(f"Next: mtl.py phase2 {volume_id}")
+                logger.info(f"Next (S10): mtl.py phase2 {volume_id}")
             elif p3_raw != "completed":
-                logger.info(f"Next: mtl.py phase3 {volume_id}")
+                logger.info(f"Next (S11): manual review / critics")
             else:
-                logger.info(f"Next: mtl.py phase4 {volume_id}")
+                logger.info(f"Next (S12): mtl.py phase4 {volume_id}")
     
     def run_cleanup(self, volume_id: str, dry_run: bool = False) -> bool:
         """
@@ -3001,7 +3471,7 @@ class PipelineController:
 
         if not thoughts_dir.exists():
             logger.error(f"No thought logs found at: {thoughts_dir}")
-            logger.error("Run Phase 1.6 first: mtl.py phase1.6 <volume_id>")
+            logger.error("Run Section 8 first: mtl.py phase1.6 <volume_id>")
             return False
 
         try:
@@ -3087,7 +3557,7 @@ class PipelineController:
                 md_lines.append("")
                 md_lines.append(
                     "*This visual thinking process is automatically generated by "
-                    "Gemini 3 Pro during Phase 1.6 (Multimodal Processor) and "
+                    "Gemini 3 Pro during Section 8 (Multimodal Processor) and "
                     "provides insight into the visual analysis decision-making process.*"
                 )
 
@@ -3359,7 +3829,9 @@ class PipelineController:
                      backend: Optional[str] = None,
                      language: Optional[str] = None, show_language: bool = False,
                      toggle_multimodal: bool = False,
-                     toggle_smart_chunking: bool = False) -> None:
+                     toggle_smart_chunking: bool = False,
+                     toggle_proxy_key: bool = False,
+                     phase2_endpoint: Optional[str] = None) -> None:
         """Handle configuration commands."""
         import yaml
         import os
@@ -3538,6 +4010,8 @@ class PipelineController:
             not toggle_pre_toc
             and not toggle_multimodal
             and not toggle_smart_chunking
+            and not toggle_proxy_key
+            and not phase2_endpoint
             and not model
             and temperature is None
             and top_p is None
@@ -3691,6 +4165,8 @@ class PipelineController:
             logger.info("  --toggle-pre-toc             Toggle pre-TOC detection")
             logger.info("  --toggle-multimodal          Toggle multimodal visual context")
             logger.info("  --toggle-smart-chunking      Toggle smart chunking for massive chapters")
+            logger.info("  --toggle-proxy-key           Toggle Anthropic key source (.env vs proxy settings)")
+            logger.info("  --phase2-endpoint openrouter|official")
             logger.info("")
         
         # Toggle pre-TOC detection
@@ -3729,6 +4205,31 @@ class PipelineController:
             config['translation']['massive_chapter']['enable_smart_chunking'] = new_value
             status = "ENABLED" if new_value else "DISABLED"
             changes_made.append(f"Smart Chunking: {status}")
+
+        # Toggle Anthropic key source (.env direct key vs proxy settings key)
+        if toggle_proxy_key:
+            if 'anthropic' not in config:
+                config['anthropic'] = {}
+
+            current = bool(config['anthropic'].get('use_env_key', False))
+            new_value = not current
+            config['anthropic']['use_env_key'] = new_value
+            status = ".env DIRECT" if new_value else "~/.claude/settings.json PROXY"
+            changes_made.append(f"Anthropic Key Source: {status}")
+
+        # Explicit Phase 2 endpoint override
+        if phase2_endpoint:
+            normalized = str(phase2_endpoint).strip().lower()
+            if normalized not in {'openrouter', 'official'}:
+                logger.error("Invalid phase2 endpoint. Use one of: openrouter, official")
+                return
+
+            if 'translation' not in config:
+                config['translation'] = {}
+
+            old_endpoint = str(config['translation'].get('phase2_anthropic_endpoint', 'openrouter') or 'openrouter').strip().lower()
+            config['translation']['phase2_anthropic_endpoint'] = normalized
+            changes_made.append(f"Phase2 Endpoint: {old_endpoint} → {normalized}")
         
         # Save changes if any were made
         if changes_made:
@@ -3752,7 +4253,7 @@ def main():
     if not args.command:
         logger.info("MTL Studio v5.2 CLI")
         logger.info(
-            "Use one of: run | phase1 | phase1.5 | phase1.55 | phase1.6 | phase1.7 | phase1.7-cp | phase2 | phase4 | "
+            "Use one of: run | phase1 | phase1.5 | pronoun-shift | phase1.55 | phase1.6 | phase1.7 | phase1.7-cp | phase2 | phase4 | "
             "list | status | metadata | schema | bible"
         )
         parser.print_help()
@@ -3816,10 +4317,10 @@ def main():
         sys.exit(0 if success else 1)
     
     elif args.command == 'multimodal':
-        # Run Phase 1.6 first, then Phase 2 with multimodal enabled
+        # Run Section 8 first, then Section 10 with multimodal enabled
         controller._ui_header(
             "Multimodal Translator",
-            "Phase 1.55 (if needed) -> Phase 1.6 (visual analysis) -> Phase 2"
+            "Section 6 (if needed) -> Section 8 (visual analysis) -> Section 10"
         )
         logger.info("")
         full_ln_cache_mode = getattr(args, 'full_ln_cache', 'ask')
@@ -3828,7 +4329,7 @@ def main():
             full_ln_cache_mode=full_ln_cache_mode,
             volume_id=args.volume_id,
             manifest=controller.load_manifest(args.volume_id) or {},
-            phase_label="Multimodal (Phase 1.6 + 2)",
+            phase_label="Multimodal (Section 8 + 2)",
         )
         manifest = controller.load_manifest(args.volume_id)
         rich_state = (
@@ -3836,16 +4337,16 @@ def main():
             if manifest else "not run"
         )
         if use_full_ln_cache and rich_state != "completed":
-            logger.info("Step 0: Running Phase 1.55 (Rich Metadata Cache)...")
+            logger.info("Step 0: Running Section 6 (Rich Metadata Cache)...")
             success_p155 = controller.run_phase1_55(args.volume_id)
             if not success_p155:
-                logger.error("Phase 1.55 failed. Aborting multimodal translation.")
+                logger.error("Section 6 failed. Aborting multimodal translation.")
                 sys.exit(1)
             logger.info("")
         elif not use_full_ln_cache:
             logger.warning("Step 0: Skipping full-LN cache preparation by user request.")
 
-        logger.info("Step 1: Running Phase 1.6 (Visual Analysis)...")
+        logger.info("Step 1: Running Section 8 (Visual Analysis)...")
         force_override = getattr(args, 'force_override', False)
         success_p16 = controller.run_phase1_6(
             args.volume_id,
@@ -3855,17 +4356,17 @@ def main():
         )
         
         if not success_p16:
-            logger.error("Phase 1.6 failed. Aborting multimodal translation.")
+            logger.error("Section 8 failed. Aborting multimodal translation.")
             sys.exit(1)
         
         logger.info("")
-        logger.info("Step 2: Running Phase 2 (Translation with Visual Context)...")
+        logger.info("Step 2: Running Section 10 (Translation with Visual Context)...")
         chapters = getattr(args, 'chapters', None)
         force = getattr(args, 'force', False)
         
         # Keep legacy verbose behavior in plain mode; rich mode has live progress.
         if not args.verbose and not controller.ui.rich_enabled:
-            logger.info("ℹ️  Running Phase 2 in verbose mode for detailed progress")
+            logger.info("ℹ️  Running Section 10 in verbose mode for detailed progress")
             controller = PipelineController(verbose=True, ui_mode=ui_mode, no_color=no_color)
         
         success_p2 = controller.run_phase2(
@@ -3895,6 +4396,21 @@ def main():
         success = controller.run_phase1_5(args.volume_id)
         sys.exit(0 if success else 1)
 
+    elif args.command == 'phase1.51':
+        success = controller.run_phase1_51(args.volume_id)
+        sys.exit(0 if success else 1)
+
+    elif args.command == 'phase1.52':
+        success = controller.run_phase1_52(args.volume_id)
+        sys.exit(0 if success else 1)
+
+    elif args.command == 'pronoun-shift':
+        success = controller.run_pronoun_shift_detector(
+            args.volume_id,
+            target_language=getattr(args, 'target_language', ''),
+        )
+        sys.exit(0 if success else 1)
+
     elif args.command == 'phase1.55':
         success = controller.run_phase1_55(args.volume_id)
         sys.exit(0 if success else 1)
@@ -3903,6 +4419,9 @@ def main():
         success = controller.run_phase1_56(
             args.volume_id,
             force=getattr(args, 'force', False),
+            enable_prequel_brief_injection=(
+                True if getattr(args, 'enable_prequel_brief_injection', False) else None
+            ),
         )
         sys.exit(0 if success else 1)
 
@@ -3912,6 +4431,9 @@ def main():
             force=getattr(args, 'force', False),
             skip_multimodal=getattr(args, 'skip_multimodal', False),
             force_brief=getattr(args, 'force_brief', False),
+            enable_prequel_brief_injection=(
+                True if getattr(args, 'enable_prequel_brief_injection', False) else None
+            ),
             chapters=getattr(args, 'chapters', None),
         )
         sys.exit(0 if success else 1)
@@ -3919,7 +4441,7 @@ def main():
     elif args.command == 'phase2':
         # Keep legacy verbose behavior in plain mode; rich mode has live chapter bars.
         if not args.verbose and not controller.ui.rich_enabled:
-            logger.info("ℹ️  Running Phase 2 in verbose mode (use `--ui rich` for modern progress)")
+            logger.info("ℹ️  Running Section 10 in verbose mode (use `--ui rich` for modern progress)")
             controller = PipelineController(verbose=True, ui_mode=ui_mode, no_color=no_color)
         if getattr(args, 'enable_continuity', False):
             logger.warning(
@@ -3929,7 +4451,7 @@ def main():
         enable_gap_analysis = getattr(args, 'enable_gap_analysis', False)
         enable_multimodal = getattr(args, 'enable_multimodal', False)
         # Default to 'skip' (cache-only): the full-LN cache gate already asks whether to
-        # rebuild. Only re-run Phase 1.55 if the user explicitly passes --phase1-55-mode overwrite.
+        # rebuild. Only re-run Section 6 if the user explicitly passes --phase1-55-mode overwrite.
         phase155_mode = getattr(args, 'phase1_55_mode', 'skip')
         full_ln_cache_mode = getattr(args, 'full_ln_cache', 'ask')
         use_batch = getattr(args, 'batch', False)

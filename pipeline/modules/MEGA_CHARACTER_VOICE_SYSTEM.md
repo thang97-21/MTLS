@@ -7,13 +7,6 @@
 
 ---
 
-## Table of Contents
-
-1. [Archetype Voice Profiles](#1-archetype-voice-profiles)
-2. [Long Vowel Romanization](#2-long-vowel-romanization)
-
----
-
 <a name="1-archetype-voice-profiles"></a>
 ---
 **06_CHARACTER_VOICE_PROFILES.md — DETAILED ARCHETYPE VOICES**
@@ -27,7 +20,7 @@
 
 **Core Principle:** Character voice = **vocabulary + sentence structure + fillers + prohibited words + emotional range**.
 
-Each archetype has distinct linguistic fingerprints that remain consistent across RTAS tiers (though formality adjusts).
+Each archetype has distinct linguistic fingerprints that remain consistent across EPS tiers (though formality adjusts).
 
 **Usage:** Consult this module when:
 - Character dialogue feels generic
@@ -64,7 +57,7 @@ Each archetype has distinct linguistic fingerprints that remain consistent acros
 - Displeasure: "That is most unfortunate." (never crude)
 - Anger: Restrained ("I am quite disappointed")
 
-**Contractions:** 0% regardless of RTAS (maintains formality)
+**Contractions:** 0% regardless of EPS (maintains formality)
 
 **Punctuation:** Periods dominate; rare exclamations (only for genuine surprise)
 
@@ -99,7 +92,7 @@ Each archetype has distinct linguistic fingerprints that remain consistent acros
 
 **Punctuation:** Periods dominate; almost no exclamations
 
-**RTAS Adjustment:** Even at RTAS 4.0+, maintains professional tone (duty > emotion)
+**EPS Adjustment:** Even at EPS [WARM]+, maintains professional tone (duty > emotion)
 
 ---
 
@@ -174,7 +167,7 @@ Each archetype has distinct linguistic fingerprints that remain consistent acros
 **Vocabulary Frequency:**
 - **HIGH:** Fine, adequate, acceptable, understood, logical, irrelevant
 - **MODERATE:** Okay, alright, sure (neutral)
-- **LOW:** Emotional vocabulary (love, hate, excited—until RTAS 4.0+)
+- **LOW:** Emotional vocabulary (love, hate, excited—until EPS [WARM]+)
 - **FORBIDDEN:** Excessive enthusiasm, rambling, slang
 
 **Sentence Structure:**
@@ -192,16 +185,16 @@ Each archetype has distinct linguistic fingerprints that remain consistent acros
 - Displeasure: "Annoying."
 - Anger: "Enough." (controlled, minimal words)
 
-**Contractions:** Moderate (50% at RTAS < 3.0; increases to 80% at RTAS 4.0+)
+**Contractions:** Moderate (50% at EPS [COLD/COOL]; increases to 80% at EPS [WARM]+)
 
-**Punctuation:** Periods dominate; rare exclamations (only at emotional breakthrough, RTAS 4.5+)
+**Punctuation:** Periods dominate; rare exclamations (only at emotional breakthrough, EPS [HOT]+)
 
-**RTAS Breakthrough (4.0+):** Subtle warmth emerges—longer sentences, occasional vulnerability
+**EPS Breakthrough (4.0+):** Subtle warmth emerges—longer sentences, occasional vulnerability
 
 **Example Progression:**
-- RTAS 2.0: "I'm fine."
-- RTAS 3.5: "I'm alright. Thanks."
-- RTAS 4.5: "I'm okay. Really. You don't need to worry."
+- EPS [COOL]: "I'm fine."
+- EPS [WARM]: "I'm alright. Thanks."
+- EPS [HOT]: "I'm okay. Really. You don't need to worry."
 
 ---
 
@@ -213,7 +206,7 @@ Each archetype has distinct linguistic fingerprints that remain consistent acros
 - **HIGH (Defensive Mode):** Whatever, not like, fine, who cares, idiot (affectionate)
 - **HIGH (Vulnerable Mode):** I mean, maybe, I guess, sort of
 - **MODERATE:** Want, need (appears more as intimacy grows)
-- **FORBIDDEN:** Direct emotional expression (until RTAS 4.0+)
+- **FORBIDDEN:** Direct emotional expression (until EPS [WARM]+)
 
 **Sentence Structure:**
 - **Defensive:** Short, sharp (4-8 words) "Who asked you?"
@@ -237,10 +230,10 @@ Each archetype has distinct linguistic fingerprints that remain consistent acros
 
 **Signature Pattern:** "It's not like [X]! I just [weak excuse]!"
 
-**RTAS Evolution:**
-- RTAS < 3.0: Mostly defensive, rare vulnerability
-- RTAS 3.5-4.5: Frequent switches (defensive ↔ vulnerable)
-- RTAS 4.5+: More vulnerable moments, affection admitted (grudgingly)
+**EPS Evolution:**
+- EPS [COLD/COOL]: Mostly defensive, rare vulnerability
+- EPS [WARM]-4.5: Frequent switches (defensive ↔ vulnerable)
+- EPS [HOT]+: More vulnerable moments, affection admitted (grudgingly)
 
 ---
 
@@ -251,7 +244,7 @@ Each archetype has distinct linguistic fingerprints that remain consistent acros
 **Vocabulary Frequency:**
 - **HIGH:** Um, maybe, I think, sorry, excuse me
 - **MODERATE:** Want, like, hope (soft requests)
-- **LOW:** Assertive language (unless RTAS 4.0+ with trusted person)
+- **LOW:** Assertive language (unless EPS [WARM]+ with trusted person)
 - **FORBIDDEN:** Aggressive language, crude words, confrontation
 
 **Sentence Structure:**
@@ -267,7 +260,7 @@ Each archetype has distinct linguistic fingerprints that remain consistent acros
 - Joy: "I'm... I'm really happy." (quiet, sincere)
 - Surprise: *Gasp* (often nonverbal)
 - Displeasure: "I... I'm sorry." (apologizes even when not at fault)
-- Affection: "I... I like being with you." (vulnerable, direct at RTAS 4.5+)
+- Affection: "I... I like being with you." (vulnerable, direct at EPS [HOT]+)
 
 **Contractions:** Moderate-to-high (70-90%)
 
@@ -275,10 +268,10 @@ Each archetype has distinct linguistic fingerprints that remain consistent acros
 
 **Signature Pattern:** Trailing sentences ending with ellipsis or soft question
 
-**RTAS Evolution:**
-- RTAS < 3.0: Barely speaks, one-word answers
-- RTAS 3.5-4.5: Opens up, longer sentences, still hesitant
-- RTAS 4.5+: Vulnerable, direct emotion (but still soft tone)
+**EPS Evolution:**
+- EPS [COLD/COOL]: Barely speaks, one-word answers
+- EPS [WARM]-4.5: Opens up, longer sentences, still hesitant
+- EPS [HOT]+: Vulnerable, direct emotion (but still soft tone)
 
 ---
 
@@ -340,7 +333,7 @@ Each archetype has distinct linguistic fingerprints that remain consistent acros
 - Joy: "Fascinating! This is remarkable."
 - Surprise: "How unexpected."
 - Displeasure: "That's illogical."
-- Affection: "I find your company intellectually stimulating." (indirect at low RTAS; direct at high RTAS)
+- Affection: "I find your company intellectually stimulating." (indirect at low EPS; direct at high EPS)
 
 **Contractions:** Low-to-moderate (30-50%)
 
@@ -348,10 +341,10 @@ Each archetype has distinct linguistic fingerprints that remain consistent acros
 
 **Signature Pattern:** References to books, theories, or logical frameworks
 
-**RTAS Evolution:**
-- RTAS < 3.0: Purely intellectual conversation
-- RTAS 3.5-4.5: Begins mixing emotion with intellect
-- RTAS 4.5+: Admits emotional connection (but intellectualizes it)
+**EPS Evolution:**
+- EPS [COLD/COOL]: Purely intellectual conversation
+- EPS [WARM]-4.5: Begins mixing emotion with intellect
+- EPS [HOT]+: Admits emotional connection (but intellectualizes it)
 
 ---
 
@@ -386,10 +379,10 @@ Each archetype has distinct linguistic fingerprints that remain consistent acros
 
 **Signature Pattern:** Competitive language, challenges, physical action verbs
 
-**RTAS Evolution:**
-- RTAS < 3.0: Competitive, no softness
-- RTAS 3.5-4.5: Slight softening, awkward with affection
-- RTAS 4.5+: Admits care (but maintains rough exterior)
+**EPS Evolution:**
+- EPS [COLD/COOL]: Competitive, no softness
+- EPS [WARM]-4.5: Slight softening, awkward with affection
+- EPS [HOT]+: Admits care (but maintains rough exterior)
 
 **Example:** "You're... important to me. Okay? Don't make me say it again."
 
@@ -424,11 +417,11 @@ Each archetype has distinct linguistic fingerprints that remain consistent acros
 
 **Signature Pattern:** Nostalgic references, comfortable teasing
 
-**RTAS Note:** Often starts at RTAS 3.5-4.0 (established closeness), shifts awkward if romantic
+**EPS Note:** Often starts at EPS [WARM]-4.0 (established closeness), shifts awkward if romantic
 
 **Example Romantic Shift:**
 - Before: "You're such a dummy. C'mon, let's go."
-- After (RTAS 4.5+): "I... I don't just see you as a friend anymore. You know that, right?"
+- After (EPS [HOT]+): "I... I don't just see you as a friend anymore. You know that, right?"
 
 ---
 
@@ -462,22 +455,22 @@ Each archetype has distinct linguistic fingerprints that remain consistent acros
 
 **Signature Pattern:** Vague answers, philosophical questions, maintains mystery
 
-**RTAS Evolution:**
-- RTAS < 3.0: Almost entirely enigmatic
-- RTAS 3.5-4.5: Occasional glimpses of truth
-- RTAS 4.5+: Direct moment (rare, impactful)
+**EPS Evolution:**
+- EPS [COLD/COOL]: Almost entirely enigmatic
+- EPS [WARM]-4.5: Occasional glimpses of truth
+- EPS [HOT]+: Direct moment (rare, impactful)
 
 **Example:**
-- RTAS 2.5: "Who knows? Maybe you'll find out someday."
-- RTAS 4.8: "I care about you. More than I should."
+- EPS [COOL]: "Who knows? Maybe you'll find out someday."
+- EPS [HOT]: "I care about you. More than I should."
 
 ---
 
 ## SECTION 3: VOCABULARY FREQUENCY TABLES
 
-### 3.1 AFFECTION/INTIMACY VOCABULARY BY RTAS
+### 3.1 AFFECTION/INTIMACY VOCABULARY BY EPS
 
-| RTAS Range | Affection Expression | Example |
+| EPS Range | Affection Expression | Example |
 |-----------|---------------------|---------|
 | < 2.0 | Formal, indirect | "I appreciate your company." |
 | 2.0-3.0 | Neutral, cautious | "I enjoy spending time with you." |
@@ -512,8 +505,8 @@ Each archetype has distinct linguistic fingerprints that remain consistent acros
 | Stoic | Excessive emotion (thrilled, devastated), rambling | Breaks controlled voice |
 | Genki | Formal language (inquire, request, permit) | Too stiff for energy |
 | Gyaru | Academic/archaic (henceforth, wherefore, thus) | Completely out of voice |
-| Kuudere | Gushing emotion (amazing, wonderful) until RTAS 4.0+ | Breaks cool exterior |
-| Tsundere | Direct affection (love, adore) until RTAS 4.5+ | Breaks defensive pattern |
+| Kuudere | Gushing emotion (amazing, wonderful) until EPS [WARM]+ | Breaks cool exterior |
+| Tsundere | Direct affection (love, adore) until EPS [HOT]+ | Breaks defensive pattern |
 | Dandere | Aggressive language (demand, confront, fight) | Breaks gentle nature |
 | Yandere | Casual indifference (whatever, don't care) | Breaks intense focus |
 
@@ -530,7 +523,7 @@ STEP 1: Identify character archetype
 STEP 2: Consult this module for detailed voice profile
   → Section 2 (detailed archetype profiles)
 
-STEP 3: Select vocabulary tier appropriate to archetype + RTAS
+STEP 3: Select vocabulary tier appropriate to archetype + EPS
   → High-frequency words = character's natural vocabulary
   → Avoid forbidden words
 
@@ -544,7 +537,7 @@ STEP 6: Check emotional range expression
   → How does THIS archetype express joy/anger/affection?
 
 STEP 7: Verify contractions frequency
-  → Module 01 RTAS tier + archetype modifier
+  → Module 01 EPS tier + archetype modifier
 
 STEP 8: Self-correct against prohibited vocabulary
   → Section 4.1 forbidden words
@@ -559,7 +552,7 @@ STEP 9: Compare to Module 05 golden samples
 
 **STATUS:** AUTHORITATIVE REFERENCE FOR CHARACTER VOICE DETAILS
 **USAGE:** Detailed archetype voice fingerprints; vocabulary, fillers, prohibited words
-**INTEGRATION:** Works with Module 00 (archetype identification), Module 01 (RTAS), Module 05 (golden samples)
+**INTEGRATION:** Works with Module 00 (archetype identification), Module 01 (EPS), Module 05 (golden samples)
 
 
 ---
@@ -572,13 +565,6 @@ STEP 9: Compare to Module 05 golden samples
 ---
 
 # 07_LONG_VOWEL_ROMANIZATION
-
-## RTAS Scoring Logic
-
-**Definition** – Relationship Tension & Affection Score (RTAS) measures intimacy on a 1.0‑5.0 scale.
-**Baseline** – 3.0
-**Modifiers** – Pronouns (+0.3‑+0.7), honorifics (‑0.8‑+0.5), particles (+0.2‑+0.4), contextual keywords (‑2.0‑+1.5), proxemics (‑0.5‑+1.2).
-**Formula** – `RTAS_FINAL = 3.0 + Σ(MODIFIERS)`
 
 ## SECTION 1: LONG VOWEL FUNDAMENTALS
 
@@ -875,6 +861,5 @@ Rationale: ゆいか has no long vowel (standard romanization)
 **END OF MODULE**
 
 
----
 
-**END OF MEGA_CHARACTER_VOICE_SYSTEM.md v1.0**
+**END OF MEGA_CHARACTER_VOICE_SYSTEM.md**
