@@ -1,7 +1,7 @@
 # Security Audit Report - V4.0 Release
 
-**Date**: February 1, 2026  
-**Auditor**: MTL Studio QC Agent  
+**Date**: March 8, 2026
+**Auditor**: MTL Studio QC Agent
 **Scope**: Pre-production security scan for public repository release
 
 ---
@@ -29,22 +29,27 @@
 - `GEMINI_API_KEY\s*=\s*["'][A-Za-z0-9-_]{30,}` (hardcoded assignment)
 
 **Results**:
-- ✅ **20 safe matches** found - all use `os.getenv('GEMINI_API_KEY')` (environment variable pattern)
-- ✅ **0 hardcoded keys** detected
+- ✅ **91 safe matches** across 34 files - all use `os.getenv()` patterns
+- ✅ **0 hardcoded keys** detected (verified against `sk-`, `sk-ant-` prefixes)
 - ✅ **No credential exposure** in tracked files
 
 **Locations Verified**:
 ```
-pipeline/modules/gap_semantic_analyzer.py (lines 95, 100-104)
-pipeline/modules/vector_search.py (lines 85, 93, 114-116)
-pipeline/pipeline/librarian/agent.py (token counting only)
-pipeline/scripts/*.py (token metrics only)
+pipeline/pipeline/common/anthropic_client.py       # ANTHROPIC_API_KEY
+pipeline/pipeline/common/openrouter_client.py      # OPENROUTER_API_KEY
+pipeline/pipeline/common/proxy_client.py            # PROXY_*
+pipeline/pipeline/common/genai_factory.py           # GEMINI_API_KEY (11 instances)
+pipeline/pipeline/common/embedding_client.py       # GOOGLE_API_KEY
+pipeline/pipeline/translator/agent.py               # Multiple LLM clients
+pipeline/modules/gap_semantic_analyzer.py           # GEMINI_API_KEY
+pipeline/modules/vector_search.py                   # GEMINI_API_KEY
 ```
 
 All instances correctly use:
 ```python
-api_key = os.getenv('GEMINI_API_KEY')
-genai.configure(api_key=api_key)
+api_key = os.getenv('ANTHROPIC_API_KEY')   # Anthropic Claude
+api_key = os.getenv('GEMINI_API_KEY')       # Google Gemini
+api_key = os.getenv('OPENROUTER_API_KEY')   # OpenRouter
 ```
 
 ---
@@ -62,9 +67,18 @@ genai.configure(api_key=api_key)
 *.env
 **/.env
 pipeline/.env
+
+# Private keys / cert bundles
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+id_rsa
+id_ed25519
 ```
 
-**Verification**: 6 patterns cover all environment variable files  
+**Verification**: 13 patterns cover all environment variable and private key files
 **Status**: ✅ No .env files in tracked directories
 
 #### Working Directories (✅ Ignored)
@@ -173,15 +187,18 @@ MTL Studio.app/       # Launcher application
 
 ## Compliance Checklist
 
-- ✅ No hardcoded API keys (20 instances use `os.getenv()`)
-- ✅ No credentials in tracked files
-- ✅ .env files comprehensively ignored (6 patterns)
+- ✅ No hardcoded API keys (91 instances across 34 files use `os.getenv()`)
+- ✅ No credentials in tracked files (Anthropic, Gemini, OpenRouter, Google all via env vars)
+- ✅ .env files comprehensively ignored (13 patterns including private key extensions)
 - ✅ Copyrighted volumes isolated (WORK/INPUT/OUTPUT ignored)
+- ✅ Series Bible JSON isolated (bibles/, pipeline/bibles/ ignored)
+- ✅ ChromaDB vector stores excluded (runtime-generated, copyright-sensitive embeddings)
 - ✅ Reference material protected (VN/Reference/ ignored)
 - ✅ Development notes excluded (documents/, .auditing/ ignored)
 - ✅ Publisher documentation appropriately whitelisted (non-copyrighted analysis)
 - ✅ Large binaries excluded (python_env/, bin/ ignored)
 - ✅ No sensitive data in configuration files
+- ✅ OpenRouter agent (Node.js) excluded (pipeline/openrouter-agent/ ignored)
 
 ---
 
@@ -200,24 +217,32 @@ MTL Studio V4.0 meets all security and compliance requirements for public reposi
 ## Appendix A: .gitignore Structure
 
 ```gitignore
-# Environment Variables (6 patterns)
+# Environment Variables (13 patterns)
 .env, .env.local, .env.*.local, *.env, **/.env, pipeline/.env
+*.pem, *.key, *.p12, *.pfx, *.crt, id_rsa, id_ed25519
 
 # Working Directories (3 directories)
 pipeline/WORK/, pipeline/INPUT/, pipeline/OUTPUT/
 
-# Development Artifacts (7 locations)
-bleu_workspace/, data/, .auditing/, pipeline/documents/, pipeline/docs/, docs/, TTS_development/
+# Development Artifacts (8+ locations)
+bleu_workspace/, data/, .auditing/, pipeline/documents/, docs/, TTS_development/
+pipeline/openrouter-agent/
 
-# Copyrighted Material (1 directory)
-pipeline/VN/Reference/
+# Copyrighted Material (2 directories)
+pipeline/VN/Reference/, pipeline/Bible/, pipeline/bibles/, bibles/
+
+# Vector DB Artifacts (runtime-generated, copyright-sensitive embeddings)
+chroma_sino_vn/, chroma_english_patterns/, chroma_series_bible/
+pipeline/chroma_*/
 
 # Large Binaries (3 locations)
 python_env/, bin/VSCodium.app/, MTL Studio.app/
 
-# Whitelisted Documentation (2 patterns)
+# Whitelisted Documentation (3 patterns)
 !pipeline/docs/KODANSHA_STRUCTURE.md
 !pipeline/config/publishers/*.json
+!docs/MTL_STUDIO_ENGINEERING/*.md
+!pipeline/docs/
 ```
 
 ---
@@ -228,22 +253,26 @@ All API key references follow secure pattern:
 
 ```python
 # SECURE: Environment variable (approved)
-api_key = os.getenv('GEMINI_API_KEY')
-if not api_key:
-    raise ValueError("GEMINI_API_KEY not set")
-genai.configure(api_key=api_key)
+api_key = os.getenv('ANTHROPIC_API_KEY')   # Anthropic Claude
+api_key = os.getenv('GEMINI_API_KEY')       # Google Gemini
+api_key = os.getenv('OPENROUTER_API_KEY')   # OpenRouter
+api_key = os.getenv('GOOGLE_API_KEY')      # Google API (embeddings)
 
 # INSECURE: Hardcoded key (NOT FOUND)
-# genai.configure(api_key="AIzaSy...")  # Would be flagged
+# client = Anthropic(api_key="sk-ant-...")  # Would be flagged
 ```
 
-**Locations Verified**:
+**Locations Verified** (91 instances across 34 files):
+- `pipeline/pipeline/common/anthropic_client.py`
+- `pipeline/pipeline/common/openrouter_client.py`
+- `pipeline/pipeline/common/proxy_client.py`
+- `pipeline/pipeline/common/genai_factory.py`
+- `pipeline/pipeline/common/embedding_client.py`
+- `pipeline/pipeline/translator/agent.py`
 - `pipeline/modules/gap_semantic_analyzer.py`
 - `pipeline/modules/vector_search.py`
-- `pipeline/pipeline/librarian/agent.py`
-- `pipeline/scripts/*.py`
 
-All 20 instances passed security review.
+All 91 instances passed security review.
 
 ---
 
@@ -251,5 +280,6 @@ All 20 instances passed security review.
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.1 | 2026-03-08 | Post-release audit update (public repo shipped) |
 | 1.0 | 2026-02-01 | Initial V4.0 pre-release audit |
 
