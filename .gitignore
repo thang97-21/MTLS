@@ -101,8 +101,8 @@ UNIVERSAL_CONTINUITY_PACK_DESIGN.md
 VERIFICATION_REPORT.md
 AUDIT_AGENT.md
 
-# Archived model thinking logs (copyright-sensitive analysis artifacts)
-pipeline/DESIGN/THINKING_LOGS/
+# Archived model thinking logs (Opus COT documentation — tracked)
+## pipeline/DESIGN/THINKING_LOGS/ 
 
 # Analysis and build documents (internal investigation notes)
 pipeline/96_TO_99_QUALITY_GAP_ANALYSIS.md
